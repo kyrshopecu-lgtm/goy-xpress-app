@@ -2,7 +2,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {
   SafeAreaView, View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Image, Alert, Linking
+  StyleSheet, Image, Alert, Linking, Pressable
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
@@ -52,12 +52,14 @@ async function notifyAdminWhatsApp(request) {
   ].filter(Boolean).join('\n');
 
   const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(lines)}`;
-  const ok = await Linking.canOpenURL(url);
-  if (ok) await Linking.openURL(url);
-  else Alert.alert('WhatsApp', 'No se pudo abrir WhatsApp.');
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    Alert.alert('WhatsApp', 'La solicitud fue guardada, pero no se pudo abrir WhatsApp.');
+  }
 }
 
-function Header({role, setRole}) {
+function Header() {
   return (
     <View style={styles.header}>
       <Image source={require('./assets/goy-logo.jpg')} style={styles.logo}/>
@@ -65,18 +67,21 @@ function Header({role, setRole}) {
         <Text style={styles.headerTitle}>GOY XPRESS</Text>
         <Text style={styles.headerSub}>Mensajería · Trámites · Logística</Text>
       </View>
-      <View style={styles.roleBox}>
-        <Picker
-          selectedValue={role}
-          onValueChange={setRole}
-          style={styles.rolePicker}
-          dropdownIconColor={COLORS.white}
-        >
-          <Picker.Item label="Cliente" value="client"/>
-          <Picker.Item label="Administrador" value="admin"/>
-          <Picker.Item label="Mensajero" value="courier"/>
-        </Picker>
-      </View>
+    </View>
+  );
+}
+
+function RoleNav({role, setRole}) {
+  const roles = [['client','Cliente'], ['admin','Administrador'], ['courier','Mensajero']];
+  return (
+    <View style={styles.roleNav}>
+      {roles.map(([value, label]) => (
+        <Pressable key={value} accessibilityRole="button" onPress={() => setRole(value)}
+          android_ripple={{color:'#D7EDF6'}}
+          style={({pressed}) => [styles.roleTab, role === value && styles.roleTabActive, pressed && styles.pressed]}>
+          <Text style={[styles.roleTabText, role === value && styles.roleTabTextActive]}>{label}</Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -87,13 +92,15 @@ function Card({children, style}) {
 
 function Btn({title, onPress, variant='primary'}) {
   return (
-    <TouchableOpacity
+    <Pressable
+      accessibilityRole="button"
       onPress={onPress}
-      style={[styles.btn, variant === 'green' ? styles.btnGreen :
-        variant === 'secondary' ? styles.btnSecondary : styles.btnPrimary]}
+      android_ripple={{color:'rgba(255,255,255,0.25)'}}
+      style={({pressed}) => [styles.btn, variant === 'green' ? styles.btnGreen :
+        variant === 'secondary' ? styles.btnSecondary : styles.btnPrimary, pressed && styles.pressed]}
     >
       <Text style={[styles.btnText, variant === 'secondary' && {color:COLORS.navy}]}>{title}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -109,14 +116,14 @@ function ClientHome({requests, addRequest}) {
       <Text style={styles.subtitle}>Registra tus envíos y trámites desde un solo lugar.</Text>
 
       <View style={styles.twoCols}>
-        <TouchableOpacity style={[styles.actionTile, {backgroundColor:COLORS.blue}]} onPress={()=>setTab('shipment')}>
+        <Pressable accessibilityRole="button" style={({pressed})=>[styles.actionTile,{backgroundColor:COLORS.blue},pressed&&styles.pressed]} onPress={()=>setTab('shipment')}>
           <Text style={styles.actionPlus}>＋</Text>
           <Text style={styles.actionTitle}>Nuevo envío</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionTile, {backgroundColor:COLORS.green}]} onPress={()=>setTab('procedure')}>
+        </Pressable>
+        <Pressable accessibilityRole="button" style={({pressed})=>[styles.actionTile,{backgroundColor:COLORS.green},pressed&&styles.pressed]} onPress={()=>setTab('procedure')}>
           <Text style={styles.actionPlus}>✓</Text>
           <Text style={styles.actionTitle}>Nuevo trámite</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <Card>
@@ -430,7 +437,8 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light"/>
-      <Header role={role} setRole={setRole}/>
+      <Header/>
+      <RoleNav role={role} setRole={setRole}/>
       {role==='client' && <ClientHome requests={requests} addRequest={addRequest}/>}
       {role==='admin' && <AdminPanel requests={requests} updateRequest={updateRequest}/>}
       {role==='courier' && <CourierPanel requests={requests} updateRequest={updateRequest}/>}
@@ -444,8 +452,12 @@ const styles = StyleSheet.create({
   logo:{width:58,height:58,borderRadius:10},
   headerTitle:{color:COLORS.white,fontWeight:'900',fontSize:18},
   headerSub:{color:'#C9D7DF',fontSize:11},
-  roleBox:{width:145,borderWidth:1,borderColor:'#31586E',borderRadius:10,overflow:'hidden'},
-  rolePicker:{color:COLORS.white,height:44},
+  roleNav:{flexDirection:'row',backgroundColor:COLORS.white,borderBottomWidth:1,borderBottomColor:COLORS.line,paddingHorizontal:8,paddingVertical:7},
+  roleTab:{flex:1,minHeight:42,alignItems:'center',justifyContent:'center',borderRadius:10,overflow:'hidden'},
+  roleTabActive:{backgroundColor:COLORS.navy},
+  roleTabText:{fontSize:12,fontWeight:'800',color:COLORS.navy},
+  roleTabTextActive:{color:COLORS.white},
+  pressed:{opacity:0.72},
   page:{padding:16,paddingBottom:40},
   h1:{fontSize:26,fontWeight:'900',color:COLORS.navy,marginBottom:4},
   subtitle:{color:COLORS.muted,marginBottom:16},
