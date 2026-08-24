@@ -1,0 +1,26 @@
+GOY XPRESS
+Mensajería, entregas y trámites desde una sola aplicación.
+
+Descripción corta:
+Registra envíos y trámites, calcula tarifas y controla tus solicitudes con GOY XPRESS.
+
+Descripción completa:
+GOY XPRESS facilita la gestión de mensajería y diligencias para clientes y emprendimientos.
+
+Desde la aplicación puedes registrar solicitudes de envío, ingresar los datos del destinatario, calcular el valor del servicio, configurar cobro contra entrega y consultar el estado de cada pedido.
+
+También puedes solicitar trámites como depósitos bancarios, ingreso, retiro o entrega de documentos y otras diligencias. El sistema calcula automáticamente el valor de este servicio según el tiempo estimado.
+
+La operación se conecta con un panel administrativo desde el que las solicitudes pueden asignarse a mensajeros. Cada mensajero puede consultar sus tareas y actualizar el estado de la gestión.
+
+Funciones principales:
+• Registro de envíos
+• Registro de trámites
+• Cálculo automático de tarifas
+• Cobro contra entrega
+• Asignación de mensajeros
+• Estados de seguimiento
+• Historial de solicitudes
+• Integración operativa con WhatsApp
+
+GOY XPRESS: logística ágil para clientes y emprendimientos.
