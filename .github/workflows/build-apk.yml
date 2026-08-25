@@ -94,8 +94,9 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          emulator-boot-timeout: 900
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 360s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.1-INSTALABLE.apk smoke-test
+          script: timeout 900s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.1-INSTALABLE.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
