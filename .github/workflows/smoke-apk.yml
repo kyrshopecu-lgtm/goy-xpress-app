@@ -1,0 +1,55 @@
+name: Probar APK GOY XPRESS en Android 15
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/smoke-apk.yml
+
+jobs:
+  smoke-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Descargar APK compilado
+        uses: actions/download-artifact@v4
+        with:
+          name: GOY-XPRESS-v3.0.1-INSTALABLE
+          path: apk-under-test
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: kyrshopecu-lgtm/goy-xpress-app
+          run-id: 32799165507
+
+      - name: Probar interfaz real en Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -e
+            mkdir -p smoke-test
+            adb install -r apk-under-test/GOY-XPRESS-v3.0.1-INSTALABLE.apk > smoke-test/install.txt
+            adb logcat -c
+            adb shell am force-stop com.goyxpress.mensajeria
+            adb shell monkey -p com.goyxpress.mensajeria -c android.intent.category.LAUNCHER 1 > smoke-test/launch.txt
+            sleep 12
+            adb shell uiautomator dump /sdcard/goy-window.xml || true
+            adb pull /sdcard/goy-window.xml smoke-test/window.xml || true
+            adb exec-out screencap -p > smoke-test/screen.png || true
+            adb logcat -d > smoke-test/logcat.txt || true
+            PID=$(adb shell pidof com.goyxpress.mensajeria | tr -d '\r')
+            test -n "$PID"
+            grep -Eq 'GOY XPRESS|Cliente|Mensajería' smoke-test/window.xml
+
+      - name: Guardar evidencia Android
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GOY-XPRESS-PRUEBA-ANDROID-15
+          path: smoke-test/
+          if-no-files-found: warn
+          retention-days: 7
