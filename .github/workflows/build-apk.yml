@@ -51,6 +51,38 @@ jobs:
           "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.0.1-INSTALABLE.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.0.1-INSTALABLE.apk
 
+      - name: Probar arranque real en Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -o pipefail
+            mkdir -p smoke-test
+            adb install -r GOY-XPRESS-v3.0.1-INSTALABLE.apk | tee smoke-test/install.txt
+            adb logcat -c
+            adb shell am force-stop com.goyxpress.mensajeria
+            adb shell monkey -p com.goyxpress.mensajeria -c android.intent.category.LAUNCHER 1 | tee smoke-test/launch.txt
+            sleep 12
+            adb shell uiautomator dump /sdcard/goy-window.xml || true
+            adb pull /sdcard/goy-window.xml smoke-test/window.xml || true
+            adb exec-out screencap -p > smoke-test/screen.png || true
+            adb logcat -d > smoke-test/logcat.txt || true
+            PID=$(adb shell pidof com.goyxpress.mensajeria | tr -d '\r')
+            test -n "$PID"
+            grep -Eq 'GOY XPRESS|Cliente|Mensajería' smoke-test/window.xml
+
+      - name: Guardar evidencia de prueba Android
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GOY-XPRESS-PRUEBA-ANDROID
+          path: smoke-test/
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Guardar instalador
         uses: actions/upload-artifact@v4
         with:
