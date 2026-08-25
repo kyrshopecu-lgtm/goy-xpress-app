@@ -218,6 +218,7 @@ function AppHeader({role, onRoleChange}) {
           return (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={option.label}
               accessibilityState={{selected: active}}
               key={option.key}
               onPress={() => onRoleChange(option.key)}
@@ -274,6 +275,7 @@ function PrimaryButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
       disabled={disabled}
       onPress={onPress}
       style={({pressed}) => [
@@ -450,6 +452,8 @@ function RequestCard({request, children}) {
 function ServiceTile({icon, title, subtitle, color, onPress}) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
       onPress={onPress}
       style={({pressed}) => [
         styles.serviceTile,
@@ -574,6 +578,8 @@ function ClientHome({requests, inventory, onOpenForm, onOpenHistory}) {
 function ServiceRow({icon, title, description, price, onPress, color}) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
       onPress={onPress}
       style={({pressed}) => [styles.serviceRow, pressed && styles.pressed]}>
       <View style={[styles.serviceRowIcon, {backgroundColor: color || COLORS.blueSoft}]}>
@@ -835,7 +841,7 @@ function ProfileScreen() {
         onPress={contactAdmin}
         variant="green"
       />
-      <Text style={styles.versionText}>Aplicación GOY XPRESS · versión 3.0.0</Text>
+      <Text style={styles.versionText}>Aplicación GOY XPRESS · versión 3.1.0</Text>
     </Page>
   );
 }
@@ -855,6 +861,8 @@ function BottomNav({screen, onChange}) {
         const active = screen === item.key;
         return (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
             key={item.key}
             onPress={() => onChange(item.key)}
             style={({pressed}) => [styles.bottomNavItem, pressed && styles.pressed]}>
@@ -1869,7 +1877,7 @@ function CourierPanel({requests, onUpdateRequest}) {
   );
 }
 
-export default function App() {
+function GoyXpressApplication() {
   const [role, setRole] = useState('client');
   const [requests, setRequests] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -1991,6 +1999,50 @@ export default function App() {
         />
       )}
     </SafeAreaView>
+  );
+}
+
+class AppErrorBoundary extends React.Component {
+  state = {hasError: false};
+
+  static getDerivedStateFromError() {
+    return {hasError: true};
+  }
+
+  componentDidCatch(error, info) {
+    console.error('GOY XPRESS encontró un error de interfaz', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <SafeAreaView style={styles.errorScreen}>
+          <StatusBar style="light" backgroundColor={COLORS.navy} />
+          <Text style={styles.errorBrand}>GOY XPRESS</Text>
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>No pudimos mostrar esta pantalla</Text>
+            <Text style={styles.errorMessage}>
+              Tus solicitudes siguen guardadas. Presiona reintentar para volver a la aplicación.
+            </Text>
+            <PrimaryButton
+              title="Reintentar"
+              onPress={() => this.setState({hasError: false})}
+              variant="green"
+            />
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default function App() {
+  return (
+    <AppErrorBoundary>
+      <GoyXpressApplication />
+    </AppErrorBoundary>
   );
 }
 
@@ -2300,4 +2352,9 @@ const styles = StyleSheet.create({
   jobActions: {flexDirection: 'row', gap: 8, marginTop: 7},
   loadingBox: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   loadingText: {color: COLORS.muted, marginTop: 12},
+  errorScreen: {flex: 1, backgroundColor: COLORS.navy, padding: 20, justifyContent: 'center'},
+  errorBrand: {color: COLORS.white, fontSize: 25, fontWeight: '900', textAlign: 'center'},
+  errorCard: {backgroundColor: COLORS.white, borderRadius: 18, padding: 20, marginTop: 20},
+  errorTitle: {color: COLORS.navy, fontSize: 21, fontWeight: '900', textAlign: 'center'},
+  errorMessage: {color: COLORS.muted, lineHeight: 20, textAlign: 'center', marginTop: 10},
 });
