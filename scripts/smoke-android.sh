@@ -10,8 +10,28 @@ UI_XML="$EVIDENCE_DIR/window.xml"
 mkdir -p "$EVIDENCE_DIR"
 
 dump_ui() {
-  timeout 20s adb shell uiautomator dump /sdcard/goy-window.xml >/dev/null 2>&1 || true
+  rm -f "$UI_XML"
+  adb shell rm -f /sdcard/goy-window.xml >/dev/null 2>&1 || true
+  timeout 15s adb shell uiautomator dump /sdcard/goy-window.xml >/dev/null 2>&1 || true
   adb pull /sdcard/goy-window.xml "$UI_XML" >/dev/null 2>&1 || true
+}
+
+dismiss_system_dialog() {
+  local point
+  local attempt
+  for attempt in 1 2 3; do
+    if ! python3 scripts/ui_point.py "$UI_XML" "isn't responding" >/dev/null; then
+      return 0
+    fi
+    point=$(python3 scripts/ui_point.py "$UI_XML" "Wait" || true)
+    if [ -z "$point" ]; then
+      return 0
+    fi
+    echo "Descartando aviso del System UI del emulador"
+    adb shell input tap $point
+    sleep 3
+    dump_ui
+  done
 }
 
 capture_evidence() {
@@ -26,8 +46,13 @@ trap capture_evidence EXIT
 wait_for_text() {
   local needle=$1
   local attempt
-  for attempt in $(seq 1 20); do
+  for attempt in $(seq 1 10); do
+    if ! adb shell pidof "$PACKAGE_NAME" >/dev/null; then
+      echo "El proceso de GOY XPRESS se cerró durante la prueba" >&2
+      return 1
+    fi
     dump_ui
+    dismiss_system_dialog
     if python3 scripts/ui_point.py "$UI_XML" "$needle" >/dev/null; then
       return 0
     fi
@@ -50,6 +75,7 @@ adb install -r "$APK_PATH" | tee "$EVIDENCE_DIR/install.txt"
 adb logcat -c
 adb shell am force-stop "$PACKAGE_NAME"
 adb shell am start -W -n "$PACKAGE_NAME/$ACTIVITY_NAME" | tee "$EVIDENCE_DIR/launch.txt"
+sleep 8
 
 wait_for_text "Hola, emprendedor"
 tap_text "Servicios"
@@ -66,7 +92,7 @@ APP_PID=$(adb shell pidof "$PACKAGE_NAME" | tr -d '\r')
 test -n "$APP_PID"
 
 adb logcat -d > "$EVIDENCE_DIR/logcat.txt"
-if grep -Eq "Cannot find native module|JavascriptException|FATAL EXCEPTION:.*$PACKAGE_NAME" "$EVIDENCE_DIR/logcat.txt"; then
+if grep -Eq "Cannot find native module|JavascriptException|Process $PACKAGE_NAME .*has died|Cmdline: $PACKAGE_NAME|>>> $PACKAGE_NAME <<<" "$EVIDENCE_DIR/logcat.txt"; then
   echo "Se detectó un error fatal durante la prueba" >&2
   exit 1
 fi

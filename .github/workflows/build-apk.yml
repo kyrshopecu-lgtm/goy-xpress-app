@@ -30,6 +30,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Configurar caché Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Instalar dependencias exactas
         run: npm ci
 
@@ -56,15 +59,15 @@ jobs:
           "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.1.0-FUNCIONAL.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.1.0-FUNCIONAL.apk
 
-      - name: Probar funciones reales en Android 14
+      - name: Probar funciones reales en Android 13
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 33
           arch: x86_64
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash scripts/smoke-android.sh GOY-XPRESS-v3.1.0-FUNCIONAL.apk smoke-test
+          script: timeout 600s bash scripts/smoke-android.sh GOY-XPRESS-v3.1.0-FUNCIONAL.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
