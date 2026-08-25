@@ -62,7 +62,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon \
             -Pexpo.useLegacyPackaging=true \
-            -Pandroid.enableMinifyInReleaseBuilds=true \
+            -Pandroid.enableProguardInReleaseBuilds=true \
             -Pandroid.enableShrinkResourcesInReleaseBuilds=true
 
       - name: Preparar instalador GOY XPRESS
