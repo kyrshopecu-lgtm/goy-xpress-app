@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: build-apk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -52,44 +56,64 @@ jobs:
       - name: Crear proyecto Android limpio
         run: CI=1 npx expo prebuild --platform android --clean
 
-      - name: Compilar APK release
+      - name: Compilar APK universal optimizado
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon \
+            -Pexpo.useLegacyPackaging=true \
+            -Pandroid.enableMinifyInReleaseBuilds=true \
+            -Pandroid.enableShrinkResourcesInReleaseBuilds=true
 
       - name: Preparar instalador GOY XPRESS
-        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.2.0-SEGURA.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.2.1-INSTALABLE.apk
 
-      - name: Verificar alineación y firma Android
+      - name: Verificar integridad, tamaño, manifiesto, alineación y firma
         run: |
+          set -euo pipefail
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.2.0-SEGURA.apk
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.2.0-SEGURA.apk
+          APK=GOY-XPRESS-v3.2.1-INSTALABLE.apk
+          unzip -tq "$APK"
+          APK_SIZE=$(stat -c%s "$APK")
+          test "$APK_SIZE" -lt 50000000
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" 2>&1 | tee firma-android.txt
+          grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true' firma-android.txt
+          grep -Fq 'fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c' firma-android.txt
+          AAPT="$BUILD_TOOLS/aapt"
+          if [ ! -x "$AAPT" ]; then AAPT="$BUILD_TOOLS/aapt2"; fi
+          "$AAPT" dump badging "$APK" | tee paquete-android.txt
+          grep -Fq "package: name='com.goyxpress.mensajeria' versionCode='7' versionName='3.2.1'" paquete-android.txt
+          printf 'APK_SIZE_BYTES=%s\n' "$APK_SIZE" | tee release-metadata.txt
+          sha256sum "$APK" | tee -a release-metadata.txt
 
-      - name: Verificar apertura real en Android 10
+      - name: Verificar instalación y apertura real en Android 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 35
           arch: x86_64
-          profile: pixel_2
+          profile: pixel_6
           disable-animations: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 300s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.0-SEGURA.apk smoke-test
+          script: timeout 360s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.1-INSTALABLE.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.2.0-PRUEBA-ANDROID
-          path: smoke-test/
+          name: GOY-XPRESS-v3.2.1-PRUEBAS-ANDROID-15
+          path: |
+            smoke-test/
+            firma-android.txt
+            paquete-android.txt
+            release-metadata.txt
           if-no-files-found: warn
           retention-days: 14
 
       - name: Guardar instalador verificado
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.2.0-SEGURA
-          path: GOY-XPRESS-v3.2.0-SEGURA.apk
+          name: GOY-XPRESS-v3.2.1-INSTALABLE
+          path: GOY-XPRESS-v3.2.1-INSTALABLE.apk
           if-no-files-found: error
           retention-days: 30
