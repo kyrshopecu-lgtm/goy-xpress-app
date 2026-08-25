@@ -59,15 +59,15 @@ jobs:
           "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.1.0-FUNCIONAL.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.1.0-FUNCIONAL.apk
 
-      - name: Probar funciones reales en Android 13
+      - name: Verificar apertura real en Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
+          api-level: 29
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_2
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 600s bash scripts/smoke-android.sh GOY-XPRESS-v3.1.0-FUNCIONAL.apk smoke-test
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: timeout 300s bash scripts/smoke-android.sh GOY-XPRESS-v3.1.0-FUNCIONAL.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
