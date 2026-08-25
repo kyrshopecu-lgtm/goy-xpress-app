@@ -55,7 +55,9 @@ capture_evidence() {
 
 trap capture_evidence EXIT
 
-adb install -r "$APK_PATH" | tee "$EVIDENCE_DIR/install.txt"
+adb uninstall "$PACKAGE_NAME" >/dev/null 2>&1 || true
+adb install --no-streaming "$APK_PATH" | tee "$EVIDENCE_DIR/install-clean.txt"
+adb install --no-streaming -r "$APK_PATH" | tee "$EVIDENCE_DIR/install-update.txt"
 adb logcat -c
 adb shell am force-stop "$PACKAGE_NAME"
 adb shell am start -W -n "$PACKAGE_NAME/$ACTIVITY_NAME" | tee "$EVIDENCE_DIR/launch.txt"
@@ -91,8 +93,8 @@ adb shell dumpsys activity activities > "$EVIDENCE_DIR/activity.txt"
 grep -Eq "(topResumedActivity|mResumedActivity|ResumedActivity).*${PACKAGE_NAME}" "$EVIDENCE_DIR/activity.txt"
 
 adb shell dumpsys package "$PACKAGE_NAME" > "$EVIDENCE_DIR/package.txt"
-grep -q "versionCode=6" "$EVIDENCE_DIR/package.txt"
-grep -q "versionName=3.2.0" "$EVIDENCE_DIR/package.txt"
+grep -q "versionCode=7" "$EVIDENCE_DIR/package.txt"
+grep -q "versionName=3.2.1" "$EVIDENCE_DIR/package.txt"
 
 adb exec-out screencap -p > "$EVIDENCE_DIR/screen.png"
 python3 - "$EVIDENCE_DIR/screen.png" <<'PY'
@@ -119,4 +121,4 @@ if grep -Eq "Cannot find native module|JavascriptException|Process $PACKAGE_NAME
   exit 1
 fi
 
-echo "GOY XPRESS v3.2.0 superó instalación, versión, arranque sostenido, actividad, render y logcat."
+echo "GOY XPRESS v3.2.1 superó instalación limpia, actualización, versión, arranque sostenido, actividad, render y logcat."
