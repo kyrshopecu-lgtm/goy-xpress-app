@@ -2,8 +2,8 @@
   "expo": {
     "name": "GOY XPRESS",
     "slug": "goy-xpress",
-    "version": "2.0.0",
-    "newArchEnabled": false,
+    "version": "3.0.1",
+    "scheme": "goyxpress",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.goyxpress.mensajeria",
-      "versionCode": 2,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D2F41"
@@ -23,12 +23,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.goyxpress.mensajeria",
-      "buildNumber": "1"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "REEMPLAZAR_AL_CREAR_PROYECTO_EAS"
-      }
+      "buildNumber": "4"
     }
   }
 }

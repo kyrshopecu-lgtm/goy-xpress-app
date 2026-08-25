@@ -30,7 +30,10 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Crear proyecto Android
+      - name: Verificar cálculos del negocio
+        run: npm test
+
+      - name: Crear proyecto Android limpio
         run: CI=1 npx expo prebuild --platform android --clean
 
       - name: Compilar APK
@@ -39,10 +42,19 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
+      - name: Preparar instalador GOY XPRESS
+        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.0.1-INSTALABLE.apk
+
+      - name: Verificar alineación y firma Android
+        run: |
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.0.1-INSTALABLE.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.0.1-INSTALABLE.apk
+
       - name: Guardar instalador
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-APK
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: GOY-XPRESS-v3.0.1-INSTALABLE
+          path: GOY-XPRESS-v3.0.1-INSTALABLE.apk
           if-no-files-found: error
           retention-days: 30

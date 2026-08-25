@@ -1,12 +1,15 @@
 {
   "name": "goy-xpress-mobile",
-  "version": "2.0.0",
-  "main": "node_modules/expo/AppEntry.js",
+  "version": "3.0.1",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "node --test src/domain.test.js",
+    "export:android": "expo export --platform android --output-dir dist",
+    "verify": "npm test && npm run export:android"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
