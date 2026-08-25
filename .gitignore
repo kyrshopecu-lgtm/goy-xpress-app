@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+dist/
+dist-v3/
+dist-v3.2-check/
+*.apk
+*.aab
+.env
+.env.*
+!.env.example
+supabase/.temp/
+android/.gradle/
+android/app/build/
+android/build/
+*.log
