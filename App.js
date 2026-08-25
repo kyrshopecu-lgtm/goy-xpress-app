@@ -1,492 +1,144 @@
-
 import React, {useEffect, useMemo, useState} from 'react';
-import {
-  SafeAreaView, View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Image, Alert, Linking, Pressable
-} from 'react-native';
+import {Alert, Image, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StatusBar } from 'expo-status-bar';
-import { Picker } from '@react-native-picker/picker';
+import {StatusBar} from 'expo-status-bar';
 
-const COLORS = {
-  navy: '#0D2F41',
-  navy2: '#163D52',
-  blue: '#04A9E9',
-  lime: '#B7D62B',
-  green: '#2AA84A',
-  bg: '#F3F7FA',
-  text: '#17222B',
-  muted: '#6E7A84',
-  white: '#FFFFFF',
-  line: '#DDE6EB',
-  danger: '#B94141',
-};
+const VERSION = '2.0.0';
+const STORAGE_KEY = 'goy_xpress_requests_v2';
+const ADMIN_WHATSAPP = '593997729964';
+const C = {navy:'#0D2F41',blue:'#04A9E9',green:'#2AA84A',lime:'#B7D62B',white:'#FFFFFF',bg:'#F3F7FA',ink:'#17222B',muted:'#667681',line:'#D8E3E9'};
+const ZONES = [
+  {value:'norte',label:'Quito Norte',price:3},{value:'centro',label:'Quito Centro',price:3},
+  {value:'sur',label:'Quito Sur',price:3},{value:'valles',label:'Valles',price:4},{value:'especial',label:'Zona especial',price:5},
+];
+const PROCEDURES = ['Depósito bancario','Ingreso de documentos','Retiro de documentos','Entrega de documentos','Pago / diligencia','Otro'];
+const COURIERS = ['Carlos M.','Luis R.','Andrea P.'];
+const money = value => `$${Number(value || 0).toFixed(2)}`;
+const makeCode = prefix => `${prefix}-${Date.now().toString().slice(-8)}`;
+const number = value => Number(String(value || '0').replace(',','.')) || 0;
 
-const ADMIN_WHATSAPP = '593997729964'; // CAMBIAR por el WhatsApp real del administrador
-
-const DELIVERY_RATES = {
-  norte: 3.00,
-  centro: 3.00,
-  sur: 3.00,
-  valles: 4.00,
-  especial: 5.00,
-};
-
-const COURIERS = ['Carlos M.', 'Luis R.', 'Andrea P.'];
-
-function money(v){ return `$${Number(v || 0).toFixed(2)}`; }
-function uid(prefix){ return `${prefix}-${Date.now().toString().slice(-7)}`; }
-
-async function notifyAdminWhatsApp(request) {
-  const lines = [
-    '🚨 *NUEVA SOLICITUD GOY XPRESS*',
-    '',
-    `Tipo: ${request.kind === 'shipment' ? 'ENVÍO' : 'TRÁMITE'}`,
-    `Código: ${request.code}`,
-    `Cliente: ${request.customer || '-'}`,
-    `Destino/Lugar: ${request.address || request.place || '-'}`,
-    `Valor servicio: ${money(request.serviceCost)}`,
-    request.totalToCollect != null ? `Valor a cobrar: ${money(request.totalToCollect)}` : '',
-    '',
-    'Abrir panel administrador para asignar mensajero.'
-  ].filter(Boolean).join('\n');
-
-  const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(lines)}`;
-  try {
-    await Linking.openURL(url);
-  } catch (error) {
-    Alert.alert('WhatsApp', 'La solicitud fue guardada, pero no se pudo abrir WhatsApp.');
-  }
+function Button({title,onPress,color=C.blue,outline=false,disabled=false}) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} disabled={disabled} onPress={onPress}
+    android_ripple={{color:outline?'#DCECF3':'rgba(255,255,255,0.28)'}}
+    style={({pressed})=>[s.button,{backgroundColor:outline?C.white:color,borderColor:color},pressed&&s.pressed,disabled&&s.disabled]}>
+    <Text style={[s.buttonText,outline&&{color}]}>{title}</Text>
+  </Pressable>;
 }
-
+function Chip({label,selected,onPress}) {
+  return <Pressable accessibilityRole="button" onPress={onPress} android_ripple={{color:'#DCECF3'}}
+    style={({pressed})=>[s.chip,selected&&s.chipSelected,pressed&&s.pressed]}>
+    <Text style={[s.chipText,selected&&s.chipTextSelected]}>{label}</Text>
+  </Pressable>;
+}
+function Field({label,multiline=false,...props}) {
+  return <View style={s.fieldWrap}><Text style={s.label}>{label}</Text><TextInput {...props} multiline={multiline}
+    placeholderTextColor="#8A98A3" style={[s.input,multiline&&s.multiline]}/></View>;
+}
+function Card({children}) { return <View style={s.card}>{children}</View>; }
 function Header() {
-  return (
-    <View style={styles.header}>
-      <Image source={require('./assets/goy-logo.jpg')} style={styles.logo}/>
-      <View style={{flex:1}}>
-        <Text style={styles.headerTitle}>GOY XPRESS</Text>
-        <Text style={styles.headerSub}>Mensajería · Trámites · Logística</Text>
-      </View>
-    </View>
-  );
+  return <View style={s.header}><Image source={require('./assets/goy-logo.jpg')} style={s.logo}/><View style={{flex:1}}>
+    <Text style={s.headerTitle}>GOY XPRESS</Text><Text style={s.headerSub}>Mensajería · Trámites · Logística</Text>
+  </View><Text style={s.version}>v{VERSION}</Text></View>;
 }
-
-function RoleNav({role, setRole}) {
-  const roles = [['client','Cliente'], ['admin','Administrador'], ['courier','Mensajero']];
-  return (
-    <View style={styles.roleNav}>
-      {roles.map(([value, label]) => (
-        <Pressable key={value} accessibilityRole="button" onPress={() => setRole(value)}
-          android_ripple={{color:'#D7EDF6'}}
-          style={({pressed}) => [styles.roleTab, role === value && styles.roleTabActive, pressed && styles.pressed]}>
-          <Text style={[styles.roleTabText, role === value && styles.roleTabTextActive]}>{label}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
+function RoleBar({role,setRole}) {
+  return <View style={s.roleBar}>{[['client','Cliente'],['admin','Administrador'],['courier','Mensajero']].map(([value,label])=><Pressable
+    key={value} accessibilityRole="button" onPress={()=>setRole(value)} style={({pressed})=>[s.roleButton,role===value&&s.roleButtonActive,pressed&&s.pressed]}>
+    <Text style={[s.roleText,role===value&&s.roleTextActive]}>{label}</Text></Pressable>)}</View>;
 }
+function Back({onPress}) { return <Pressable accessibilityRole="button" onPress={onPress} style={({pressed})=>[s.back,pressed&&s.pressed]}><Text style={s.backText}>← Volver al inicio</Text></Pressable>; }
+function Empty({text}) { return <Card><Text style={s.muted}>{text}</Text></Card>; }
+function Row({label,value,strong=false}) { return <View style={s.row}><Text style={strong?s.bold:s.muted}>{label}</Text><Text style={strong?s.total:s.bold}>{value}</Text></View>; }
 
-function Card({children, style}) {
-  return <View style={[styles.card, style]}>{children}</View>;
-}
-
-function Btn({title, onPress, variant='primary'}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      android_ripple={{color:'rgba(255,255,255,0.25)'}}
-      style={({pressed}) => [styles.btn, variant === 'green' ? styles.btnGreen :
-        variant === 'secondary' ? styles.btnSecondary : styles.btnPrimary, pressed && styles.pressed]}
-    >
-      <Text style={[styles.btnText, variant === 'secondary' && {color:COLORS.navy}]}>{title}</Text>
+function Home({requests,open}) {
+  return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
+    <Text style={s.h1}>Solicita tu servicio</Text><Text style={s.subtitle}>Registra un envío o trámite y notifícalo directamente a GOY XPRESS.</Text>
+    <Pressable accessibilityRole="button" onPress={()=>open('shipment')} style={({pressed})=>[s.bigAction,{backgroundColor:C.blue},pressed&&s.pressed]}>
+      <Text style={s.bigIcon}>＋</Text><View style={{flex:1}}><Text style={s.bigTitle}>Nuevo envío</Text><Text style={s.bigSub}>Entrega y cobro contra entrega</Text></View><Text style={s.bigArrow}>›</Text>
     </Pressable>
-  );
+    <Pressable accessibilityRole="button" onPress={()=>open('procedure')} style={({pressed})=>[s.bigAction,{backgroundColor:C.green},pressed&&s.pressed]}>
+      <Text style={s.bigIcon}>✓</Text><View style={{flex:1}}><Text style={s.bigTitle}>Nuevo trámite</Text><Text style={s.bigSub}>Depósitos y documentos</Text></View><Text style={s.bigArrow}>›</Text>
+    </Pressable>
+    <Button title="Comprobar que los botones funcionan" outline onPress={()=>Alert.alert('Aplicación activa','Los controles funcionan correctamente en la versión 2.0.0.')}/>
+    <Text style={s.section}>Últimas solicitudes</Text>
+    {requests.length===0?<Empty text="Todavía no existen solicitudes guardadas."/>:requests.slice(0,6).map(item=><Card key={item.id}><View style={s.listLine}><View style={{flex:1}}><Text style={s.bold}>{item.id}</Text><Text style={s.muted}>{item.kind==='shipment'?'Envío':'Trámite'} · {item.status}</Text></View><Text style={s.price}>{money(item.serviceCost)}</Text></View></Card>)}
+  </ScrollView>;
 }
 
-function ClientHome({requests, addRequest}) {
-  const [tab, setTab] = useState('home');
-
-  if (tab === 'shipment') return <ShipmentForm onBack={()=>setTab('home')} addRequest={addRequest}/>;
-  if (tab === 'procedure') return <ProcedureForm onBack={()=>setTab('home')} addRequest={addRequest}/>;
-
-  return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.h1}>Hola, emprendedor</Text>
-      <Text style={styles.subtitle}>Registra tus envíos y trámites desde un solo lugar.</Text>
-
-      <View style={styles.twoCols}>
-        <Pressable accessibilityRole="button" style={({pressed})=>[styles.actionTile,{backgroundColor:COLORS.blue},pressed&&styles.pressed]} onPress={()=>setTab('shipment')}>
-          <Text style={styles.actionPlus}>＋</Text>
-          <Text style={styles.actionTitle}>Nuevo envío</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" style={({pressed})=>[styles.actionTile,{backgroundColor:COLORS.green},pressed&&styles.pressed]} onPress={()=>setTab('procedure')}>
-          <Text style={styles.actionPlus}>✓</Text>
-          <Text style={styles.actionTitle}>Nuevo trámite</Text>
-        </Pressable>
-      </View>
-
-      <Card>
-        <Text style={styles.cardTitle}>Últimas solicitudes</Text>
-        {requests.length === 0 ? <Text style={styles.muted}>Aún no tienes solicitudes.</Text> :
-          requests.slice(0,6).map(r => (
-            <View key={r.code} style={styles.listRow}>
-              <View style={{flex:1}}>
-                <Text style={styles.bold}>{r.code}</Text>
-                <Text style={styles.muted}>{r.kind === 'shipment' ? 'Envío' : 'Trámite'} · {r.status}</Text>
-              </View>
-              <Text style={styles.amount}>{money(r.serviceCost)}</Text>
-            </View>
-          ))
-        }
-      </Card>
-    </ScrollView>
-  );
+function ShipmentForm({save,back}) {
+  const [customer,setCustomer]=useState(''); const [recipient,setRecipient]=useState(''); const [phone,setPhone]=useState('');
+  const [address,setAddress]=useState(''); const [zone,setZone]=useState('norte'); const [purchase,setPurchase]=useState('0');
+  const [payer,setPayer]=useState('recipient'); const [payment,setPayment]=useState('cod');
+  const selected=ZONES.find(item=>item.value===zone)||ZONES[0]; const product=number(purchase);
+  const total=payment==='cod'?product+(payer==='recipient'?selected.price:0):0;
+  const submit=()=>{ if(!customer.trim()||!recipient.trim()||!phone.trim()||!address.trim()){Alert.alert('Faltan datos','Completa cliente, destinatario, teléfono y dirección.');return;}
+    save({id:makeCode('GOY'),kind:'shipment',customer:customer.trim(),recipient:recipient.trim(),phone:phone.trim(),address:address.trim(),zone,purchase:product,payer,payment,serviceCost:selected.price,totalToCollect:total,status:'Pendiente',courier:null,createdAt:new Date().toISOString()},back); };
+  return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled"><Back onPress={back}/><Text style={s.h1}>Nuevo envío</Text><Card>
+    <Field label="Cliente o emprendimiento" value={customer} onChangeText={setCustomer}/><Field label="Destinatario" value={recipient} onChangeText={setRecipient}/>
+    <Field label="WhatsApp del destinatario" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/><Field label="Dirección completa" value={address} onChangeText={setAddress} multiline/>
+    <Text style={s.label}>Zona de entrega</Text><View style={s.chips}>{ZONES.map(item=><Chip key={item.value} label={`${item.label} ${money(item.price)}`} selected={zone===item.value} onPress={()=>setZone(item.value)}/>)}</View>
+    <Field label="Valor de la compra ($)" value={purchase} onChangeText={setPurchase} keyboardType="decimal-pad"/>
+    <Text style={s.label}>¿Quién paga el envío?</Text><View style={s.chips}><Chip label="Comprador" selected={payer==='recipient'} onPress={()=>setPayer('recipient')}/><Chip label="Emprendimiento" selected={payer==='sender'} onPress={()=>setPayer('sender')}/></View>
+    <Text style={s.label}>Forma de pago</Text><View style={s.chips}><Chip label="Contra entrega" selected={payment==='cod'} onPress={()=>setPayment('cod')}/><Chip label="Ya pagado" selected={payment==='paid'} onPress={()=>setPayment('paid')}/></View>
+  </Card><Card><Text style={s.sectionInCard}>Resumen</Text><Row label="Producto" value={money(product)}/><Row label="Servicio" value={money(selected.price)}/><Row label="Total a cobrar" value={money(total)} strong/></Card>
+  <Button title="Guardar y notificar por WhatsApp" onPress={submit}/></ScrollView>;
 }
 
-function ShipmentForm({onBack, addRequest}) {
-  const [customer, setCustomer] = useState('');
-  const [recipient, setRecipient] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [zone, setZone] = useState('norte');
-  const [purchase, setPurchase] = useState('0');
-  const [payer, setPayer] = useState('recipient');
-  const [cod, setCod] = useState(true);
-
-  const serviceCost = DELIVERY_RATES[zone];
-  const productValue = Number(purchase || 0);
-  const totalToCollect = cod ? (payer === 'recipient' ? productValue + serviceCost : productValue) : 0;
-
-  const submit = async () => {
-    if (!customer || !recipient || !phone || !address) {
-      return Alert.alert('Faltan datos', 'Completa cliente, destinatario, teléfono y dirección.');
-    }
-    const request = {
-      code: uid('GOY'),
-      kind:'shipment',
-      customer, recipient, phone, address, zone,
-      purchase: productValue,
-      payer, cod,
-      serviceCost,
-      totalToCollect,
-      status:'Pendiente de asignación',
-      courier:null,
-      createdAt:new Date().toISOString()
-    };
-    await addRequest(request);
-    Alert.alert('Envío registrado', `${request.code}\nTotal a cobrar: ${money(totalToCollect)}`);
-    await notifyAdminWhatsApp(request);
-    onBack();
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <TouchableOpacity onPress={onBack}><Text style={styles.back}>← Volver</Text></TouchableOpacity>
-      <Text style={styles.h1}>Nuevo envío</Text>
-      <Card>
-        <Field label="Cliente / emprendimiento" value={customer} onChangeText={setCustomer}/>
-        <Field label="Destinatario" value={recipient} onChangeText={setRecipient}/>
-        <Field label="WhatsApp destinatario" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/>
-        <Field label="Dirección completa" value={address} onChangeText={setAddress} multiline/>
-
-        <Text style={styles.label}>Zona</Text>
-        <View style={styles.pickerBox}>
-          <Picker selectedValue={zone} onValueChange={setZone}>
-            <Picker.Item label="Quito Norte" value="norte"/>
-            <Picker.Item label="Quito Centro" value="centro"/>
-            <Picker.Item label="Quito Sur" value="sur"/>
-            <Picker.Item label="Valles" value="valles"/>
-            <Picker.Item label="Zona especial" value="especial"/>
-          </Picker>
-        </View>
-
-        <Field label="Valor de la compra ($)" value={purchase} onChangeText={setPurchase} keyboardType="decimal-pad"/>
-
-        <Text style={styles.label}>¿Quién paga el envío?</Text>
-        <View style={styles.pickerBox}>
-          <Picker selectedValue={payer} onValueChange={setPayer}>
-            <Picker.Item label="Lo paga el comprador" value="recipient"/>
-            <Picker.Item label="Lo asume el emprendimiento" value="sender"/>
-          </Picker>
-        </View>
-
-        <Text style={styles.label}>Forma de pago</Text>
-        <View style={styles.pickerBox}>
-          <Picker selectedValue={cod ? 'cod' : 'paid'} onValueChange={(v)=>setCod(v==='cod')}>
-            <Picker.Item label="Cobro contra entrega" value="cod"/>
-            <Picker.Item label="Pedido ya pagado" value="paid"/>
-          </Picker>
-        </View>
-      </Card>
-
-      <Card>
-        <Text style={styles.cardTitle}>Resumen</Text>
-        <SummaryRow label="Valor producto" value={money(productValue)}/>
-        <SummaryRow label="Costo envío" value={money(serviceCost)}/>
-        <SummaryRow label="Total a cobrar" value={money(totalToCollect)} strong/>
-      </Card>
-      <Btn title="Crear envío y avisar por WhatsApp" onPress={submit}/>
-    </ScrollView>
-  );
+function ProcedureForm({save,back}) {
+  const [type,setType]=useState(PROCEDURES[0]); const [customer,setCustomer]=useState(''); const [phone,setPhone]=useState('');
+  const [place,setPlace]=useState(''); const [details,setDetails]=useState(''); const [minutes,setMinutes]=useState('40');
+  const mins=Math.max(1,number(minutes)||40); const extra=Math.max(0,mins-40); const cost=6.5+extra*0.1;
+  const submit=()=>{if(!customer.trim()||!phone.trim()||!place.trim()){Alert.alert('Faltan datos','Completa cliente, teléfono y lugar del trámite.');return;}
+    save({id:makeCode('TRM'),kind:'procedure',type,customer:customer.trim(),phone:phone.trim(),place:place.trim(),address:place.trim(),details:details.trim(),minutes:mins,serviceCost:cost,status:'Pendiente',courier:null,createdAt:new Date().toISOString()},back);};
+  return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled"><Back onPress={back}/><Text style={s.h1}>Nuevo trámite</Text><Card>
+    <Text style={s.label}>Tipo de trámite</Text><View style={s.chips}>{PROCEDURES.map(item=><Chip key={item} label={item} selected={type===item} onPress={()=>setType(item)}/>)}</View>
+    <Field label="Cliente o empresa" value={customer} onChangeText={setCustomer}/><Field label="WhatsApp" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/>
+    <Field label="Institución o lugar" value={place} onChangeText={setPlace} multiline/><Field label="Instrucciones" value={details} onChangeText={setDetails} multiline/>
+    <Field label="Tiempo estimado en minutos" value={minutes} onChangeText={setMinutes} keyboardType="number-pad"/>
+  </Card><Card><Text style={s.sectionInCard}>Cálculo</Text><Row label="Base hasta 40 minutos" value="$6.50"/><Row label="Minutos adicionales" value={`${extra}`}/><Row label="Recargo" value={money(extra*0.1)}/><Row label="Total" value={money(cost)} strong/></Card>
+  <Button title="Guardar y notificar por WhatsApp" color={C.green} onPress={submit}/></ScrollView>;
 }
 
-function ProcedureForm({onBack, addRequest}) {
-  const [type, setType] = useState('Depósito bancario');
-  const [customer, setCustomer] = useState('');
-  const [phone, setPhone] = useState('');
-  const [place, setPlace] = useState('');
-  const [details, setDetails] = useState('');
-  const [minutes, setMinutes] = useState('40');
-  const [amount, setAmount] = useState('0');
-
-  const mins = Math.max(1, Number(minutes || 40));
-  const extra = Math.max(0, mins - 40);
-  const serviceCost = 6.50 + extra * 0.10;
-
-  const submit = async () => {
-    if (!customer || !phone || !place) {
-      return Alert.alert('Faltan datos', 'Completa cliente, teléfono y lugar del trámite.');
-    }
-    const request = {
-      code: uid('TRM'),
-      kind:'procedure',
-      type, customer, phone, place,
-      address: place,
-      details, minutes: mins,
-      amount:Number(amount || 0),
-      serviceCost,
-      status:'Pendiente de asignación',
-      courier:null,
-      createdAt:new Date().toISOString()
-    };
-    await addRequest(request);
-    Alert.alert('Trámite registrado', `${request.code}\nValor del servicio: ${money(serviceCost)}`);
-    await notifyAdminWhatsApp(request);
-    onBack();
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <TouchableOpacity onPress={onBack}><Text style={styles.back}>← Volver</Text></TouchableOpacity>
-      <Text style={styles.h1}>Nuevo trámite</Text>
-      <Card>
-        <Text style={styles.label}>Tipo de trámite</Text>
-        <View style={styles.pickerBox}>
-          <Picker selectedValue={type} onValueChange={setType}>
-            <Picker.Item label="Depósito bancario" value="Depósito bancario"/>
-            <Picker.Item label="Ingreso de documentos" value="Ingreso de documentos"/>
-            <Picker.Item label="Retiro de documentos" value="Retiro de documentos"/>
-            <Picker.Item label="Entrega de documentos" value="Entrega de documentos"/>
-            <Picker.Item label="Pago / diligencia" value="Pago / diligencia"/>
-            <Picker.Item label="Otro" value="Otro"/>
-          </Picker>
-        </View>
-
-        <Field label="Cliente / empresa" value={customer} onChangeText={setCustomer}/>
-        <Field label="WhatsApp" value={phone} onChangeText={setPhone} keyboardType="phone-pad"/>
-        <Field label="Institución / lugar" value={place} onChangeText={setPlace} multiline/>
-        <Field label="Instrucciones" value={details} onChangeText={setDetails} multiline/>
-        <Field label="Tiempo estimado (minutos)" value={minutes} onChangeText={setMinutes} keyboardType="number-pad"/>
-        <Field label="Valor a depositar / pagar (opcional)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad"/>
-      </Card>
-
-      <Card>
-        <Text style={styles.cardTitle}>Cálculo</Text>
-        <SummaryRow label="Tarifa base (40 min)" value="$6.50"/>
-        <SummaryRow label="Minutos adicionales" value={`${extra} min`}/>
-        <SummaryRow label="Recargo" value={money(extra * 0.10)}/>
-        <SummaryRow label="Total servicio" value={money(serviceCost)} strong/>
-      </Card>
-      <Btn title="Crear trámite y avisar por WhatsApp" onPress={submit} variant="green"/>
-    </ScrollView>
-  );
+function Admin({requests,update}) {
+  const pending=requests.filter(item=>item.status==='Pendiente');
+  return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled"><Text style={s.h1}>Administrador</Text><Text style={s.subtitle}>Asigna las solicitudes guardadas en este teléfono.</Text>
+    {pending.length===0?<Empty text="No existen solicitudes pendientes."/>:pending.map(item=><Card key={item.id}><Text style={s.bold}>{item.id}</Text><Text style={s.muted}>{item.customer} · {item.address}</Text><Text style={s.price}>{money(item.serviceCost)}</Text><Text style={s.label}>Asignar mensajero</Text>
+      {COURIERS.map(courier=><Button key={courier} title={`Asignar a ${courier}`} outline onPress={()=>{update(item.id,{courier,status:'Asignado'});Alert.alert('Solicitud asignada',`${item.id} fue asignada a ${courier}.`);}}/>)}
+    </Card>)}</ScrollView>;
+}
+function Courier({requests,update}) {
+  const [name,setName]=useState(COURIERS[0]); const jobs=requests.filter(item=>item.courier===name&&item.status!=='Finalizado');
+  return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled"><Text style={s.h1}>Mensajero</Text><Text style={s.label}>Selecciona el mensajero</Text><View style={s.chips}>{COURIERS.map(item=><Chip key={item} label={item} selected={name===item} onPress={()=>setName(item)}/>)}</View><Text style={s.section}>Tareas asignadas</Text>
+    {jobs.length===0?<Empty text="No existen tareas activas para este mensajero."/>:jobs.map(item=><Card key={item.id}><Text style={s.bold}>{item.id}</Text><Text style={s.muted}>{item.address} · {item.status}</Text>{item.kind==='shipment'&&<Text style={s.price}>Cobrar: {money(item.totalToCollect)}</Text>}
+      <Button title={item.status==='Asignado'?'Iniciar recorrido':'Finalizar tarea'} color={item.status==='Asignado'?C.blue:C.green} onPress={()=>update(item.id,{status:item.status==='Asignado'?'En ruta':'Finalizado'})}/>
+    </Card>)}</ScrollView>;
 }
 
-function AdminPanel({requests, updateRequest}) {
-  const pending = requests.filter(r=>r.status === 'Pendiente de asignación');
-
-  const assign = async (request, courier) => {
-    await updateRequest(request.code, {courier, status:'Asignado'});
-    Alert.alert('Asignado', `${request.code} asignado a ${courier}.`);
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.h1}>Panel administrador</Text>
-      <Text style={styles.subtitle}>Solicitudes pendientes y asignación de mensajeros.</Text>
-
-      <View style={styles.stats}>
-        <Stat label="Nuevas" value={pending.length}/>
-        <Stat label="En curso" value={requests.filter(r=>['Asignado','En ruta'].includes(r.status)).length}/>
-        <Stat label="Finalizadas" value={requests.filter(r=>r.status==='Finalizado').length}/>
-      </View>
-
-      {pending.length === 0 ? <Card><Text style={styles.muted}>No hay solicitudes pendientes.</Text></Card> :
-        pending.map(r=>(
-          <Card key={r.code}>
-            <View style={styles.listRow}>
-              <View style={{flex:1}}>
-                <Text style={styles.bold}>{r.code}</Text>
-                <Text style={styles.muted}>{r.kind==='shipment' ? 'ENVÍO' : 'TRÁMITE'} · {r.customer}</Text>
-                <Text style={styles.small}>{r.address || r.place}</Text>
-              </View>
-              <Text style={styles.amount}>{money(r.serviceCost)}</Text>
-            </View>
-            <Text style={styles.label}>Asignar mensajero</Text>
-            {COURIERS.map(c=>(
-              <TouchableOpacity key={c} style={styles.courierBtn} onPress={()=>assign(r,c)}>
-                <Text style={styles.courierText}>{c}</Text>
-                <Text style={styles.assignText}>Asignar →</Text>
-              </TouchableOpacity>
-            ))}
-          </Card>
-        ))
-      }
-    </ScrollView>
-  );
-}
-
-function CourierPanel({requests, updateRequest}) {
-  const [courierName, setCourierName] = useState(COURIERS[0]);
-  const jobs = requests.filter(r=>r.courier===courierName && r.status!=='Finalizado');
-
-  const advance = async (r) => {
-    const next = r.status === 'Asignado' ? 'En ruta' : 'Finalizado';
-    await updateRequest(r.code,{status:next});
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.h1}>Panel mensajero</Text>
-      <Text style={styles.label}>Mensajero activo</Text>
-      <View style={styles.pickerBox}>
-        <Picker selectedValue={courierName} onValueChange={setCourierName}>
-          {COURIERS.map(c=><Picker.Item key={c} label={c} value={c}/>)}
-        </Picker>
-      </View>
-
-      <Text style={[styles.cardTitle,{marginTop:18}]}>Asignaciones</Text>
-      {jobs.length === 0 ? <Card><Text style={styles.muted}>No tienes tareas activas.</Text></Card> :
-        jobs.map(r=>(
-          <Card key={r.code}>
-            <Text style={styles.bold}>{r.code}</Text>
-            <Text style={styles.muted}>{r.kind==='shipment'?'Envío':'Trámite'} · {r.status}</Text>
-            <Text style={styles.small}>{r.address || r.place}</Text>
-            {r.kind==='shipment' && <Text style={styles.amount}>Cobrar: {money(r.totalToCollect)}</Text>}
-            <Btn
-              title={r.status==='Asignado'?'Iniciar':'Finalizar'}
-              onPress={()=>advance(r)}
-              variant={r.status==='Asignado'?'primary':'green'}
-            />
-          </Card>
-        ))
-      }
-    </ScrollView>
-  );
-}
-
-function Field({label, multiline, ...props}) {
-  return (
-    <View>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        {...props}
-        multiline={multiline}
-        style={[styles.input, multiline && {minHeight:75,textAlignVertical:'top'}]}
-        placeholderTextColor="#9AA5AE"
-      />
-    </View>
-  );
-}
-
-function SummaryRow({label,value,strong}) {
-  return (
-    <View style={styles.summaryRow}>
-      <Text style={strong?styles.bold:styles.muted}>{label}</Text>
-      <Text style={strong?styles.summaryStrong:styles.bold}>{value}</Text>
-    </View>
-  );
-}
-
-function Stat({label,value}) {
-  return <View style={styles.stat}><Text style={styles.statValue}>{value}</Text><Text style={styles.muted}>{label}</Text></View>;
-}
+function whatsappText(item) { return ['NUEVA SOLICITUD GOY XPRESS',`Código: ${item.id}`,`Tipo: ${item.kind==='shipment'?'ENVÍO':'TRÁMITE'}`,`Cliente: ${item.customer}`,`Lugar: ${item.address}`,`Servicio: ${money(item.serviceCost)}`,item.kind==='shipment'?`Total a cobrar: ${money(item.totalToCollect)}`:''].filter(Boolean).join('\n'); }
 
 export default function App() {
-  const [role, setRole] = useState('client');
-  const [requests, setRequests] = useState([]);
-
-  useEffect(()=>{
-    AsyncStorage.getItem('goy_requests').then(v=>{
-      if(v) setRequests(JSON.parse(v));
-    });
-  },[]);
-
-  const persist = async (next) => {
-    setRequests(next);
-    await AsyncStorage.setItem('goy_requests', JSON.stringify(next));
-  };
-
-  const addRequest = async (r) => persist([r,...requests]);
-  const updateRequest = async (code, patch) => {
-    const next = requests.map(r=>r.code===code?{...r,...patch}:r);
-    await persist(next);
-  };
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="light"/>
-      <Header/>
-      <RoleNav role={role} setRole={setRole}/>
-      {role==='client' && <ClientHome requests={requests} addRequest={addRequest}/>}
-      {role==='admin' && <AdminPanel requests={requests} updateRequest={updateRequest}/>}
-      {role==='courier' && <CourierPanel requests={requests} updateRequest={updateRequest}/>}
-    </SafeAreaView>
-  );
+  const [role,setRole]=useState('client'); const [screen,setScreen]=useState('home'); const [requests,setRequests]=useState([]); const [ready,setReady]=useState(false);
+  useEffect(()=>{AsyncStorage.getItem(STORAGE_KEY).then(raw=>{if(raw)setRequests(JSON.parse(raw));}).catch(()=>{}).finally(()=>setReady(true));},[]);
+  const persist=next=>{setRequests(next);AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(next)).catch(()=>Alert.alert('Aviso','No se pudo guardar en el teléfono.'));};
+  const save=(item,back)=>{persist([item,...requests]);Alert.alert('Solicitud creada',`${item.id}\nValor del servicio: ${money(item.serviceCost)}`,[
+    {text:'Volver',onPress:back},{text:'Abrir WhatsApp',onPress:()=>Linking.openURL(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(whatsappText(item))}`).catch(()=>Alert.alert('WhatsApp no disponible','La solicitud quedó guardada.'))},
+  ]);};
+  const update=(id,patch)=>persist(requests.map(item=>item.id===id?{...item,...patch}:item));
+  const changeRole=next=>{setRole(next);setScreen('home');};
+  const body=useMemo(()=>{if(!ready)return <View style={s.loading}><Text style={s.bold}>Cargando GOY XPRESS…</Text></View>;
+    if(role==='admin')return <Admin requests={requests} update={update}/>; if(role==='courier')return <Courier requests={requests} update={update}/>;
+    if(screen==='shipment')return <ShipmentForm save={save} back={()=>setScreen('home')}/>; if(screen==='procedure')return <ProcedureForm save={save} back={()=>setScreen('home')}/>;
+    return <Home requests={requests} open={setScreen}/>;},[ready,role,screen,requests]);
+  return <SafeAreaView style={s.safe}><StatusBar style="light" backgroundColor={C.navy}/><Header/><RoleBar role={role} setRole={changeRole}/>{body}</SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  safe:{flex:1,backgroundColor:COLORS.bg},
-  header:{backgroundColor:COLORS.navy,flexDirection:'row',alignItems:'center',padding:10,gap:10},
-  logo:{width:58,height:58,borderRadius:10},
-  headerTitle:{color:COLORS.white,fontWeight:'900',fontSize:18},
-  headerSub:{color:'#C9D7DF',fontSize:11},
-  roleNav:{flexDirection:'row',backgroundColor:COLORS.white,borderBottomWidth:1,borderBottomColor:COLORS.line,paddingHorizontal:8,paddingVertical:7},
-  roleTab:{flex:1,minHeight:42,alignItems:'center',justifyContent:'center',borderRadius:10,overflow:'hidden'},
-  roleTabActive:{backgroundColor:COLORS.navy},
-  roleTabText:{fontSize:12,fontWeight:'800',color:COLORS.navy},
-  roleTabTextActive:{color:COLORS.white},
-  pressed:{opacity:0.72},
-  page:{padding:16,paddingBottom:40},
-  h1:{fontSize:26,fontWeight:'900',color:COLORS.navy,marginBottom:4},
-  subtitle:{color:COLORS.muted,marginBottom:16},
-  card:{backgroundColor:COLORS.white,borderRadius:16,padding:16,marginBottom:14,borderWidth:1,borderColor:COLORS.line},
-  cardTitle:{fontSize:17,fontWeight:'800',color:COLORS.navy,marginBottom:12},
-  twoCols:{flexDirection:'row',gap:12,marginBottom:16},
-  actionTile:{flex:1,borderRadius:16,padding:18,minHeight:125,justifyContent:'center'},
-  actionPlus:{color:COLORS.white,fontSize:34,fontWeight:'700'},
-  actionTitle:{color:COLORS.white,fontSize:17,fontWeight:'800',marginTop:8},
-  label:{fontSize:12,fontWeight:'800',color:COLORS.navy,marginTop:10,marginBottom:5},
-  input:{borderWidth:1,borderColor:COLORS.line,borderRadius:10,padding:12,backgroundColor:'#FBFDFE',color:COLORS.text},
-  pickerBox:{borderWidth:1,borderColor:COLORS.line,borderRadius:10,overflow:'hidden',backgroundColor:'#FBFDFE'},
-  btn:{padding:14,borderRadius:11,alignItems:'center',marginTop:8},
-  btnPrimary:{backgroundColor:COLORS.blue},
-  btnGreen:{backgroundColor:COLORS.green},
-  btnSecondary:{backgroundColor:'#E8F0F4'},
-  btnText:{color:COLORS.white,fontWeight:'900'},
-  back:{color:COLORS.blue,fontWeight:'800',marginBottom:12},
-  listRow:{flexDirection:'row',alignItems:'center',paddingVertical:10,borderBottomWidth:1,borderBottomColor:COLORS.line},
-  bold:{fontWeight:'800',color:COLORS.text},
-  muted:{color:COLORS.muted,fontSize:12},
-  small:{color:COLORS.text,fontSize:12,marginTop:5},
-  amount:{fontWeight:'900',color:COLORS.green},
-  summaryRow:{flexDirection:'row',justifyContent:'space-between',paddingVertical:9,borderBottomWidth:1,borderBottomColor:COLORS.line},
-  summaryStrong:{fontSize:18,fontWeight:'900',color:COLORS.green},
-  stats:{flexDirection:'row',gap:10,marginBottom:16},
-  stat:{flex:1,backgroundColor:COLORS.white,padding:14,borderRadius:14,borderWidth:1,borderColor:COLORS.line},
-  statValue:{fontSize:24,fontWeight:'900',color:COLORS.navy},
-  courierBtn:{flexDirection:'row',justifyContent:'space-between',padding:12,borderWidth:1,borderColor:COLORS.line,borderRadius:10,marginTop:7},
-  courierText:{fontWeight:'700',color:COLORS.text},
-  assignText:{fontWeight:'900',color:COLORS.blue},
+const s=StyleSheet.create({
+  safe:{flex:1,backgroundColor:C.bg},loading:{flex:1,alignItems:'center',justifyContent:'center'},
+  header:{backgroundColor:C.navy,minHeight:78,flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:10},logo:{width:54,height:54,borderRadius:10,marginRight:10},headerTitle:{color:C.white,fontSize:20,fontWeight:'900'},headerSub:{color:'#C7D7DF',fontSize:11,marginTop:2},version:{color:C.lime,fontSize:11,fontWeight:'900'},
+  roleBar:{flexDirection:'row',backgroundColor:C.white,padding:7,borderBottomWidth:1,borderBottomColor:C.line},roleButton:{flex:1,minHeight:44,alignItems:'center',justifyContent:'center',borderRadius:10},roleButtonActive:{backgroundColor:C.navy},roleText:{color:C.navy,fontWeight:'800',fontSize:12},roleTextActive:{color:C.white},
+  page:{padding:16,paddingBottom:50},h1:{fontSize:26,fontWeight:'900',color:C.navy,marginBottom:5},subtitle:{color:C.muted,lineHeight:20,marginBottom:16},section:{fontSize:18,fontWeight:'900',color:C.navy,marginTop:22,marginBottom:10},sectionInCard:{fontSize:17,fontWeight:'900',color:C.navy,marginBottom:8},card:{backgroundColor:C.white,padding:15,borderRadius:15,borderWidth:1,borderColor:C.line,marginBottom:12},
+  bigAction:{minHeight:92,borderRadius:16,padding:16,marginBottom:12,flexDirection:'row',alignItems:'center',overflow:'hidden'},bigIcon:{fontSize:34,color:C.white,fontWeight:'700',marginRight:13},bigTitle:{fontSize:19,color:C.white,fontWeight:'900'},bigSub:{fontSize:12,color:C.white,opacity:0.9,marginTop:3},bigArrow:{fontSize:35,color:C.white},
+  button:{minHeight:50,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center',marginTop:9,overflow:'hidden',paddingHorizontal:12},buttonText:{color:C.white,fontSize:14,fontWeight:'900',textAlign:'center'},pressed:{opacity:0.65},disabled:{opacity:0.45},back:{alignSelf:'flex-start',minHeight:42,justifyContent:'center',marginBottom:6},backText:{color:C.blue,fontWeight:'900'},
+  fieldWrap:{marginBottom:10},label:{fontSize:12,color:C.navy,fontWeight:'900',marginTop:8,marginBottom:6},input:{minHeight:50,borderWidth:1,borderColor:C.line,backgroundColor:'#FBFDFE',borderRadius:11,paddingHorizontal:12,color:C.ink,fontSize:15},multiline:{minHeight:82,paddingTop:12,textAlignVertical:'top'},
+  chips:{flexDirection:'row',flexWrap:'wrap',marginHorizontal:-3,marginBottom:5},chip:{minHeight:43,justifyContent:'center',borderWidth:1,borderColor:C.line,backgroundColor:C.white,borderRadius:22,paddingHorizontal:13,margin:3,overflow:'hidden'},chipSelected:{backgroundColor:C.navy,borderColor:C.navy},chipText:{color:C.navy,fontSize:12,fontWeight:'800'},chipTextSelected:{color:C.white},
+  row:{minHeight:42,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderBottomColor:C.line},listLine:{flexDirection:'row',alignItems:'center'},bold:{color:C.ink,fontWeight:'900'},muted:{color:C.muted,fontSize:12,lineHeight:18},price:{color:C.green,fontWeight:'900',marginTop:7},total:{color:C.green,fontSize:18,fontWeight:'900'},
 });
