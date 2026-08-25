@@ -7,8 +7,8 @@
 4. Selecciona **Generar APK GOY XPRESS**.
 5. Pulsa **Run workflow** y confirma con el botón verde.
 6. Espera a que terminen la compilación y la prueba automática en Android.
-7. Descarga **GOY-XPRESS-v3.2.0-SEGURA** en **Artifacts**.
-8. Descomprime el archivo para obtener `GOY-XPRESS-v3.2.0-SEGURA.apk`.
+7. Descarga **GOY-XPRESS-v3.2.1-INSTALABLE** en **Artifacts**.
+8. Descomprime el archivo para obtener `GOY-XPRESS-v3.2.1-INSTALABLE.apk`.
 
 El APK se puede instalar como actualización porque conserva el paquete
 `com.goyxpress.mensajeria` e incrementa `versionCode` a 6. Antes de distribuir,
