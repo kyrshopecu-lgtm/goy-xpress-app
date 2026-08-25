@@ -84,25 +84,26 @@ jobs:
           if [ ! -x "$AAPT" ]; then AAPT="$BUILD_TOOLS/aapt2"; fi
           "$AAPT" dump badging "$APK" | tee paquete-android.txt
           grep -Fq "package: name='com.goyxpress.mensajeria' versionCode='7' versionName='3.2.1'" paquete-android.txt
+          grep -Fq "targetSdkVersion:'35'" paquete-android.txt
           printf 'APK_SIZE_BYTES=%s\n' "$APK_SIZE" | tee release-metadata.txt
           sha256sum "$APK" | tee -a release-metadata.txt
 
-      - name: Verificar instalación y apertura real en Android 15
+      - name: Verificar instalación y apertura real en Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 29
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_2
           disable-animations: true
-          emulator-boot-timeout: 900
+          emulator-boot-timeout: 600
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 900s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.1-INSTALABLE.apk smoke-test
+          script: timeout 600s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.1-INSTALABLE.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.2.1-PRUEBAS-ANDROID-15
+          name: GOY-XPRESS-v3.2.1-PRUEBAS-ANDROID
           path: |
             smoke-test/
             firma-android.txt
