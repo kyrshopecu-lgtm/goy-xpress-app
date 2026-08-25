@@ -2,7 +2,8 @@
   "expo": {
     "name": "GOY XPRESS",
     "slug": "goy-xpress",
-    "version": "1.0.0",
+    "version": "2.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +14,7 @@
     },
     "android": {
       "package": "com.goyxpress.mensajeria",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D2F41"
