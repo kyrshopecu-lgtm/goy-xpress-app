@@ -2,22 +2,47 @@
   "expo": {
     "name": "GOY XPRESS Mensajero",
     "slug": "goy-xpress-mensajero",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "scheme": "goyxpressmensajero",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {"image":"./assets/splash.png","resizeMode":"contain","backgroundColor":"#0D2F41"},
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D2F41"
+    },
     "plugins": [
-      ["expo-image-picker", {"cameraPermission":"GOY XPRESS Mensajero necesita la cámara para tu foto de perfil y para registrar evidencias de recogida, depósitos y entrega.","photosPermission":"GOY XPRESS Mensajero necesita acceso a tus imágenes únicamente para que puedas elegir tu foto de perfil."}],
-      ["expo-location", {"locationWhenInUsePermission":"GOY XPRESS Mensajero usa tu ubicación durante una operación activa para seguimiento exclusivo del administrador."}]
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "GOY XPRESS Mensajero necesita la cámara para tu foto de perfil y para registrar evidencias de recogida, depósitos y entrega.",
+          "photosPermission": "GOY XPRESS Mensajero necesita acceso a tus imágenes únicamente para que puedas elegir tu foto de perfil."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "GOY XPRESS Mensajero usa tu ubicación durante una operación activa para seguimiento exclusivo del administrador."
+        }
+      ]
     ],
     "android": {
       "package": "com.goyxpress.mensajero",
-      "versionCode": 3,
-      "adaptiveIcon": {"foregroundImage":"./assets/adaptive-icon.png","backgroundColor":"#0D2F41"},
-      "permissions": ["CAMERA","ACCESS_FINE_LOCATION","ACCESS_COARSE_LOCATION"]
+      "versionCode": 4,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D2F41"
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
-    "ios": {"bundleIdentifier":"com.goyxpress.mensajero","buildNumber":"3"}
+    "ios": {
+      "bundleIdentifier": "com.goyxpress.mensajero",
+      "buildNumber": "4"
+    }
   }
 }
