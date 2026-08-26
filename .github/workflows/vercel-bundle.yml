@@ -1,0 +1,34 @@
+name: Empaquetar Vercel GOY XPRESS
+
+on:
+  push:
+    branches:
+      - ops/vercel-bundle-v3.3
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar commit estable
+        uses: actions/checkout@v4
+
+      - name: Preparar paquete exacto para Vercel
+        run: |
+          mkdir -p vercel-bundle
+          cp --parents package.json vercel.json register.html vercel-bundle/
+          if [ -f package-lock.json ]; then cp --parents package-lock.json vercel-bundle/; fi
+          cp --parents 'api/[...path].js' server/server.js src/logisticsRules.js vercel-bundle/
+          cp --parents admin-web/index.html admin-web/styles.css admin-web/config.js admin-web/app.js admin-web/quote-whatsapp.js vercel-bundle/
+          cd vercel-bundle
+          zip -r ../GOY-XPRESS-VERCEL-v3.3.0.zip .
+
+      - name: Guardar paquete Vercel
+        uses: actions/upload-artifact@v4
+        with:
+          name: GOY-XPRESS-VERCEL-v3.3.0
+          path: GOY-XPRESS-VERCEL-v3.3.0.zip
+          if-no-files-found: error
+          retention-days: 2
