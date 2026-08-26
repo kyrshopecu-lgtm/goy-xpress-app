@@ -4,6 +4,7 @@
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
     {"source": "/registro/:token", "destination": "/register.html"},
+    {"source": "/maps-health", "destination": "/api/maps-health.js"},
     {"source": "/api/:path*", "destination": "/api/[...path].js"}
   ],
   "headers": [
