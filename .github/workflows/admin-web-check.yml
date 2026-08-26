@@ -1,0 +1,54 @@
+name: Validar panel administrativo
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'admin-web/**'
+      - 'api/**'
+      - 'server/**'
+      - 'vercel.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/admin-web-check.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'admin-web/**'
+      - 'api/**'
+      - 'server/**'
+      - 'vercel.json'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goy-admin-web-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-admin-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Ejecutar pruebas de seguridad, logística y panel
+        run: npm test
+      - name: Verificar sintaxis serverless
+        run: |
+          node --check api/admin-create-request.js
+          node --check admin-web/modern-admin.js
+          node --check server/server-v5.js
