@@ -78,14 +78,16 @@ function monthlyCycleKey(date = new Date()) {
   const d = new Date(date);
   const year = d.getFullYear();
   const month = d.getMonth();
-  const cycleMonth = d.getDate() > LOGISTICS.cycleClosingDay ? month + 1 : month;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const effectiveClosingDay = Math.min(LOGISTICS.cycleClosingDay, lastDay);
+  const cycleMonth = d.getDate() > effectiveClosingDay ? month + 1 : month;
   const normalized = new Date(year, cycleMonth, 1);
   return `${normalized.getFullYear()}-${String(normalized.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function canReleaseCourierFunds(request) {
   const hasDepositEvidence = Boolean(request?.wallet?.depositPhoto || request?.evidence?.depositPhoto);
-  const finished = request?.courierStage === COURIER_STAGE.delivered || request?.status === 'Finalizado' || request?.status === 'Entregado';
+  const finished = request?.courierStage === COURIER_STAGE.delivered || request?.status === COURIER_STAGE.delivered || request?.status === 'Finalizado' || request?.status === 'Entregado';
   return finished && hasDepositEvidence;
 }
 
