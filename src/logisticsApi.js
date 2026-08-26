@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 
-const API_BASE = String(process.env.EXPO_PUBLIC_GOY_API_URL || '').replace(/\/$/, '');
+const API_BASE = String(
+  process.env.EXPO_PUBLIC_GOY_API_URL || 'https://goy-xpress-admin.vercel.app/api',
+).replace(/\/$/, '');
 
 async function api(path, {method='POST', secret, body} = {}) {
-  if (!API_BASE) throw new Error('Falta configurar EXPO_PUBLIC_GOY_API_URL.');
   const response = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
