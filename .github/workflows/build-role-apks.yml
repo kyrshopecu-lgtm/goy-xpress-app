@@ -1,0 +1,120 @@
+name: Generar APK Cliente y Mensajero
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'api/**'
+      - 'app.client.json'
+      - 'app.courier.json'
+      - 'index.client.js'
+      - 'index.courier.js'
+      - 'scripts/smoke-android.sh'
+      - '.github/workflows/build-role-apks.yml'
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-role-apk:
+    name: build-${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: cliente
+            config: app.client.json
+            entry: index.client.js
+            apk: GOY-XPRESS-CLIENTE-v1.0.0.apk
+          - variant: mensajero
+            config: app.courier.json
+            entry: index.courier.js
+            apk: GOY-XPRESS-MENSAJERO-v1.0.0.apk
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Configurar Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Configurar caché Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Activar variante ${{ matrix.variant }}
+        run: |
+          cp '${{ matrix.config }}' app.json
+          cp '${{ matrix.entry }}' index.js
+          node -e "const c=require('./app.json').expo; console.log(c.name,c.android.package,c.version,c.android.versionCode)"
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar pruebas de negocio
+        run: npm test
+
+      - name: Validar bundle JavaScript ${{ matrix.variant }}
+        run: npm run export:android
+
+      - name: Crear proyecto Android limpio
+        run: CI=1 npx expo prebuild --platform android --clean
+
+      - name: Compilar APK release
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Preparar APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk '${{ matrix.apk }}'
+
+      - name: Verificar firma y alineación
+        run: |
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 '${{ matrix.apk }}'
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs '${{ matrix.apk }}'
+
+      - name: Instalar y abrir en Android 10
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: timeout 420s bash scripts/smoke-android.sh '${{ matrix.apk }}' 'smoke-${{ matrix.variant }}'
+
+      - name: Guardar pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GOY-XPRESS-${{ matrix.variant }}-PRUEBAS
+          path: smoke-${{ matrix.variant }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Guardar APK verificada
+        uses: actions/upload-artifact@v4
+        with:
+          name: GOY-XPRESS-${{ matrix.variant }}-APK
+          path: '${{ matrix.apk }}'
+          if-no-files-found: error
+          retention-days: 30
