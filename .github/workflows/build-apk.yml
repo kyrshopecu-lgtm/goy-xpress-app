@@ -12,11 +12,9 @@ on:
 permissions:
   contents: read
 
-# Durante la validación final no cancelamos ejecuciones: necesitamos que al menos
-# un pipeline complete instalación, arranque y smoke test de extremo a extremo.
 concurrency:
   group: goy-xpress-apk-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-apk:
