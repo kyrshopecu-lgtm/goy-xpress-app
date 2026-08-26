@@ -46,7 +46,7 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
     async json() {
       return {
         routes: [{
-          distanceMeters: 5400,
+          distanceMeters: 4400,
           duration: '900s',
           polyline: {encodedPolyline:'abc123'},
         }],
@@ -120,8 +120,9 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
     body:{origin:'Jorge Juan y Mariana de Jesús, Quito', destination:'La Carolina, Quito', mode:'scheduled'},
   });
   assert.equal(route.status, 200);
-  assert.equal(route.body.route.distanceKm, 5.4);
+  assert.equal(route.body.route.distanceKm, 4.4);
   assert.equal(route.body.route.provider, 'google_routes');
+  assert.equal(route.body.pricing.eligible, true);
   assert.ok(route.body.route.mapUrl.includes('google.com/maps/dir'));
 
   const created = await call(base, '/api/client/requests', {
@@ -140,7 +141,7 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
     },
   });
   assert.equal(created.status, 201);
-  assert.equal(created.body.request.distanceKm, 5.4);
+  assert.equal(created.body.request.distanceKm, 4.4);
   assert.equal(created.body.request.clientId, clientReg.body.user.id);
   assert.equal(created.body.request.courierId, null);
 
