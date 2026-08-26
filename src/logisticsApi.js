@@ -18,6 +18,10 @@ async function api(path, {method='POST', secret, body} = {}) {
   return data;
 }
 
+export async function createLogisticsRequest(request) {
+  return api('/requests', {body: request});
+}
+
 async function cameraPhotoDataUrl() {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) throw new Error('Se necesita permiso de cámara para registrar la evidencia.');
