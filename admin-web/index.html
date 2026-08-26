@@ -23,7 +23,7 @@
         <button class="primary" type="submit">Ingresar</button>
         <p id="loginMessage" class="form-message"></p>
       </form>
-      <p class="tiny">La autenticación real se conecta desde <code>config.js</code>. El modo demo no debe usarse en producción.</p>
+      <p class="tiny">Las credenciales privadas se configuran únicamente en el servidor.</p>
     </section>
   </div>
 
@@ -50,20 +50,20 @@
 
       <section id="dashboard" class="view active-view">
         <div class="stats-grid">
-          <article class="stat"><span>Solicitudes hoy</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></article>
+          <article class="stat"><span>Solicitudes</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></article>
           <article class="stat"><span>Pendientes</span><strong id="statPending">0</strong><small>Requieren atención</small></article>
           <article class="stat"><span>En ruta</span><strong id="statRoute">0</strong><small>Mensajeros activos</small></article>
-          <article class="stat"><span>Recaudado hoy</span><strong id="statRevenue">$0.00</strong><small>Cobros registrados</small></article>
+          <article class="stat"><span>Recaudado</span><strong id="statRevenue">$0.00</strong><small>Cobros registrados</small></article>
         </div>
         <div class="panel-grid">
           <article class="panel wide"><div class="panel-head"><h3>Solicitudes recientes</h3><button class="ghost" data-go="orders">Ver todas</button></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="recentOrders"></tbody></table></div></article>
-          <article class="panel"><h3>Acciones rápidas</h3><div class="quick-actions"><button data-go="invites">Crear invitación</button><button data-go="orders">Asignar mensajero</button><button data-go="clients">Buscar cliente</button><button data-go="reports">Generar reporte</button></div></article>
+          <article class="panel"><h3>Acciones rápidas</h3><div class="quick-actions"><button data-go="invites">Crear invitación</button><button data-go="orders">Gestionar solicitudes</button><button data-go="clients">Buscar cliente</button><button data-go="reports">Generar reporte</button></div></article>
         </div>
       </section>
 
       <section id="clients" class="view"><div class="panel"><div class="panel-head"><h3>Clientes</h3><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
 
-      <section id="orders" class="view"><div class="panel"><div class="panel-head"><h3>Solicitudes y trámites</h3><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Asignado">Asignados</option><option value="En ruta">En ruta</option><option value="Entregado">Entregados</option></select></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
+      <section id="orders" class="view"><div class="panel"><div class="panel-head"><h3>Solicitudes y trámites</h3><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Asignado">Asignados</option><option value="En ruta">En ruta</option><option value="Entregado">Entregados</option><option value="Cancelado">Cancelados</option></select></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
 
       <section id="couriers" class="view"><div class="panel"><h3>Mensajeros</h3><div id="courierCards" class="cards"></div></div></section>
 
@@ -71,7 +71,7 @@
 
       <section id="invites" class="view"><div class="panel form-panel"><h3>Crear invitación de cliente</h3><p class="muted">Genera un enlace único para enviar por WhatsApp.</p><form id="inviteForm" class="invite-form"><label>Nombre o negocio<input id="inviteName" required placeholder="Nombre del cliente" /></label><label>WhatsApp<input id="invitePhone" required placeholder="+593..." /></label><button class="primary" type="submit">Generar enlace</button></form><div id="inviteResult" class="invite-result hidden"><span>Enlace generado</span><div class="copy-row"><input id="inviteLink" readonly /><button id="copyInvite" type="button">Copiar</button></div></div></div></section>
 
-      <section id="reports" class="view"><div class="panel"><h3>Reportes operativos</h3><p class="muted">Resumen listo para exportar cuando conectemos el backend.</p><div class="report-box"><strong id="reportSummary"></strong><button id="downloadCsv" class="primary">Descargar CSV de solicitudes</button></div></div></section>
+      <section id="reports" class="view"><div class="panel"><h3>Reportes operativos</h3><p class="muted">Exporta las solicitudes registradas en el sistema.</p><div class="report-box"><strong id="reportSummary"></strong><button id="downloadCsv" class="primary">Descargar CSV de solicitudes</button></div></div></section>
     </main>
   </div>
 
