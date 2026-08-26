@@ -6,6 +6,7 @@
     {"source": "/registro/:token", "destination": "/register.html"},
     {"source": "/api/courier/otp/request", "destination": "/api/courier-otp-request.js"},
     {"source": "/api/courier/otp/verify", "destination": "/api/courier-otp-verify.js"},
+    {"source": "/api/admin-create-request", "destination": "/api/admin-create-request.js"},
     {"source": "/api/:path*", "destination": "/api/[...path].js"}
   ],
   "headers": [
