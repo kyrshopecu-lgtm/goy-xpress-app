@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#102a43" />
+  <meta name="theme-color" content="#071f2d" />
   <title>GOY XPRESS | Administración</title>
   <link rel="stylesheet" href="/admin/styles.css" />
+  <link rel="stylesheet" href="/admin/modern.css" />
 </head>
 <body>
   <div id="loginView" class="login-shell">
     <section class="login-card">
-      <div class="brand-mark">GX</div>
+      <div class="logo-3d logo-login"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /></div>
       <h1>GOY XPRESS</h1>
-      <p class="muted">Panel privado de administración</p>
+      <p class="muted">Centro de control logístico</p>
       <form id="loginForm">
         <label>Correo administrador
           <input id="email" type="email" autocomplete="username" placeholder="admin@goyxpress.com" required />
@@ -20,18 +21,21 @@
         <label>Contraseña
           <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
         </label>
-        <button class="primary" type="submit">Ingresar</button>
+        <button class="primary" type="submit">Ingresar al panel</button>
         <p id="loginMessage" class="form-message"></p>
       </form>
-      <p class="tiny">Las credenciales privadas se configuran únicamente en el servidor.</p>
+      <p class="tiny">Acceso privado. Las credenciales se administran únicamente desde el servidor.</p>
     </section>
   </div>
 
   <div id="appView" class="app-shell hidden">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-mark small">GX</span><div><strong>GOY XPRESS</strong><small>Administración</small></div></div>
+      <div class="brand">
+        <div class="logo-3d logo-side"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /></div>
+        <div><strong>GOY XPRESS</strong><small>Control logístico</small></div>
+      </div>
       <nav id="nav">
-        <button data-view="dashboard" class="nav-item active">Dashboard</button>
+        <button data-view="dashboard" class="nav-item active">Inicio</button>
         <button data-view="clients" class="nav-item">Clientes</button>
         <button data-view="orders" class="nav-item">Solicitudes</button>
         <button data-view="couriers" class="nav-item">Mensajeros</button>
@@ -45,10 +49,24 @@
     <main class="main">
       <header class="topbar">
         <div><h2 id="pageTitle">Dashboard</h2><p id="today" class="muted"></p></div>
-        <div class="admin-chip"><span class="status-dot"></span><span>Administrador</span></div>
+        <div class="admin-chip"><span class="status-dot"></span><span>Administrador conectado</span></div>
       </header>
 
       <section id="dashboard" class="view active-view">
+        <article class="welcome-hero">
+          <div class="hero-content">
+            <div class="hero-copy">
+              <span class="hero-kicker">● Operación en tiempo real</span>
+              <h3>Todo GOY XPRESS en un solo lugar</h3>
+              <p>Gestiona clientes, crea órdenes adicionales, asigna mensajeros, revisa rutas y controla el avance de cada servicio desde una interfaz más clara.</p>
+            </div>
+            <div class="hero-actions">
+              <button class="hero-btn" type="button" data-new-admin-order>Nueva orden</button>
+              <button class="hero-btn secondary" type="button" data-go="orders">Ver operación</button>
+            </div>
+          </div>
+        </article>
+
         <div class="stats-grid">
           <article class="stat"><span>Solicitudes</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></article>
           <article class="stat"><span>Pendientes</span><strong id="statPending">0</strong><small>Requieren atención</small></article>
@@ -57,15 +75,15 @@
         </div>
         <div class="panel-grid">
           <article class="panel wide"><div class="panel-head"><h3>Solicitudes recientes</h3><button class="ghost" data-go="orders">Ver todas</button></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="recentOrders"></tbody></table></div></article>
-          <article class="panel"><h3>Acciones rápidas</h3><div class="quick-actions"><button data-go="invites">Crear invitación</button><button data-go="orders">Gestionar solicitudes</button><button data-go="clients">Buscar cliente</button><button data-go="reports">Generar reporte</button></div></article>
+          <article class="panel"><h3>Acciones rápidas</h3><div class="quick-actions"><button class="accent-action" type="button" data-new-admin-order>＋ Crear orden adicional</button><button data-go="invites">Invitar cliente</button><button data-go="orders">Gestionar solicitudes</button><button data-go="clients">Buscar cliente</button><button data-go="couriers">Ver mensajeros</button><button data-go="reports">Generar reporte</button></div></article>
         </div>
       </section>
 
       <section id="clients" class="view"><div class="panel"><div class="panel-head"><h3>Clientes</h3><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
 
-      <section id="orders" class="view"><div class="panel"><div class="panel-head"><h3>Solicitudes y trámites</h3><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
+      <section id="orders" class="view"><div class="panel"><div class="panel-head"><div><h3>Solicitudes y trámites</h3><p class="muted">Cada orden conserva el cliente propietario y el mensajero asignado.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="primary" type="button" data-new-admin-order>Nueva orden</button><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
 
-      <section id="couriers" class="view"><div class="panel"><h3>Mensajeros</h3><div id="courierCards" class="cards"></div></div></section>
+      <section id="couriers" class="view"><div class="panel"><div class="panel-head"><div><h3>Mensajeros</h3><p class="muted">Aprueba cuentas, revisa disponibilidad y asigna operaciones.</p></div><button class="primary" type="button" data-new-admin-order>Asignar nueva orden</button></div><div id="courierCards" class="cards"></div></div></section>
 
       <section id="payments" class="view"><div class="panel"><h3>Cobros</h3><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Solicitud</th><th>Cliente</th><th>Método</th><th>Valor</th><th>Estado</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
 
@@ -75,9 +93,60 @@
     </main>
   </div>
 
+  <div id="adminOrderModal" class="modal-shell hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-admin-order></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adminOrderTitle">
+      <header class="modal-head">
+        <div><h3 id="adminOrderTitle">Crear orden adicional</h3><p>Vincúlala a un cliente y, si deseas, asígnala de inmediato a un mensajero aprobado.</p></div>
+        <button class="modal-close" type="button" data-close-admin-order aria-label="Cerrar">×</button>
+      </header>
+      <form id="adminOrderForm" class="modal-form">
+        <div class="form-grid">
+          <label>Cliente de la orden
+            <select id="adminOrderClient" required><option value="">Selecciona un cliente</option></select>
+          </label>
+          <label>Mensajero
+            <select id="adminOrderCourier"><option value="">Sin asignar por ahora</option></select>
+            <span id="adminOrderCourierHint" class="field-hint">Solo aparecen mensajeros aprobados.</span>
+          </label>
+          <label>Tipo de servicio
+            <select id="adminOrderKind">
+              <option value="shipment">Entrega</option>
+              <option value="procedure">Trámite</option>
+              <option value="deposit">Depósito</option>
+              <option value="diverse">Servicio diverso</option>
+              <option value="office_pickup">Retiro en oficina</option>
+            </select>
+          </label>
+          <label>Nombre de la orden
+            <input id="adminOrderLabel" required placeholder="Ej. Entrega adicional" />
+          </label>
+          <label>Dirección de retiro
+            <input id="adminOrderPickup" placeholder="Origen / retiro" />
+          </label>
+          <label>Dirección de entrega
+            <input id="adminOrderDestination" placeholder="Destino" />
+            <span class="field-hint">Si completas origen y destino, el servidor guarda distancia y tiempo de Google Maps.</span>
+          </label>
+          <label>Tarifa acordada ($)
+            <input id="adminOrderCost" inputmode="decimal" type="number" min="0" step="0.01" value="0" required />
+          </label>
+          <label class="span-2">Detalle / instrucciones
+            <textarea id="adminOrderNotes" placeholder="Referencia, persona de contacto, documentos, observaciones…"></textarea>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button class="cancel" type="button" data-close-admin-order>Cancelar</button>
+          <button id="adminOrderSubmit" class="primary" type="submit">Crear orden</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <script src="/admin/config.js"></script>
   <script src="/admin/quote-whatsapp.js"></script>
   <script src="/admin/role-security.js"></script>
   <script src="/admin/app.js"></script>
+  <script src="/admin/admin-orders.js"></script>
 </body>
 </html>
