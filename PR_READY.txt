@@ -1,0 +1,1 @@
+Integración logística v3.3 preparada para revisión y pruebas automáticas.

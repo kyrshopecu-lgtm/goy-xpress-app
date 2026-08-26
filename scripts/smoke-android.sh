@@ -7,6 +7,9 @@ PACKAGE_NAME=com.goyxpress.mensajeria
 ACTIVITY_NAME=.MainActivity
 UI_XML="$EVIDENCE_DIR/window.xml"
 
+EXPECTED_VERSION_NAME=$(node -p "require('./app.json').expo.version")
+EXPECTED_VERSION_CODE=$(node -p "require('./app.json').expo.android.versionCode")
+
 mkdir -p "$EVIDENCE_DIR"
 
 capture_evidence() {
@@ -33,8 +36,8 @@ adb shell dumpsys activity activities > "$EVIDENCE_DIR/activity.txt"
 grep -Eq "(topResumedActivity|mResumedActivity|ResumedActivity).*${PACKAGE_NAME}" "$EVIDENCE_DIR/activity.txt"
 
 adb shell dumpsys package "$PACKAGE_NAME" > "$EVIDENCE_DIR/package.txt"
-grep -q "versionCode=5" "$EVIDENCE_DIR/package.txt"
-grep -q "versionName=3.1.0" "$EVIDENCE_DIR/package.txt"
+grep -q "versionCode=${EXPECTED_VERSION_CODE}" "$EVIDENCE_DIR/package.txt"
+grep -q "versionName=${EXPECTED_VERSION_NAME}" "$EVIDENCE_DIR/package.txt"
 
 adb exec-out screencap -p > "$EVIDENCE_DIR/screen.png"
 python3 - "$EVIDENCE_DIR/screen.png" <<'PY'
@@ -61,4 +64,4 @@ if grep -Eq "Cannot find native module|JavascriptException|Process $PACKAGE_NAME
   exit 1
 fi
 
-echo "GOY XPRESS superó instalación, versión, arranque sostenido, actividad, render y logcat."
+echo "GOY XPRESS superó instalación, versión ${EXPECTED_VERSION_NAME} (${EXPECTED_VERSION_CODE}), arranque sostenido, actividad, render y logcat."

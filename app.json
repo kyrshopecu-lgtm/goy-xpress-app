@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOY XPRESS",
     "slug": "goy-xpress",
-    "version": "3.1.0",
+    "version": "3.3.0",
     "scheme": "goyxpress",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,18 +12,22 @@
       "resizeMode": "contain",
       "backgroundColor": "#0D2F41"
     },
+    "plugins": [
+      ["expo-image-picker", {"cameraPermission": "GOY XPRESS necesita la cámara para registrar evidencia de recogida, cheques, depósitos y entrega."}],
+      ["expo-location", {"locationWhenInUsePermission": "GOY XPRESS usa tu ubicación durante una entrega activa para que el administrador pueda dar seguimiento."}]
+    ],
     "android": {
       "package": "com.goyxpress.mensajeria",
-      "versionCode": 5,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D2F41"
       },
-      "permissions": []
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "ios": {
       "bundleIdentifier": "com.goyxpress.mensajeria",
-      "buildNumber": "5"
+      "buildNumber": "9"
     }
   }
 }

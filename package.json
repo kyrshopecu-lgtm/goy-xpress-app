@@ -1,13 +1,13 @@
 {
   "name": "goy-xpress-mobile",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test src/domain.test.js src/authDomain.test.js",
+    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js server/server.test.js",
     "export:android": "expo export --platform android --output-dir dist",
     "verify": "npm test && npm run export:android"
   },
@@ -18,6 +18,8 @@
     "expo": "~53.0.0",
     "expo-asset": "~11.1.7",
     "expo-constants": "~17.1.8",
+    "expo-image-picker": "~16.1.4",
+    "expo-location": "~18.1.6",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.0"

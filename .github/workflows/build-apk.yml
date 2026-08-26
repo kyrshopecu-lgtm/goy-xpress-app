@@ -2,12 +2,19 @@ name: Generar APK GOY XPRESS
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
 
 permissions:
   contents: read
+
+concurrency:
+  group: goy-xpress-apk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:
@@ -21,11 +28,11 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Configurar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -33,10 +40,10 @@ jobs:
       - name: Configurar caché Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Instalar dependencias exactas
-        run: npm ci
+      - name: Instalar dependencias
+        run: npm install
 
-      - name: Verificar cálculos y paquete JavaScript
+      - name: Verificar reglas y paquete JavaScript
         run: |
           npm test
           npm run export:android
@@ -51,13 +58,13 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Preparar instalador GOY XPRESS
-        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.1.0-FUNCIONAL.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.3.0-LOGISTICA.apk
 
       - name: Verificar alineación y firma Android
         run: |
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.1.0-FUNCIONAL.apk
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.1.0-FUNCIONAL.apk
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.3.0-LOGISTICA.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.3.0-LOGISTICA.apk
 
       - name: Verificar apertura real en Android 10
         uses: reactivecircus/android-emulator-runner@v2
@@ -66,14 +73,15 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
+          emulator-boot-timeout: 600
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 300s bash scripts/smoke-android.sh GOY-XPRESS-v3.1.0-FUNCIONAL.apk smoke-test
+          script: timeout 420s bash scripts/smoke-android.sh GOY-XPRESS-v3.3.0-LOGISTICA.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.1.0-PRUEBA-ANDROID
+          name: GOY-XPRESS-v3.3.0-PRUEBAS
           path: smoke-test/
           if-no-files-found: warn
           retention-days: 14
@@ -81,7 +89,7 @@ jobs:
       - name: Guardar instalador verificado
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.1.0-FUNCIONAL
-          path: GOY-XPRESS-v3.1.0-FUNCIONAL.apk
+          name: GOY-XPRESS-v3.3.0-LOGISTICA
+          path: GOY-XPRESS-v3.3.0-LOGISTICA.apk
           if-no-files-found: error
           retention-days: 30
