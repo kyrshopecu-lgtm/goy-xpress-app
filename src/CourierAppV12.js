@@ -594,6 +594,8 @@ export default function CourierAppV12() {
         onUpdate={updateJob}
       />
     );
+  } else if (tab === 'profile') {
+    content = <Profile token={token} profile={profile} onChange={setProfile} onLogout={logout} />;
   } else if (!profile.approved) {
     content = (
       <Pending
@@ -603,8 +605,6 @@ export default function CourierAppV12() {
         onLogout={logout}
       />
     );
-  } else if (tab === 'profile') {
-    content = <Profile token={token} profile={profile} onChange={setProfile} onLogout={logout} />;
   } else {
     content = (
       <View>
@@ -654,7 +654,7 @@ export default function CourierAppV12() {
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         {content}
       </ScrollView>
-      {!selected && profile.approved ? <Tabs tab={tab} setTab={setTab} /> : null}
+      {!selected ? <Tabs tab={tab} setTab={setTab} /> : null}
     </SafeAreaView>
   );
 }
