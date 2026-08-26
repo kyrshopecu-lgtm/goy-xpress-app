@@ -57,10 +57,14 @@ export async function registerDepositEvidence(code, secret, amount=0) {
   return api(`/requests/${encodeURIComponent(code)}/deposit-evidence`, {secret, body:{photo,amount}});
 }
 
-export async function sendCurrentLocation(code, secret) {
+async function ensureLocationPermission() {
   const permission = await Location.requestForegroundPermissionsAsync();
-  if (permission.status !== 'granted') throw new Error('Se necesita permiso de ubicación para iniciar el seguimiento.');
-  const location = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.High});
+  if (permission.status !== 'granted') {
+    throw new Error('Se necesita permiso de ubicación para iniciar el seguimiento.');
+  }
+}
+
+async function postLocation(code, secret, location) {
   return api(`/requests/${encodeURIComponent(code)}/location`, {
     secret,
     body:{
@@ -69,6 +73,31 @@ export async function sendCurrentLocation(code, secret) {
       accuracy:location.coords.accuracy,
     },
   });
+}
+
+export async function sendCurrentLocation(code, secret) {
+  await ensureLocationPermission();
+  const location = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.High});
+  return postLocation(code, secret, location);
+}
+
+// Seguimiento en primer plano mientras el mensajero mantiene la operación abierta.
+// No se comparte con el cliente: cada punto se guarda en el backend para el administrador.
+export async function startLocationTracking(code, secret, onUpdated, onError) {
+  await ensureLocationPermission();
+  const subscription = await Location.watchPositionAsync(
+    {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 30000,
+      distanceInterval: 25,
+    },
+    location => {
+      postLocation(code, secret, location)
+        .then(value => onUpdated?.(value))
+        .catch(error => onError?.(error));
+    },
+  );
+  return () => subscription.remove();
 }
 
 export async function updateCourierWait(code, secret, elapsedMinutes) {
