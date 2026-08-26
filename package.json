@@ -1,15 +1,16 @@
 {
   "name": "goy-xpress-mobile",
-  "version": "3.3.0",
+  "version": "4.0.0",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js server/server.test.js",
-    "export:android": "expo export --platform android --output-dir dist",
-    "verify": "npm test && npm run export:android"
+    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js server/server.test.js server/server-v4.test.js",
+    "export:client": "GOY_APP_VARIANT=client EXPO_PUBLIC_GOY_APP_VARIANT=client expo export --platform android --output-dir dist-client",
+    "export:courier": "GOY_APP_VARIANT=courier EXPO_PUBLIC_GOY_APP_VARIANT=courier expo export --platform android --output-dir dist-courier",
+    "verify": "npm test && npm run export:client && npm run export:courier"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -24,8 +25,6 @@
     "react": "19.0.0",
     "react-native": "0.79.0"
   },
-  "devDependencies": {
-    "@babel/core": "^7.25.2"
-  },
+  "devDependencies": {"@babel/core": "^7.25.2"},
   "private": true
 }
