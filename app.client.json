@@ -2,15 +2,18 @@
   "expo": {
     "name": "GOY XPRESS Cliente",
     "slug": "goy-xpress-cliente",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "scheme": "goyxpresscliente",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {"image":"./assets/splash.png","resizeMode":"contain","backgroundColor":"#0D2F41"},
+    "plugins": [
+      ["expo-image-picker", {"photosPermission":"GOY XPRESS Cliente necesita acceso a tus imágenes únicamente para que puedas elegir el logotipo de tu empresa."}]
+    ],
     "android": {
       "package": "com.goyxpress.cliente",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {"foregroundImage":"./assets/adaptive-icon.png","backgroundColor":"#0D2F41"},
       "blockedPermissions": [
         "android.permission.CAMERA",
@@ -19,6 +22,6 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
-    "ios": {"bundleIdentifier":"com.goyxpress.cliente","buildNumber":"2"}
+    "ios": {"bundleIdentifier":"com.goyxpress.cliente","buildNumber":"3"}
   }
 }
