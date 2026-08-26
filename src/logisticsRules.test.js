@@ -34,7 +34,13 @@ test('cierre mensual usa día 30 como corte', () => {
   assert.equal(monthlyCycleKey(new Date('2026-08-31T12:00:00')), '2026-09');
 });
 
+test('febrero cierra el último día disponible', () => {
+  assert.equal(monthlyCycleKey(new Date('2026-02-28T12:00:00')), '2026-02');
+  assert.equal(monthlyCycleKey(new Date('2026-03-01T12:00:00')), '2026-03');
+});
+
 test('cartera solo se libera con entrega finalizada y foto de depósito', () => {
+  assert.equal(canReleaseCourierFunds({status:'Entrega finalizada', evidence:{depositPhoto:'x'}}), true);
   assert.equal(canReleaseCourierFunds({status:'Entregado', evidence:{depositPhoto:'x'}}), true);
   assert.equal(canReleaseCourierFunds({status:'Entregado', evidence:{}}), false);
 });
