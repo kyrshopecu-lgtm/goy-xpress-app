@@ -42,7 +42,7 @@ test('Mensajero v1.3: OTP, foto, botones cableados y trabajos asignados', () => 
   assert.match(code, /registerPickupEvidence/);
   assert.match(code, /registerDeliveryEvidence/);
   assert.match(code, /startLocationTracking/);
-  assert.doesNotMatch(code, /Contraseña|registerCourier|login\('courier'|Clave de operación|X-Request-Secret|Código \+ clave/i);
+  assert.doesNotMatch(code, /secureTextEntry|registerCourier|login\('courier'|Clave de operación|X-Request-Secret|Código \+ clave/i);
 });
 
 test('OTP Mensajero está en servidor y API v5 mantiene Google Routes', () => {
