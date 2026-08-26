@@ -7,7 +7,9 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'server/**'
       - 'api/**'
+      - 'admin-web/**'
       - 'app.client.json'
       - 'app.courier.json'
       - 'index.client.js'
@@ -33,11 +35,11 @@ jobs:
           - variant: cliente
             config: app.client.json
             entry: index.client.js
-            apk: GOY-XPRESS-CLIENTE-v1.0.0.apk
+            apk: GOY-XPRESS-CLIENTE-v1.1.0.apk
           - variant: mensajero
             config: app.courier.json
             entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-v1.0.0.apk
+            apk: GOY-XPRESS-MENSAJERO-v1.1.0.apk
 
     steps:
       - name: Descargar proyecto
@@ -67,7 +69,7 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      - name: Ejecutar pruebas de negocio
+      - name: Ejecutar pruebas de negocio y seguridad
         run: npm test
 
       - name: Validar bundle JavaScript ${{ matrix.variant }}
