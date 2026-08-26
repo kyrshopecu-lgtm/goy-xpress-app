@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js server/server.test.js server/server-v4.test.js server/server-v5.test.js",
+    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js src/uiWiring.test.js server/server.test.js server/server-v4.test.js server/server-v5.test.js",
     "export:android": "expo export --platform android --output-dir dist",
     "verify": "npm test && npm run export:android"
   },
