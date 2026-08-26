@@ -3,7 +3,7 @@ set -euo pipefail
 
 APK_PATH=${1:?Debes indicar la ruta de la APK}
 EVIDENCE_DIR=${2:-smoke-test}
-PACKAGE_NAME=com.goyxpress.mensajeria
+PACKAGE_NAME=$(node -p "require('./app.json').expo.android.package")
 ACTIVITY_NAME=.MainActivity
 UI_XML="$EVIDENCE_DIR/window.xml"
 
@@ -43,15 +43,12 @@ adb exec-out screencap -p > "$EVIDENCE_DIR/screen.png"
 python3 - "$EVIDENCE_DIR/screen.png" <<'PY'
 import struct
 import sys
-
 with open(sys.argv[1], 'rb') as image:
     signature = image.read(8)
     image.read(8)
     width, height = struct.unpack('>II', image.read(8))
-
 if signature != b'\x89PNG\r\n\x1a\n' or width < 200 or height < 200:
     raise SystemExit('La captura Android no es válida')
-
 print(f'Captura Android válida: {width}x{height}')
 PY
 
@@ -64,4 +61,4 @@ if grep -Eq "Cannot find native module|JavascriptException|Process $PACKAGE_NAME
   exit 1
 fi
 
-echo "GOY XPRESS superó instalación, versión ${EXPECTED_VERSION_NAME} (${EXPECTED_VERSION_CODE}), arranque sostenido, actividad, render y logcat."
+echo "$PACKAGE_NAME superó instalación, versión ${EXPECTED_VERSION_NAME} (${EXPECTED_VERSION_CODE}), arranque sostenido, actividad, render y logcat."
