@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOY XPRESS Cliente",
     "slug": "goy-xpress-cliente",
-    "version": "1.0.0",
+    "version": "4.0.0",
     "scheme": "goyxpresscliente",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
