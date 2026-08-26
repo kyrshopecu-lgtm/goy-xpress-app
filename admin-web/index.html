@@ -3,16 +3,24 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#102a43" />
-  <title>GOY XPRESS | Administración</title>
+  <meta name="theme-color" content="#071c2a" />
+  <title>GOY XPRESS | Centro de control</title>
+  <link rel="icon" href="/assets/icon.png" />
   <link rel="stylesheet" href="/admin/styles.css" />
 </head>
 <body>
   <div id="loginView" class="login-shell">
-    <section class="login-card">
-      <div class="brand-mark">GX</div>
+    <div class="login-glow glow-a"></div><div class="login-glow glow-b"></div>
+    <section class="login-card glass-card">
+      <div class="login-brand-stage" aria-hidden="true">
+        <span class="brand-mark logo-3d">
+          <img src="/assets/goy-logo.jpg" alt="" />
+          <span class="logo-fallback">GX</span>
+        </span>
+      </div>
+      <span class="eyebrow">Centro de control logístico</span>
       <h1>GOY XPRESS</h1>
-      <p class="muted">Panel privado de administración</p>
+      <p class="muted">Administra clientes, mensajeros y operaciones desde un solo lugar.</p>
       <form id="loginForm">
         <label>Correo administrador
           <input id="email" type="email" autocomplete="username" placeholder="admin@goyxpress.com" required />
@@ -20,58 +28,78 @@
         <label>Contraseña
           <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
         </label>
-        <button class="primary" type="submit">Ingresar</button>
+        <button class="primary action-primary" type="submit">Ingresar al panel</button>
         <p id="loginMessage" class="form-message"></p>
       </form>
-      <p class="tiny">Las credenciales privadas se configuran únicamente en el servidor.</p>
+      <p class="tiny security-note">🔒 Las credenciales privadas se validan únicamente en el servidor.</p>
     </section>
   </div>
 
   <div id="appView" class="app-shell hidden">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-mark small">GX</span><div><strong>GOY XPRESS</strong><small>Administración</small></div></div>
+      <div class="brand">
+        <span class="brand-mark small logo-3d"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /><span class="logo-fallback">GX</span></span>
+        <div><strong>GOY XPRESS</strong><small>Centro de control</small></div>
+      </div>
+      <button id="newOrderNav" class="nav-item nav-accent" type="button"><span class="nav-icon">＋</span><span>Nueva orden</span></button>
       <nav id="nav">
-        <button data-view="dashboard" class="nav-item active">Dashboard</button>
-        <button data-view="clients" class="nav-item">Clientes</button>
-        <button data-view="orders" class="nav-item">Solicitudes</button>
-        <button data-view="couriers" class="nav-item">Mensajeros</button>
-        <button data-view="payments" class="nav-item">Cobros</button>
-        <button data-view="invites" class="nav-item">Invitaciones</button>
-        <button data-view="reports" class="nav-item">Reportes</button>
+        <button data-view="dashboard" class="nav-item active"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
+        <button data-view="clients" class="nav-item"><span class="nav-icon">◎</span><span>Clientes</span></button>
+        <button data-view="orders" class="nav-item"><span class="nav-icon">▤</span><span>Solicitudes</span></button>
+        <button data-view="couriers" class="nav-item"><span class="nav-icon">➜</span><span>Mensajeros</span></button>
+        <button data-view="payments" class="nav-item"><span class="nav-icon">$</span><span>Cobros</span></button>
+        <button data-view="invites" class="nav-item"><span class="nav-icon">✦</span><span>Invitaciones</span></button>
+        <button data-view="reports" class="nav-item"><span class="nav-icon">↧</span><span>Reportes</span></button>
       </nav>
+      <div class="sidebar-help"><strong>Operación conectada</strong><small>Cliente · Mensajero · Administración</small></div>
       <button id="logoutBtn" class="logout">Cerrar sesión</button>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div><h2 id="pageTitle">Dashboard</h2><p id="today" class="muted"></p></div>
-        <div class="admin-chip"><span class="status-dot"></span><span>Administrador</span></div>
+        <div><span class="eyebrow">Administración</span><h2 id="pageTitle">Dashboard</h2><p id="today" class="muted"></p></div>
+        <div class="admin-chip"><span class="status-dot"></span><span>Administrador conectado</span></div>
       </header>
 
       <section id="dashboard" class="view active-view">
+        <article class="admin-hero">
+          <div class="hero-copy">
+            <span class="eyebrow light" id="heroGreeting">Bienvenido</span>
+            <h3>Tu operación logística, clara y bajo control.</h3>
+            <p>Crea órdenes para clientes registrados, delega a mensajeros aprobados y sigue cada etapa desde una sola pantalla.</p>
+            <div class="hero-actions"><button id="heroNewOrder" class="hero-primary" type="button">＋ Crear orden</button><button class="hero-secondary" data-go="orders" type="button">Ver solicitudes</button></div>
+            <small class="hero-shortcut">Atajo: Ctrl/⌘ + K</small>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+            <div class="hero-logo-3d"><img src="/assets/goy-logo.jpg" alt="" /><span class="logo-fallback">GX</span></div>
+            <span class="floating-pill pill-one">GPS</span><span class="floating-pill pill-two">En línea</span><span class="floating-pill pill-three">Entrega</span>
+          </div>
+        </article>
+
         <div class="stats-grid">
-          <article class="stat"><span>Solicitudes</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></article>
-          <article class="stat"><span>Pendientes</span><strong id="statPending">0</strong><small>Requieren atención</small></article>
-          <article class="stat"><span>En ruta</span><strong id="statRoute">0</strong><small>Mensajeros activos</small></article>
-          <article class="stat"><span>Recaudado</span><strong id="statRevenue">$0.00</strong><small>Cobros registrados</small></article>
+          <article class="stat stat-blue"><div class="stat-icon">▤</div><div><span>Solicitudes</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></div></article>
+          <article class="stat stat-amber"><div class="stat-icon">!</div><div><span>Pendientes</span><strong id="statPending">0</strong><small>Requieren atención</small></div></article>
+          <article class="stat stat-cyan"><div class="stat-icon">➜</div><div><span>En ruta</span><strong id="statRoute">0</strong><small>Mensajeros activos</small></div></article>
+          <article class="stat stat-green"><div class="stat-icon">$</div><div><span>Recaudado</span><strong id="statRevenue">$0.00</strong><small>Cobros registrados</small></div></article>
         </div>
         <div class="panel-grid">
-          <article class="panel wide"><div class="panel-head"><h3>Solicitudes recientes</h3><button class="ghost" data-go="orders">Ver todas</button></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="recentOrders"></tbody></table></div></article>
-          <article class="panel"><h3>Acciones rápidas</h3><div class="quick-actions"><button data-go="invites">Crear invitación</button><button data-go="orders">Gestionar solicitudes</button><button data-go="clients">Buscar cliente</button><button data-go="reports">Generar reporte</button></div></article>
+          <article class="panel wide"><div class="panel-head"><div><span class="eyebrow">Operación</span><h3>Solicitudes recientes</h3></div><button class="ghost" data-go="orders">Ver todas</button></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="recentOrders"></tbody></table></div></article>
+          <article class="panel quick-panel"><span class="eyebrow">Accesos directos</span><h3>Acciones rápidas</h3><div class="quick-actions"><button id="quickNewOrder" class="quick-highlight">＋ Crear orden para cliente</button><button data-go="invites">✦ Crear invitación</button><button data-go="orders">▤ Gestionar solicitudes</button><button data-go="clients">◎ Buscar cliente</button><button data-go="reports">↧ Generar reporte</button></div></article>
         </div>
       </section>
 
-      <section id="clients" class="view"><div class="panel"><div class="panel-head"><h3>Clientes</h3><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
+      <section id="clients" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Base comercial</span><h3>Clientes</h3></div><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
 
-      <section id="orders" class="view"><div class="panel"><div class="panel-head"><h3>Solicitudes y trámites</h3><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
+      <section id="orders" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Operación diaria</span><h3>Solicitudes y trámites</h3></div><div class="panel-tools"><button id="ordersNewOrder" class="primary compact" type="button">＋ Nueva orden</button><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
 
-      <section id="couriers" class="view"><div class="panel"><h3>Mensajeros</h3><div id="courierCards" class="cards"></div></div></section>
+      <section id="couriers" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Equipo operativo</span><h3>Mensajeros</h3></div></div><div id="courierCards" class="cards"></div></div></section>
 
-      <section id="payments" class="view"><div class="panel"><h3>Cobros</h3><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Solicitud</th><th>Cliente</th><th>Método</th><th>Valor</th><th>Estado</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
+      <section id="payments" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Cartera</span><h3>Cobros</h3></div></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Solicitud</th><th>Cliente</th><th>Método</th><th>Valor</th><th>Estado</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
 
-      <section id="invites" class="view"><div class="panel form-panel"><h3>Crear invitación de cliente</h3><p class="muted">Genera un enlace único para enviar por WhatsApp.</p><form id="inviteForm" class="invite-form"><label>Nombre o negocio<input id="inviteName" required placeholder="Nombre del cliente" /></label><label>WhatsApp<input id="invitePhone" required placeholder="+593..." /></label><button class="primary" type="submit">Generar enlace</button></form><div id="inviteResult" class="invite-result hidden"><span>Enlace generado</span><div class="copy-row"><input id="inviteLink" readonly /><button id="copyInvite" type="button">Copiar</button></div></div></div></section>
+      <section id="invites" class="view"><div class="panel form-panel"><span class="eyebrow">Captación</span><h3>Crear invitación de cliente</h3><p class="muted">Genera un enlace único para enviar por WhatsApp.</p><form id="inviteForm" class="invite-form"><label>Nombre o negocio<input id="inviteName" required placeholder="Nombre del cliente" /></label><label>WhatsApp<input id="invitePhone" required placeholder="+593..." /></label><button class="primary action-primary" type="submit">Generar enlace</button></form><div id="inviteResult" class="invite-result hidden"><span>Enlace generado</span><div class="copy-row"><input id="inviteLink" readonly /><button id="copyInvite" type="button">Copiar</button></div></div></div></section>
 
-      <section id="reports" class="view"><div class="panel"><h3>Reportes operativos</h3><p class="muted">Exporta las solicitudes registradas en el sistema.</p><div class="report-box"><strong id="reportSummary"></strong><button id="downloadCsv" class="primary">Descargar CSV de solicitudes</button></div></div></section>
+      <section id="reports" class="view"><div class="panel"><span class="eyebrow">Análisis</span><h3>Reportes operativos</h3><p class="muted">Exporta las solicitudes registradas en el sistema.</p><div class="report-box"><strong id="reportSummary"></strong><button id="downloadCsv" class="primary">Descargar CSV de solicitudes</button></div></div></section>
     </main>
   </div>
 
@@ -79,5 +107,7 @@
   <script src="/admin/quote-whatsapp.js"></script>
   <script src="/admin/role-security.js"></script>
   <script src="/admin/app.js"></script>
+  <script src="/admin/modern-admin.js"></script>
+  <script>document.getElementById('ordersNewOrder')?.addEventListener('click',()=>document.getElementById('heroNewOrder')?.click());</script>
 </body>
 </html>
