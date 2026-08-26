@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOY XPRESS",
     "slug": "goy-xpress",
-    "version": "3.2.1",
+    "version": "3.2.2",
     "scheme": "goyxpress",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.goyxpress.mensajeria",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D2F41"
@@ -23,7 +23,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.goyxpress.mensajeria",
-      "buildNumber": "7"
+      "buildNumber": "8"
     },
     "plugins": [
       [

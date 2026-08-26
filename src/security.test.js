@@ -8,6 +8,15 @@ const migration = fs.readFileSync(
   path.join(root, 'supabase/migrations/202608250001_secure_access.sql'),
   'utf8',
 );
+const supabaseClient = fs.readFileSync(
+  path.join(root, 'src/supabaseClient.js'),
+  'utf8',
+);
+const backend = fs.readFileSync(path.join(root, 'src/backend.js'), 'utf8');
+const workflow = fs.readFileSync(
+  path.join(root, '.github/workflows/build-apk.yml'),
+  'utf8',
+);
 
 test('la base impide registrar un segundo administrador', () => {
   assert.match(migration, /admin_accounts_single_admin[\s\S]*on public\.admin_accounts \(\(true\)\)/);
@@ -50,4 +59,18 @@ test('el repositorio no incluye credenciales privadas', () => {
     .join('\n');
   assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY\s*=/);
   assert.doesNotMatch(source, /TWILIO_AUTH_TOKEN\s*=/);
+});
+
+test('la aplicación solo acepta la URL oficial de Supabase', () => {
+  assert.match(supabaseClient, /\\\.supabase\\\.co/);
+  assert.doesNotMatch(
+    workflow,
+    /EXPO_PUBLIC_SUPABASE_URL:\s*https:\/\/fnjjncuatpjybzqwiaet\.supabase\.com/,
+  );
+  assert.match(workflow, /https:\/\/fnjjncuatpjybzqwiaet\.supabase\.co/);
+});
+
+test('los fallos de red se explican en español', () => {
+  assert.match(backend, /network request failed/);
+  assert.match(backend, /No se pudo conectar con GOY XPRESS/);
 });

@@ -4,7 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState} from 'react-native';
 import {createClient} from '@supabase/supabase-js';
 
-export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+export const SUPABASE_URL = String(
+  process.env.EXPO_PUBLIC_SUPABASE_URL || '',
+)
+  .trim()
+  .replace(/\/+$/, '');
 export const SUPABASE_PUBLISHABLE_KEY =
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
@@ -15,7 +19,8 @@ export const ADMIN_LOGIN_DOMAIN =
   process.env.EXPO_PUBLIC_ADMIN_LOGIN_DOMAIN || 'admin.goyxpress.app';
 
 export const isBackendConfigured =
-  /^https:\/\//i.test(SUPABASE_URL) && SUPABASE_PUBLISHABLE_KEY.length > 20;
+  /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(SUPABASE_URL) &&
+  SUPABASE_PUBLISHABLE_KEY.length > 20;
 
 export const supabase = isBackendConfigured
   ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

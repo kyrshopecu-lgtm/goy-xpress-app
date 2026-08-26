@@ -84,7 +84,7 @@ Escanea el código QR con Expo Go para probar la aplicación.
 El repositorio incluye `.github/workflows/build-apk.yml`. Primero configura las
 variables públicas descritas en `.env.example`. En GitHub abre
 **Actions → Generar APK GOY XPRESS → Run workflow**. El APK aparecerá como
-artefacto `GOY-XPRESS-v3.2.1-INSTALABLE` al terminar.
+artefacto `GOY-XPRESS-v3.2.2-INSTALABLE` al terminar.
 
 También puede compilarse con EAS después de vincular el proyecto Expo:
 

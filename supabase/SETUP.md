@@ -1,4 +1,4 @@
-# Activación segura de GOY XPRESS v3.2.1
+# Activación segura de GOY XPRESS v3.2.2
 
 La APK no contiene contraseñas, tokens de Twilio ni la llave `service_role`.
 Todos los permisos se validan en Supabase mediante Row Level Security (RLS).

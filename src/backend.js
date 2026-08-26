@@ -18,6 +18,13 @@ function firstRow(value) {
 
 function errorMessage(error, fallback = 'No se pudo completar la operación.') {
   const message = String(error?.message || error || '').toLowerCase();
+  if (
+    message.includes('network request failed') ||
+    message.includes('failed to fetch') ||
+    message.includes('networkerror')
+  ) {
+    return 'No se pudo conectar con GOY XPRESS. Verifica tu conexión a Internet e inténtalo nuevamente.';
+  }
   if (message.includes('invalid login credentials')) {
     return 'Usuario o contraseña incorrectos.';
   }

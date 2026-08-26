@@ -864,7 +864,7 @@ function ProfileScreen({profile, onSignOut}) {
         variant="green"
       />
       <PrimaryButton title="Cerrar sesión" onPress={onSignOut} variant="light" />
-      <Text style={styles.versionText}>Aplicación GOY XPRESS · versión 3.2.1</Text>
+      <Text style={styles.versionText}>Aplicación GOY XPRESS · versión 3.2.2</Text>
     </Page>
   );
 }
