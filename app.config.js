@@ -8,7 +8,7 @@ module.exports = {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
-    splash: {image:'./assets/splash-icon.png',resizeMode:'contain',backgroundColor:'#0B2F40'},
+    splash: {image:'./assets/splash.png',resizeMode:'contain',backgroundColor:'#0B2F40'},
     assetBundlePatterns:['**/*'],
     android: {
       package: courier ? 'com.goyxpress.mensajero' : 'com.goyxpress.cliente',
