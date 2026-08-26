@@ -47,6 +47,10 @@ jobs:
             package: com.goyxpress.mensajero
     runs-on: ubuntu-latest
     timeout-minutes: 55
+    env:
+      GOY_APP_VARIANT: ${{ matrix.variant }}
+      EXPO_PUBLIC_GOY_APP_VARIANT: ${{ matrix.variant }}
+      EXPO_PUBLIC_GOY_API_URL: https://goy-xpress-admin.vercel.app/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -61,10 +65,6 @@ jobs:
       - name: Instalar dependencias
         run: npm install
       - name: Prebuild ${{ matrix.label }}
-        env:
-          GOY_APP_VARIANT: ${{ matrix.variant }}
-          EXPO_PUBLIC_GOY_APP_VARIANT: ${{ matrix.variant }}
-          EXPO_PUBLIC_GOY_API_URL: https://goy-xpress-admin.vercel.app/api
         run: CI=1 npx expo prebuild --platform android --clean
       - name: Compilar release
         working-directory: android
