@@ -7,6 +7,12 @@
   <title>GOY XPRESS | Centro de control</title>
   <link rel="icon" href="/assets/icon.png" />
   <link rel="stylesheet" href="/admin/styles.css" />
+  <style>
+    .stat[data-stat-target]{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;user-select:none}
+    .stat[data-stat-target]:hover,.stat[data-stat-target]:focus-visible{transform:translateY(-2px);box-shadow:0 10px 24px rgba(7,28,42,.13);outline:none;border-color:rgba(0,169,232,.38)}
+    .stat[data-stat-target]::after{content:'Ver detalle';margin-left:auto;align-self:center;font-size:10px;font-weight:800;color:#1684a3;opacity:.75;white-space:nowrap}
+    @media(max-width:760px){.stat[data-stat-target]::after{content:'Ver';font-size:9px}}
+  </style>
 </head>
 <body>
   <div id="loginView" class="login-shell">
@@ -78,10 +84,10 @@
         </article>
 
         <div class="stats-grid">
-          <article class="stat stat-blue"><div class="stat-icon">▤</div><div><span>Solicitudes</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></div></article>
-          <article class="stat stat-amber"><div class="stat-icon">!</div><div><span>Pendientes</span><strong id="statPending">0</strong><small>Requieren atención</small></div></article>
-          <article class="stat stat-cyan"><div class="stat-icon">➜</div><div><span>En ruta</span><strong id="statRoute">0</strong><small>Mensajeros activos</small></div></article>
-          <article class="stat stat-green"><div class="stat-icon">$</div><div><span>Recaudado</span><strong id="statRevenue">$0.00</strong><small>Cobros registrados</small></div></article>
+          <article class="stat stat-blue" data-stat-target="orders" role="button" tabindex="0" aria-label="Ver todas las solicitudes"><div class="stat-icon">▤</div><div><span>Solicitudes</span><strong id="statOrders">0</strong><small>Pedidos y trámites</small></div></article>
+          <article class="stat stat-amber" data-stat-target="pending" role="button" tabindex="0" aria-label="Ver solicitudes pendientes"><div class="stat-icon">!</div><div><span>Pendientes</span><strong id="statPending">0</strong><small>Requieren atención</small></div></article>
+          <article class="stat stat-cyan" data-stat-target="route" role="button" tabindex="0" aria-label="Ver solicitudes en ruta"><div class="stat-icon">➜</div><div><span>En ruta</span><strong id="statRoute">0</strong><small>Mensajeros activos</small></div></article>
+          <article class="stat stat-green" data-stat-target="revenue" role="button" tabindex="0" aria-label="Ver cobros recaudados"><div class="stat-icon">$</div><div><span>Recaudado</span><strong id="statRevenue">$0.00</strong><small>Cobros registrados</small></div></article>
         </div>
         <div class="panel-grid">
           <article class="panel wide"><div class="panel-head"><div><span class="eyebrow">Operación</span><h3>Solicitudes recientes</h3></div><button class="ghost" data-go="orders">Ver todas</button></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="recentOrders"></tbody></table></div></article>
@@ -97,7 +103,7 @@
 
       <section id="payments" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Cartera</span><h3>Cobros</h3></div></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Solicitud</th><th>Cliente</th><th>Método</th><th>Valor</th><th>Estado</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
 
-      <section id="invites" class="view"><div class="panel form-panel"><span class="eyebrow">Captación</span><h3>Crear invitación de cliente</h3><p class="muted">Genera un enlace único para enviar por WhatsApp.</p><form id="inviteForm" class="invite-form"><label>Nombre o negocio<input id="inviteName" required placeholder="Nombre del cliente" /></label><label>WhatsApp<input id="invitePhone" required placeholder="+593..." /></label><button class="primary action-primary" type="submit">Generar enlace</button></form><div id="inviteResult" class="invite-result hidden"><span>Enlace generado</span><div class="copy-row"><input id="inviteLink" readonly /><button id="copyInvite" type="button">Copiar</button></div></div></div></section>
+      <section id="invites" class="view"><div class="panel form-panel"><span class="eyebrow">Captación</span><h3>Crear invitación de cliente</h3><p class="muted">Genera un enlace único para enviar por WhatsApp.</p><form id="inviteForm" class="invite-form"><label>Nombre o negocio<input id="inviteName" required placeholder="Nombre del cliente" /></label><label>WhatsApp<input id="invitePhone" required placeholder="+593..." /></label><button class="primary action-primary" type="submit">Generar enlace</button></form><div id="inviteResult" class="invite-result hidden"><span>Enlace generado</span><div class="copy-row"><input id="inviteLink" readonly /><button id="copyInvite" type="button">Copiar</button></div></div></section>
 
       <section id="reports" class="view"><div class="panel"><span class="eyebrow">Análisis</span><h3>Reportes operativos</h3><p class="muted">Exporta las solicitudes registradas en el sistema.</p><div class="report-box"><strong id="reportSummary"></strong><button id="downloadCsv" class="primary">Descargar CSV de solicitudes</button></div></div></section>
     </main>
@@ -110,6 +116,31 @@
   <script src="/admin/modern-admin.js"></script>
   <script src="/admin/client-locations.js"></script>
   <script src="/admin/tracking-labels.js"></script>
-  <script>document.getElementById('ordersNewOrder')?.addEventListener('click',()=>document.getElementById('heroNewOrder')?.click());</script>
+  <script>
+    document.getElementById('ordersNewOrder')?.addEventListener('click',()=>document.getElementById('heroNewOrder')?.click());
+
+    (()=>{
+      const openOrdersWithFilter = filter => {
+        document.querySelector('[data-view="orders"]')?.click();
+        const select=document.getElementById('orderFilter');
+        if(select){select.value=filter;select.dispatchEvent(new Event('change',{bubbles:true}));}
+        setTimeout(()=>document.getElementById('orders')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+      };
+      const activateStat = card => {
+        const target=card?.dataset?.statTarget;
+        if(target==='orders') openOrdersWithFilter('all');
+        if(target==='pending') openOrdersWithFilter('Pendiente');
+        if(target==='route') openOrdersWithFilter('En camino');
+        if(target==='revenue') {
+          document.querySelector('[data-view="payments"]')?.click();
+          setTimeout(()=>document.getElementById('payments')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+        }
+      };
+      document.querySelectorAll('.stat[data-stat-target]').forEach(card=>{
+        card.addEventListener('click',()=>activateStat(card));
+        card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();activateStat(card);}});
+      });
+    })();
+  </script>
 </body>
 </html>
