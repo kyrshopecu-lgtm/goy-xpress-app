@@ -32,24 +32,26 @@ test('Cliente v1.2: botones cableados, cuenta previa, logo y Maps automático', 
   assert.doesNotMatch(code, /label=["'](?:Distancia|Kilómetros|Km manual)/i);
 });
 
-test('Mensajero v1.2: botones cableados, cuenta previa, foto y trabajos asignados', () => {
-  const code = source('CourierAppV12.js');
+test('Mensajero v1.3: OTP, foto, botones cableados y trabajos asignados', () => {
+  const code = source('CourierAppV13.js');
   assertInteractiveElementsAreWired(code, 'Mensajero');
-  assert.match(code, /registerCourier/);
-  assert.match(code, /login\('courier'/);
+  assert.match(code, /requestCourierOtp/);
+  assert.match(code, /verifyCourierOtp/);
   assert.match(code, /pickCourierPhoto/);
   assert.match(code, /getCourierJobs/);
   assert.match(code, /registerPickupEvidence/);
   assert.match(code, /registerDeliveryEvidence/);
   assert.match(code, /startLocationTracking/);
-  assert.doesNotMatch(code, /Clave de operación|X-Request-Secret|Código \+ clave/i);
+  assert.doesNotMatch(code, /Contraseña|registerCourier|login\('courier'|Clave de operación|X-Request-Secret|Código \+ clave/i);
 });
 
-test('Administración y API v5 usan cuentas aprobadas y Google Routes', () => {
+test('OTP Mensajero está en servidor y API v5 mantiene Google Routes', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server', 'server-v5.js'), 'utf8');
+  const otp = fs.readFileSync(path.join(__dirname, '..', 'server', 'courierOtp.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '..', 'admin-web', 'role-security.js'), 'utf8');
-  assert.match(server, /\/auth\/client\/register/);
-  assert.match(server, /\/auth\/courier\/register/);
+  assert.match(otp, /otpChallenges/);
+  assert.match(otp, /sendWhatsApp/);
+  assert.match(otp, /sendEmail/);
   assert.match(server, /routes\.googleapis\.com\/directions\/v2:computeRoutes/);
   assert.match(server, /courierId/);
   assert.match(admin, /\/admin\/couriers\//);
