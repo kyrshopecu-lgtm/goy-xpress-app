@@ -91,7 +91,7 @@
 
       <section id="clients" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Base comercial</span><h3>Clientes</h3></div><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
 
-      <section id="orders" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Operación diaria</span><h3>Solicitudes y trámites</h3></div><div class="panel-tools"><button id="ordersNewOrder" class="primary compact" type="button">＋ Nueva orden</button><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
+      <section id="orders" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Operación diaria</span><h3>Solicitudes y trámites</h3></div><div class="panel-tools"><button id="ordersNewOrder" class="primary compact" type="button">＋ Nueva orden</button><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div></div><div class="table-wrap"><table><thead><tr><th># / Tracking</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
 
       <section id="couriers" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Equipo operativo</span><h3>Mensajeros</h3></div></div><div id="courierCards" class="cards"></div></div></section>
 
@@ -109,6 +109,7 @@
   <script src="/admin/app.js"></script>
   <script src="/admin/modern-admin.js"></script>
   <script src="/admin/client-locations.js"></script>
+  <script src="/admin/tracking-labels.js"></script>
   <script>document.getElementById('ordersNewOrder')?.addEventListener('click',()=>document.getElementById('heroNewOrder')?.click());</script>
 </body>
 </html>
