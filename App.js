@@ -2,7 +2,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -15,15 +14,26 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Picker} from '@react-native-picker/picker';
 import {StatusBar} from 'expo-status-bar';
+
+import {
+  adjustInventoryItem as adjustRemoteInventoryItem,
+  createInventoryItem as createRemoteInventoryItem,
+  createInvitation as createRemoteInvitation,
+  createServiceRequest,
+  loadWorkspace,
+  revokeInvitation as revokeRemoteInvitation,
+  subscribeToWorkspace,
+  updateServiceRequest,
+} from './src/backend';
 
 const {
   PRICING,
@@ -34,7 +44,6 @@ const {
   calculateExecutivePrice,
   createCode,
   nonNegativeNumber,
-  normalizeRequest,
   requestKindLabel,
   requestPrimaryAddress,
 } = require('./src/domain');
@@ -58,16 +67,7 @@ const COLORS = {
 };
 
 const ADMIN_WHATSAPP = '593997729964';
-const REQUESTS_STORAGE_KEY = 'goy_requests';
-const INVENTORY_STORAGE_KEY = 'goy_inventory_v3';
 const OFFICE_ADDRESS = 'Jorge Juan y Av. Mariana de Jesús, Quito';
-const COURIERS = ['Carlos M.', 'Luis R.', 'Andrea P.'];
-
-const ROLE_OPTIONS = [
-  {key: 'client', label: 'Cliente'},
-  {key: 'admin', label: 'Administrador'},
-  {key: 'courier', label: 'Mensajero'},
-];
 
 const STATUS_META = {
   [REQUEST_STATUS.pending]: {color: COLORS.yellow, background: '#FFF6DF'},
@@ -197,42 +197,37 @@ function openDirections(address) {
   );
 }
 
-function AppHeader({role, onRoleChange}) {
+function roleLabel(role) {
+  if (role === 'admin') return 'Administrador';
+  if (role === 'courier') return 'Mensajero';
+  return 'Cliente';
+}
+
+function AppHeader({profile, onSignOut}) {
   return (
     <View style={styles.header}>
       <View style={styles.brandRow}>
-        <Image source={require('./assets/goy-logo.jpg')} style={styles.logo} />
+        <Image
+          source={
+            profile?.avatarUrl
+              ? {uri: profile.avatarUrl}
+              : require('./assets/goy-logo.jpg')
+          }
+          style={styles.logo}
+        />
         <View style={styles.brandCopy}>
           <Text style={styles.brandTitle}>GOY XPRESS</Text>
-          <Text style={styles.brandSubtitle}>Mensajería · Trámites · Logística</Text>
+          <Text numberOfLines={1} style={styles.brandSubtitle}>
+            {profile?.full_name || 'Acceso seguro'} · {roleLabel(profile?.role)}
+          </Text>
         </View>
-        <View style={styles.onlineBadge}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.onlineText}>Quito</Text>
-        </View>
-      </View>
-
-      <View style={styles.roleTabs}>
-        {ROLE_OPTIONS.map(option => {
-          const active = option.key === role;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={option.label}
-              accessibilityState={{selected: active}}
-              key={option.key}
-              onPress={() => onRoleChange(option.key)}
-              style={({pressed}) => [
-                styles.roleTab,
-                active && styles.roleTabActive,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={[styles.roleTabText, active && styles.roleTabTextActive]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar sesión"
+          onPress={onSignOut}
+          style={({pressed}) => [styles.logoutButton, pressed && styles.pressed]}>
+          <Text style={styles.logoutText}>Salir</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -706,19 +701,18 @@ function InventoryScreen({inventory, onAddItem, onAdjustItem}) {
   const [quantity, setQuantity] = useState('1');
   const [price, setPrice] = useState('0');
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) {
       Alert.alert('Falta el producto', 'Escribe el nombre del producto.');
       return;
     }
-    onAddItem({
-      id: createCode('inventory'),
+    const created = await onAddItem({
       name: name.trim(),
       sku: sku.trim() || 'Sin SKU',
       quantity: Math.max(0, Math.floor(nonNegativeNumber(quantity))),
       price: nonNegativeNumber(price),
-      createdAt: new Date().toISOString(),
     });
+    if (!created) return;
     setName('');
     setSku('');
     setQuantity('1');
@@ -800,11 +794,39 @@ function InventoryScreen({inventory, onAddItem, onAdjustItem}) {
   );
 }
 
-function ProfileScreen() {
+function ProfileScreen({profile, onSignOut}) {
   return (
     <Page>
-      <Text style={styles.screenTitle}>GOY XPRESS</Text>
-      <Text style={styles.screenSubtitle}>Tu operación física y logística en Quito.</Text>
+      <Text style={styles.screenTitle}>Mi perfil</Text>
+      <Text style={styles.screenSubtitle}>Datos verificados de tu cuenta GOY XPRESS.</Text>
+
+      <Card style={styles.profileIdentityCard}>
+        <Image
+          source={
+            profile?.avatarUrl
+              ? {uri: profile.avatarUrl}
+              : require('./assets/goy-logo.jpg')
+          }
+          style={styles.profileAvatar}
+        />
+        <View style={styles.flexOne}>
+          <Text style={styles.cardTitle}>{profile?.full_name || 'Usuario GOY XPRESS'}</Text>
+          <Text style={styles.profileHint}>{roleLabel(profile?.role)}</Text>
+          <Text style={styles.profileText}>{profile?.email || 'Correo no registrado'}</Text>
+          <Text style={styles.profileText}>{profile?.whatsapp || 'WhatsApp no registrado'}</Text>
+        </View>
+      </Card>
+
+      {profile?.address ? (
+        <Card>
+          <Text style={styles.cardTitle}>Dirección y documento</Text>
+          <Text style={styles.profileText}>{profile.address}</Text>
+          <Text style={styles.profileHint}>
+            {profile.document_type === 'ruc' ? 'RUC' : 'Cédula'}: {profile.document_number}
+          </Text>
+          <Text style={styles.profileHint}>Contacto: {profile.contact_phone}</Text>
+        </Card>
+      ) : null}
 
       <Card>
         <Text style={styles.profileIcon}>⌂</Text>
@@ -841,7 +863,8 @@ function ProfileScreen() {
         onPress={contactAdmin}
         variant="green"
       />
-      <Text style={styles.versionText}>Aplicación GOY XPRESS · versión 3.1.0</Text>
+      <PrimaryButton title="Cerrar sesión" onPress={onSignOut} variant="light" />
+      <Text style={styles.versionText}>Aplicación GOY XPRESS · versión 3.2.2</Text>
     </Page>
   );
 }
@@ -1489,6 +1512,8 @@ function PartnerForm({onBack, onCreate}) {
 function ClientPortal({
   requests,
   inventory,
+  profile,
+  onSignOut,
   onAddRequest,
   onAddInventoryItem,
   onAdjustInventoryItem,
@@ -1496,20 +1521,24 @@ function ClientPortal({
   const [screen, setScreen] = useState('home');
   const [form, setForm] = useState(null);
 
-  const createRequest = request => {
-    onAddRequest(request);
-    setForm(null);
-    setScreen('history');
-    setTimeout(() => {
-      Alert.alert(
-        'Solicitud registrada',
-        `${request.code}\nValor del servicio: ${money(request.serviceCost)}\n\n¿Deseas avisar ahora al administrador?`,
-        [
-          {text: 'Ahora no', style: 'cancel'},
-          {text: 'Avisar por WhatsApp', onPress: () => openAdminWhatsApp(request)},
-        ],
-      );
-    }, 120);
+  const createRequest = async request => {
+    try {
+      await onAddRequest(request);
+      setForm(null);
+      setScreen('history');
+      setTimeout(() => {
+        Alert.alert(
+          'Solicitud registrada',
+          `${request.code}\nValor del servicio: ${money(request.serviceCost)}\n\n¿Deseas avisar ahora al administrador?`,
+          [
+            {text: 'Ahora no', style: 'cancel'},
+            {text: 'Avisar por WhatsApp', onPress: () => openAdminWhatsApp(request)},
+          ],
+        );
+      }, 120);
+    } catch {
+      // GoyXpressApplication muestra el error del servidor.
+    }
   };
 
   if (form === 'scheduled' || form === 'express') {
@@ -1543,8 +1572,9 @@ function ClientPortal({
         onAdjustItem={onAdjustInventoryItem}
       />
     );
-  } else if (screen === 'profile') content = <ProfileScreen />;
-  else {
+  } else if (screen === 'profile') {
+    content = <ProfileScreen profile={profile} onSignOut={onSignOut} />;
+  } else {
     content = (
       <ClientHome
         requests={requests}
@@ -1563,9 +1593,19 @@ function ClientPortal({
   );
 }
 
-function AdminPanel({requests, onUpdateRequest}) {
+function AdminPanel({
+  requests,
+  couriers,
+  invitations,
+  onUpdateRequest,
+  onCreateInvitation,
+  onRevokeInvitation,
+}) {
   const [section, setSection] = useState('operation');
   const [filter, setFilter] = useState('pending');
+  const [inviteLabel, setInviteLabel] = useState('');
+  const [lastInvite, setLastInvite] = useState(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const stats = useMemo(
     () => ({
@@ -1599,9 +1639,17 @@ function AdminPanel({requests, onUpdateRequest}) {
       request.status === REQUEST_STATUS.finished && request.totalToCollect > 0,
   );
 
-  const assign = (request, courier) => {
-    onUpdateRequest(request.code, {courier, status: REQUEST_STATUS.assigned});
-    Alert.alert('Solicitud asignada', `${request.code} fue asignada a ${courier}.`);
+  const assign = async (request, courier) => {
+    const updated = await onUpdateRequest(request.code, {
+      courierId: courier.id,
+      status: REQUEST_STATUS.assigned,
+    });
+    if (updated) {
+      Alert.alert(
+        'Solicitud asignada',
+        `${request.code} fue asignada a ${courier.fullName}.`,
+      );
+    }
   };
 
   const finishPartnerLead = request => {
@@ -1627,6 +1675,29 @@ function AdminPanel({requests, onUpdateRequest}) {
     );
   };
 
+  const createInvite = async role => {
+    if (inviteBusy) return;
+    setInviteBusy(true);
+    try {
+      const invitation = await onCreateInvitation(role, inviteLabel);
+      setLastInvite(invitation);
+      setInviteLabel('');
+      const recipient = role === 'courier' ? 'mensajero' : 'cliente';
+      const message = [
+        `Hola${invitation.label ? ` ${invitation.label}` : ''},`,
+        `GOY XPRESS te invita a registrarte como ${recipient}.`,
+        'Abre este enlace desde el teléfono donde usarás la aplicación:',
+        invitation.link,
+        'El enlace es personal, funciona una sola vez y vence en 72 horas.',
+      ].join('\n\n');
+      await Share.share({title: 'Invitación GOY XPRESS', message});
+    } catch (error) {
+      Alert.alert('No se pudo crear', error.message);
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
   return (
     <Page>
       <Text style={styles.eyebrow}>CENTRO DE OPERACIONES</Text>
@@ -1648,11 +1719,103 @@ function AdminPanel({requests, onUpdateRequest}) {
         options={[
           {label: 'Operación', value: 'operation'},
           {label: 'Liquidaciones COD', value: 'settlements'},
+          {label: 'Accesos', value: 'access'},
         ]}
       />
       <View style={styles.blockSpacer} />
 
-      {section === 'settlements' ? (
+      {section === 'access' ? (
+        <>
+          <Card style={styles.infoCard}>
+            <Text style={styles.infoTitle}>Invitaciones privadas</Text>
+            <Text style={styles.infoText}>
+              Escribe el nombre del invitado y genera un enlace de un solo uso. El rol
+              queda fijado por el servidor y no puede cambiarse desde la APK.
+            </Text>
+          </Card>
+          <Card style={styles.formCard}>
+            <Field
+              label="Nombre o negocio del invitado (opcional)"
+              value={inviteLabel}
+              onChangeText={setInviteLabel}
+              placeholder="Ej: Comercial Anita"
+            />
+            <PrimaryButton
+              title={inviteBusy ? 'Creando…' : 'Crear enlace para cliente'}
+              onPress={() => createInvite('client')}
+              disabled={inviteBusy}
+              variant="green"
+            />
+            <PrimaryButton
+              title={inviteBusy ? 'Creando…' : 'Crear enlace para mensajero'}
+              onPress={() => createInvite('courier')}
+              disabled={inviteBusy}
+              variant="blue"
+            />
+          </Card>
+
+          {lastInvite ? (
+            <Card style={styles.inviteResultCard}>
+              <Text style={styles.cardTitle}>Último enlace creado</Text>
+              <Text selectable style={styles.inviteLink}>{lastInvite.link}</Text>
+              <PrimaryButton
+                title="Compartir nuevamente"
+                onPress={() =>
+                  Share.share({
+                    title: 'Invitación GOY XPRESS',
+                    message: lastInvite.link,
+                  })
+                }
+                variant="light"
+                compact
+              />
+            </Card>
+          ) : null}
+
+          <Text style={styles.sectionTitle}>Invitaciones recientes</Text>
+          {invitations.length === 0 ? (
+            <EmptyState
+              title="Aún no existen invitaciones"
+              message="Los enlaces creados aparecerán aquí con su estado y vencimiento."
+            />
+          ) : (
+            invitations.map(invitation => {
+              const isActive =
+                !invitation.used_at &&
+                !invitation.revoked_at &&
+                new Date(invitation.expires_at).getTime() > Date.now();
+              return (
+                <Card key={invitation.id}>
+                  <Text style={styles.cardTitle}>
+                    {invitation.label || 'Invitación sin nombre'}
+                  </Text>
+                  <Text style={styles.profileHint}>
+                    {invitation.role === 'courier' ? 'Mensajero' : 'Cliente'} ·{' '}
+                    {invitation.used_at
+                      ? 'Utilizada'
+                      : invitation.revoked_at
+                        ? 'Revocada'
+                        : isActive
+                          ? 'Activa'
+                          : 'Vencida'}
+                  </Text>
+                  <Text style={styles.profileHint}>
+                    Vence: {formatDate(invitation.expires_at)}
+                  </Text>
+                  {isActive ? (
+                    <PrimaryButton
+                      title="Revocar enlace"
+                      onPress={() => onRevokeInvitation(invitation.id)}
+                      variant="light"
+                      compact
+                    />
+                  ) : null}
+                </Card>
+              );
+            })
+          )}
+        </>
+      ) : section === 'settlements' ? (
         <>
           <Card style={styles.infoCard}>
             <Text style={styles.infoTitle}>Transferencias en máximo 24 horas</Text>
@@ -1729,15 +1892,19 @@ function AdminPanel({requests, onUpdateRequest}) {
                   ) : (
                     <View style={styles.assignmentBox}>
                       <Text style={styles.assignmentTitle}>Asignar mensajero</Text>
-                      {COURIERS.map(courier => (
+                      {couriers.length === 0 ? (
+                        <Text style={styles.infoText}>
+                          Primero registra un mensajero desde la sección Accesos.
+                        </Text>
+                      ) : couriers.map(courier => (
                         <Pressable
-                          key={courier}
+                          key={courier.id}
                           onPress={() => assign(request, courier)}
                           style={({pressed}) => [
                             styles.assignmentButton,
                             pressed && styles.pressed,
                           ]}>
-                          <Text style={styles.assignmentName}>{courier}</Text>
+                          <Text style={styles.assignmentName}>{courier.fullName}</Text>
                           <Text style={styles.assignmentAction}>Asignar ›</Text>
                         </Pressable>
                       ))}
@@ -1753,16 +1920,13 @@ function AdminPanel({requests, onUpdateRequest}) {
   );
 }
 
-function CourierPanel({requests, onUpdateRequest}) {
-  const [courierName, setCourierName] = useState(COURIERS[0]);
+function CourierPanel({requests, profile, onUpdateRequest}) {
   const jobs = requests.filter(
     request =>
-      request.courier === courierName &&
       [REQUEST_STATUS.assigned, REQUEST_STATUS.onRoute].includes(request.status),
   );
   const completedToday = requests.filter(
-    request =>
-      request.courier === courierName && request.status === REQUEST_STATUS.finished,
+    request => request.status === REQUEST_STATUS.finished,
   ).length;
 
   const advance = request => {
@@ -1805,28 +1969,10 @@ function CourierPanel({requests, onUpdateRequest}) {
       </View>
 
       <Text style={styles.fieldLabel}>Mensajero activo</Text>
-      <View style={styles.courierChoices}>
-        {COURIERS.map(courier => {
-          const active = courier === courierName;
-          return (
-            <Pressable
-              key={courier}
-              onPress={() => setCourierName(courier)}
-              style={({pressed}) => [
-                styles.courierChoice,
-                active && styles.courierChoiceActive,
-                pressed && styles.pressed,
-              ]}>
-              <Text
-                style={[
-                  styles.courierChoiceText,
-                  active && styles.courierChoiceTextActive,
-                ]}>
-                {courier}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={[styles.courierChoice, styles.courierChoiceActive]}>
+        <Text style={[styles.courierChoiceText, styles.courierChoiceTextActive]}>
+          {profile?.full_name || 'Mensajero GOY XPRESS'}
+        </Text>
       </View>
 
       <View style={styles.blockSpacer} />
@@ -1877,122 +2023,157 @@ function CourierPanel({requests, onUpdateRequest}) {
   );
 }
 
-function GoyXpressApplication() {
-  const [role, setRole] = useState('client');
+export function GoyXpressApplication({profile, onSignOut}) {
+  const role = profile?.role;
   const [requests, setRequests] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [couriers, setCouriers] = useState([]);
+  const [invitations, setInvitations] = useState([]);
   const [isReady, setIsReady] = useState(false);
-  const requestWriteQueue = useRef(Promise.resolve());
-  const inventoryWriteQueue = useRef(Promise.resolve());
+  const [loadError, setLoadError] = useState('');
+
+  const refreshWorkspace = useCallback(async (silent = false) => {
+    if (!profile) return;
+    if (!silent) setLoadError('');
+    try {
+      const workspace = await loadWorkspace(profile);
+      setRequests(workspace.requests);
+      setInventory(workspace.inventory);
+      setCouriers(workspace.couriers);
+      setInvitations(workspace.invitations);
+    } catch (error) {
+      if (!silent) setLoadError(error.message);
+    } finally {
+      if (!silent) setIsReady(true);
+    }
+  }, [profile]);
 
   useEffect(() => {
-    let mounted = true;
-    async function loadLocalData() {
-      try {
-        const [storedRequests, storedInventory] = await Promise.all([
-          AsyncStorage.getItem(REQUESTS_STORAGE_KEY),
-          AsyncStorage.getItem(INVENTORY_STORAGE_KEY),
-        ]);
-        if (!mounted) return;
-
-        if (storedRequests) {
-          const parsed = JSON.parse(storedRequests);
-          if (Array.isArray(parsed)) setRequests(parsed.map(normalizeRequest));
-        }
-        if (storedInventory) {
-          const parsed = JSON.parse(storedInventory);
-          if (Array.isArray(parsed)) setInventory(parsed);
-        }
-      } catch {
-        Alert.alert(
-          'Datos locales',
-          'No se pudieron leer los datos anteriores. La aplicación seguirá funcionando con una bandeja nueva.',
-        );
-      } finally {
-        if (mounted) setIsReady(true);
-      }
-    }
-    loadLocalData();
+    let active = true;
+    let refreshTimer;
+    refreshWorkspace();
+    const unsubscribe = subscribeToWorkspace(() => {
+      if (!active) return;
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => refreshWorkspace(true), 350);
+    });
     return () => {
-      mounted = false;
+      active = false;
+      clearTimeout(refreshTimer);
+      unsubscribe();
     };
+  }, [refreshWorkspace]);
+
+  const addRequest = useCallback(async request => {
+    try {
+      const created = await createServiceRequest(request);
+      setRequests(previous => [created, ...previous]);
+      return created;
+    } catch (error) {
+      Alert.alert('No se pudo registrar', error.message);
+      throw error;
+    }
   }, []);
 
-  const commitRequests = useCallback(updater => {
-    setRequests(previous => {
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      requestWriteQueue.current = requestWriteQueue.current
-        .catch(() => undefined)
-        .then(() => AsyncStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(next)))
-        .catch(() =>
-          Alert.alert('No se pudo guardar', 'Revisa el espacio disponible del teléfono.'),
-        );
-      return next;
-    });
+  const updateRequest = useCallback(async (code, patch) => {
+    try {
+      const updated = await updateServiceRequest(code, patch);
+      await refreshWorkspace(true);
+      return updated;
+    } catch (error) {
+      Alert.alert('No se pudo actualizar', error.message);
+      return null;
+    }
+  }, [refreshWorkspace]);
+
+  const addInventoryItem = useCallback(async item => {
+    try {
+      const created = await createRemoteInventoryItem(item);
+      setInventory(previous => [created, ...previous]);
+      return created;
+    } catch (error) {
+      Alert.alert('No se pudo guardar', error.message);
+      return null;
+    }
   }, []);
 
-  const commitInventory = useCallback(updater => {
-    setInventory(previous => {
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      inventoryWriteQueue.current = inventoryWriteQueue.current
-        .catch(() => undefined)
-        .then(() => AsyncStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(next)))
-        .catch(() =>
-          Alert.alert('No se pudo guardar', 'Revisa el espacio disponible del teléfono.'),
-        );
-      return next;
-    });
+  const adjustInventoryItem = useCallback(async (id, amount) => {
+    try {
+      const updated = await adjustRemoteInventoryItem(id, amount);
+      setInventory(previous =>
+        previous.map(item => (item.id === id ? updated : item)),
+      );
+      return updated;
+    } catch (error) {
+      Alert.alert('No se pudo actualizar', error.message);
+      return null;
+    }
   }, []);
 
-  const addRequest = useCallback(
-    request => commitRequests(previous => [request, ...previous]),
-    [commitRequests],
-  );
+  const createInvitation = useCallback(async (inviteRole, label) => {
+    const created = await createRemoteInvitation(inviteRole, label);
+    await refreshWorkspace(true);
+    return created;
+  }, [refreshWorkspace]);
 
-  const updateRequest = useCallback(
-    (code, patch) =>
-      commitRequests(previous =>
-        previous.map(request =>
-          request.code === code ? {...request, ...patch} : request,
-        ),
-      ),
-    [commitRequests],
-  );
-
-  const addInventoryItem = useCallback(
-    item => commitInventory(previous => [item, ...previous]),
-    [commitInventory],
-  );
-
-  const adjustInventoryItem = useCallback(
-    (id, amount) =>
-      commitInventory(previous =>
-        previous.map(item =>
-          item.id === id
-            ? {...item, quantity: Math.max(0, item.quantity + amount)}
-            : item,
-        ),
-      ),
-    [commitInventory],
-  );
+  const revokeInvitation = useCallback(async invitationId => {
+    Alert.alert(
+      'Revocar invitación',
+      'El enlace dejará de funcionar inmediatamente.',
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Revocar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await revokeRemoteInvitation(invitationId);
+              await refreshWorkspace(true);
+            } catch (error) {
+              Alert.alert('No se pudo revocar', error.message);
+            }
+          },
+        },
+      ],
+    );
+  }, [refreshWorkspace]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" backgroundColor={COLORS.navy} />
-      <AppHeader role={role} onRoleChange={setRole} />
+      <AppHeader profile={profile} onSignOut={onSignOut} />
       {!isReady ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={COLORS.blue} />
-          <Text style={styles.loadingText}>Preparando GOY XPRESS…</Text>
+          <Text style={styles.loadingText}>Sincronizando GOY XPRESS…</Text>
+        </View>
+      ) : loadError ? (
+        <View style={styles.loadingBox}>
+          <Text style={styles.errorTitle}>No se pudo sincronizar</Text>
+          <Text style={styles.loadingText}>{loadError}</Text>
+          <PrimaryButton title="Reintentar" onPress={() => refreshWorkspace()} />
         </View>
       ) : role === 'admin' ? (
-        <AdminPanel requests={requests} onUpdateRequest={updateRequest} />
+        <AdminPanel
+          requests={requests}
+          couriers={couriers}
+          invitations={invitations}
+          onUpdateRequest={updateRequest}
+          onCreateInvitation={createInvitation}
+          onRevokeInvitation={revokeInvitation}
+        />
       ) : role === 'courier' ? (
-        <CourierPanel requests={requests} onUpdateRequest={updateRequest} />
+        <CourierPanel
+          requests={requests}
+          profile={profile}
+          onUpdateRequest={updateRequest}
+        />
       ) : (
         <ClientPortal
           requests={requests}
           inventory={inventory}
+          profile={profile}
+          onSignOut={onSignOut}
           onAddRequest={addRequest}
           onAddInventoryItem={addInventoryItem}
           onAdjustInventoryItem={adjustInventoryItem}
@@ -2022,7 +2203,8 @@ class AppErrorBoundary extends React.Component {
           <View style={styles.errorCard}>
             <Text style={styles.errorTitle}>No pudimos mostrar esta pantalla</Text>
             <Text style={styles.errorMessage}>
-              Tus solicitudes siguen guardadas. Presiona reintentar para volver a la aplicación.
+              Tus datos permanecen protegidos en el servidor. Presiona reintentar para
+              volver a la aplicación.
             </Text>
             <PrimaryButton
               title="Reintentar"
@@ -2038,10 +2220,10 @@ class AppErrorBoundary extends React.Component {
   }
 }
 
-export default function App() {
+export default function App(props) {
   return (
     <AppErrorBoundary>
-      <GoyXpressApplication />
+      <GoyXpressApplication {...props} />
     </AppErrorBoundary>
   );
 }
@@ -2050,12 +2232,25 @@ const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: COLORS.background},
   flexOne: {flex: 1},
   pressed: {opacity: 0.72, transform: [{scale: 0.99}]},
-  header: {backgroundColor: COLORS.navy, paddingHorizontal: 14, paddingTop: 10},
+  header: {
+    backgroundColor: COLORS.navy,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
   brandRow: {flexDirection: 'row', alignItems: 'center'},
   logo: {width: 48, height: 48, borderRadius: 11, backgroundColor: COLORS.white},
   brandCopy: {flex: 1, marginLeft: 10},
   brandTitle: {color: COLORS.white, fontSize: 19, fontWeight: '900', letterSpacing: 0.2},
   brandSubtitle: {color: '#C7D8E0', fontSize: 11, marginTop: 2},
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: '#507080',
+    borderRadius: 9,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
+  logoutText: {color: COLORS.white, fontSize: 11, fontWeight: '900'},
   onlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2312,6 +2507,14 @@ const styles = StyleSheet.create({
   quantityButtonText: {color: COLORS.navy, fontSize: 20, fontWeight: '900'},
   quantityValue: {minWidth: 24, textAlign: 'center', color: COLORS.navy, fontWeight: '900'},
   profileIcon: {fontSize: 31, color: COLORS.blue, marginBottom: 7},
+  profileIdentityCard: {flexDirection: 'row', alignItems: 'center'},
+  profileAvatar: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    marginRight: 14,
+    backgroundColor: '#EAF0F3',
+  },
   profileText: {color: COLORS.ink, fontSize: 14, fontWeight: '800'},
   profileHint: {color: COLORS.muted, fontSize: 11, marginTop: 5},
   checkRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 10},
@@ -2331,6 +2534,15 @@ const styles = StyleSheet.create({
   },
   assignmentName: {color: COLORS.ink, fontWeight: '800'},
   assignmentAction: {color: COLORS.blue, fontWeight: '900'},
+  inviteResultCard: {borderColor: COLORS.green, backgroundColor: COLORS.greenSoft},
+  inviteLink: {
+    color: COLORS.navy,
+    fontSize: 12,
+    lineHeight: 18,
+    backgroundColor: COLORS.white,
+    borderRadius: 9,
+    padding: 10,
+  },
   actionStack: {marginTop: 8},
   courierHeading: {flexDirection: 'row', alignItems: 'flex-start'},
   completedBadge: {backgroundColor: COLORS.greenSoft, padding: 10, borderRadius: 12, alignItems: 'center'},

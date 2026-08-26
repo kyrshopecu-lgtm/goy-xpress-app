@@ -1,25 +1,28 @@
 {
   "name": "goy-xpress-mobile",
-  "version": "3.1.0",
+  "version": "3.2.2",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test src/domain.test.js",
+    "test": "node --test src/domain.test.js src/authDomain.test.js src/security.test.js",
     "export:android": "expo export --platform android --output-dir dist",
     "verify": "npm test && npm run export:android"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-picker/picker": "^2.11.0",
+    "@supabase/supabase-js": "^2.112.3",
     "expo": "~53.0.0",
     "expo-asset": "~11.1.7",
     "expo-constants": "~17.1.8",
+    "expo-image-picker": "~16.1.4",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
-    "react-native": "0.79.0"
+    "react-native": "0.79.0",
+    "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2"

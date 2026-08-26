@@ -1,6 +1,9 @@
-# GOY XPRESS Mobile 3.0
+# GOY XPRESS Mobile 3.2
 
 Aplicación móvil en React Native y Expo para la operación de GOY XPRESS en Quito.
+
+La versión 3.2 incorpora autenticación real, un único administrador, registro por
+invitación y separación de datos por rol mediante Supabase Row Level Security.
 
 ## Funciones incluidas
 
@@ -19,6 +22,9 @@ Aplicación móvil en React Native y Expo para la operación de GOY XPRESS en Qu
 - Registro de productos y ajuste de inventario.
 - Solicitud del plan de bodega, empaque, entregas y apoyo comercial.
 - Historial y seguimiento de estados.
+- Registro privado mediante enlace de un solo uso.
+- Acceso con código OTP por WhatsApp o correo.
+- Perfil con cédula/RUC, datos de contacto y fotografía privada.
 - Aviso por WhatsApp al administrador `+593 99 772 9964` con mensaje
   prellenado.
 
@@ -29,26 +35,38 @@ Aplicación móvil en React Native y Expo para la operación de GOY XPRESS en Qu
 - Atención de prospectos del plan de bodega y ventas.
 - Control de valores contra entrega.
 - Confirmación de liquidaciones transferidas.
+- Inicio mediante usuario y contraseña, sin selector público de rol.
+- Creación y revocación de enlaces personalizados para clientes y mensajeros.
+- La base de datos impide registrar un segundo administrador.
 
 ### Mensajero
 
-- Selección de mensajero activo.
 - Visualización de tareas asignadas.
 - Llamada al cliente y apertura de la dirección en mapas.
 - Estados `Asignado`, `En ruta` y `Finalizado`.
 - Confirmación del valor a cobrar al finalizar.
 
-## Persistencia
+## Seguridad y persistencia
 
-Las solicitudes y el inventario se guardan localmente con AsyncStorage. La
-versión 3.0 también migra las solicitudes creadas por versiones anteriores.
+Las sesiones se conservan en el dispositivo y los perfiles, invitaciones,
+solicitudes e inventario se almacenan en Supabase. Las políticas RLS permiten:
+
+- al cliente consultar únicamente sus solicitudes e inventario;
+- al mensajero consultar únicamente las tareas que le fueron asignadas;
+- al único administrador gestionar la operación completa;
+- mantener las fotografías en un bucket privado por usuario.
+
+El esquema y las políticas están en
+`supabase/migrations/202608250001_secure_access.sql`.
 
 ## WhatsApp
 
-La aplicación abre WhatsApp con una solicitud completa y prellenada. El usuario
-debe pulsar **Enviar**. Para una notificación totalmente automática se requiere
-WhatsApp Business Cloud API y un backend seguro; los tokens nunca deben guardarse
-dentro de la aplicación móvil.
+El acceso por WhatsApp utiliza Supabase Auth con Twilio como proveedor. El
+remitente de WhatsApp Business y las credenciales privadas se configuran en los
+paneles de Twilio y Supabase; nunca se guardan en GitHub ni en la APK.
+
+Consulta `supabase/SETUP.md` para activar el proyecto, crear el único
+administrador y realizar las pruebas de punta a punta.
 
 ## Ejecutar y verificar
 
@@ -63,9 +81,10 @@ Escanea el código QR con Expo Go para probar la aplicación.
 
 ## Generar APK
 
-El repositorio incluye `.github/workflows/build-apk.yml`. En GitHub abre
+El repositorio incluye `.github/workflows/build-apk.yml`. Primero configura las
+variables públicas descritas en `.env.example`. En GitHub abre
 **Actions → Generar APK GOY XPRESS → Run workflow**. El APK aparecerá como
-artefacto `GOY-XPRESS-APK` al terminar.
+artefacto `GOY-XPRESS-v3.2.2-INSTALABLE` al terminar.
 
 También puede compilarse con EAS después de vincular el proyecto Expo:
 
@@ -74,14 +93,8 @@ eas build:configure
 eas build --platform android --profile preview
 ```
 
-## Antes de producción
+## Antes de distribuir
 
-La versión actual es funcional en un solo dispositivo. Para operar con varios
-clientes, administradores y mensajeros en tiempo real se debe añadir:
-
-- autenticación por usuario;
-- base de datos en la nube (Supabase o Firebase);
-- notificaciones push;
-- mapas y cálculo automático de distancia;
-- evidencia fotográfica y firma del receptor;
-- permisos separados para cada rol.
+No distribuyas una APK compilada sin las variables de Supabase: mostrará
+“Activación pendiente”. Después de conectar Supabase y Twilio, ejecuta el ciclo
+completo de pruebas descrito en `supabase/SETUP.md` antes de entregar el archivo.

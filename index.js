@@ -1,5 +1,5 @@
 import {registerRootComponent} from 'expo';
 
-import App from './App';
+import SecureRoot from './src/SecureRoot';
 
-registerRootComponent(App);
+registerRootComponent(SecureRoot);

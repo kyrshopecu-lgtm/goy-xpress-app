@@ -2,6 +2,9 @@ name: Generar APK GOY XPRESS
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -9,10 +12,21 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: build-apk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 55
+    env:
+      # La URL del proyecto es pública. Se fija aquí para evitar compilar otra
+      # APK con el dominio incorrecto .supabase.com.
+      EXPO_PUBLIC_SUPABASE_URL: https://fnjjncuatpjybzqwiaet.supabase.co
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_INVITE_BASE_URL: ${{ vars.EXPO_PUBLIC_INVITE_BASE_URL || 'goyxpress://register' }}
+      EXPO_PUBLIC_ADMIN_LOGIN_DOMAIN: ${{ vars.EXPO_PUBLIC_ADMIN_LOGIN_DOMAIN || 'admin.goyxpress.app' }}
 
     steps:
       - name: Descargar proyecto
@@ -21,7 +35,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Configurar Java
@@ -32,6 +46,28 @@ jobs:
 
       - name: Configurar caché Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Validar conexión segura con Supabase
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const expected = 'https://fnjjncuatpjybzqwiaet.supabase.co';
+          const url = String(process.env.EXPO_PUBLIC_SUPABASE_URL || '').trim();
+          const key = String(process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '').trim();
+
+          if (url !== expected) {
+            throw new Error('La URL pública de Supabase no corresponde al proyecto GOY XPRESS.');
+          }
+          if (!key.startsWith('sb_publishable_') || key.length < 30) {
+            throw new Error('Falta la llave publicable válida de Supabase.');
+          }
+          console.log('Configuración pública de Supabase validada.');
+          NODE
+          curl --fail --silent --show-error \
+            --retry 3 --connect-timeout 15 --max-time 30 \
+            -H "apikey: ${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            "${EXPO_PUBLIC_SUPABASE_URL}/auth/v1/settings" >/dev/null
+          echo "Supabase respondió correctamente."
 
       - name: Instalar dependencias exactas
         run: npm ci
@@ -44,44 +80,72 @@ jobs:
       - name: Crear proyecto Android limpio
         run: CI=1 npx expo prebuild --platform android --clean
 
-      - name: Compilar APK release
+      - name: Compilar APK universal optimizado
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon \
+            -Pexpo.useLegacyPackaging=true \
+            -Pandroid.enableProguardInReleaseBuilds=true \
+            -Pandroid.enableShrinkResourcesInReleaseBuilds=true
 
       - name: Preparar instalador GOY XPRESS
-        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.1.0-FUNCIONAL.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-v3.2.2-INSTALABLE.apk
 
-      - name: Verificar alineación y firma Android
+      - name: Verificar integridad, tamaño, manifiesto, alineación y firma
         run: |
+          set -euo pipefail
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-v3.1.0-FUNCIONAL.apk
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-v3.1.0-FUNCIONAL.apk
+          APK=GOY-XPRESS-v3.2.2-INSTALABLE.apk
+          unzip -tq "$APK"
+          APK_SIZE=$(stat -c%s "$APK")
+          test "$APK_SIZE" -lt 50000000
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" 2>&1 | tee firma-android.txt
+          grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true' firma-android.txt
+          grep -Fq 'fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c' firma-android.txt
+          AAPT="$BUILD_TOOLS/aapt"
+          if [ ! -x "$AAPT" ]; then AAPT="$BUILD_TOOLS/aapt2"; fi
+          "$AAPT" dump badging "$APK" | tee paquete-android.txt
+          grep -Fq "package: name='com.goyxpress.mensajeria' versionCode='8' versionName='3.2.2'" paquete-android.txt
+          grep -Fq "targetSdkVersion:'35'" paquete-android.txt
+          unzip -p "$APK" assets/index.android.bundle > bundle-android.hbc
+          grep -aFq 'https://fnjjncuatpjybzqwiaet.supabase.co' bundle-android.hbc
+          if grep -aFq 'https://fnjjncuatpjybzqwiaet.supabase.com' bundle-android.hbc; then
+            echo 'La APK contiene el dominio incorrecto de Supabase.' >&2
+            exit 1
+          fi
+          printf 'APK_SIZE_BYTES=%s\n' "$APK_SIZE" | tee release-metadata.txt
+          sha256sum "$APK" | tee -a release-metadata.txt
 
-      - name: Verificar apertura real en Android 10
+      - name: Verificar instalación y apertura real en Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
           arch: x86_64
           profile: pixel_2
           disable-animations: true
+          emulator-boot-timeout: 600
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 300s bash scripts/smoke-android.sh GOY-XPRESS-v3.1.0-FUNCIONAL.apk smoke-test
+          script: timeout 600s bash scripts/smoke-android.sh GOY-XPRESS-v3.2.2-INSTALABLE.apk smoke-test
 
       - name: Guardar evidencia de prueba Android
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.1.0-PRUEBA-ANDROID
-          path: smoke-test/
+          name: GOY-XPRESS-v3.2.2-PRUEBAS-ANDROID
+          path: |
+            smoke-test/
+            firma-android.txt
+            paquete-android.txt
+            release-metadata.txt
           if-no-files-found: warn
           retention-days: 14
 
       - name: Guardar instalador verificado
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-v3.1.0-FUNCIONAL
-          path: GOY-XPRESS-v3.1.0-FUNCIONAL.apk
+          name: GOY-XPRESS-v3.2.2-INSTALABLE
+          path: GOY-XPRESS-v3.2.2-INSTALABLE.apk
           if-no-files-found: error
           retention-days: 30
