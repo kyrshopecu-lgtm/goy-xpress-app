@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "rewrites": [
+    {"source": "/admin", "destination": "/admin-web/index.html"},
+    {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
+    {"source": "/registro/:token", "destination": "/register.html"},
+    {"source": "/api/:path*", "destination": "/api/[...path].js"}
+  ],
+  "headers": [
+    {
+      "source": "/admin/:path*",
+      "headers": [
+        {"key": "X-Frame-Options", "value": "DENY"},
+        {"key": "X-Content-Type-Options", "value": "nosniff"},
+        {"key": "Referrer-Policy", "value": "same-origin"}
+      ]
+    }
+  ]
+}
