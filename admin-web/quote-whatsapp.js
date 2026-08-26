@@ -35,8 +35,28 @@
       }catch(error){alert(error.message);}finally{button.disabled=false;}
     });
   }
-  document.addEventListener('DOMContentLoaded',installCourierForm);
-  setTimeout(installCourierForm,500);
+
+  function installExtraAssignmentButtons(){
+    const body=document.getElementById('ordersBody');
+    if(!body)return;
+    body.querySelectorAll('tr').forEach(row=>{
+      const text=row.textContent||'';
+      if(!text.includes('Cotizado')&&!text.includes('Aceptado'))return;
+      const code=row.querySelector('td strong')?.textContent?.trim();
+      const actions=row.querySelector('.order-actions');
+      if(!code||!actions||actions.querySelector('[data-status="Asignado"]'))return;
+      const button=document.createElement('button');
+      button.type='button';
+      button.dataset.order=code;
+      button.dataset.status='Asignado';
+      button.textContent='Asignar';
+      actions.prepend(button);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{installCourierForm();installExtraAssignmentButtons();});
+  setTimeout(()=>{installCourierForm();installExtraAssignmentButtons();},500);
+  setInterval(installExtraAssignmentButtons,1200);
 
   document.addEventListener('click', async event => {
     const assign = event.target.closest('[data-order][data-status="Asignado"]');
