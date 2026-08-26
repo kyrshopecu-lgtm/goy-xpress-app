@@ -60,7 +60,7 @@
   }
 
   function mapCourier(c){
-    return {name:c.name || '-', phone:c.phone || '-', status:c.status || 'Disponible', jobs:Number(c.jobs || 0)};
+    return {name:c.name || c.fullName || '-', phone:c.phone || c.whatsapp || '-', status:c.status || 'Disponible', jobs:Number(c.jobs || 0)};
   }
 
   function mapPayment(p){
@@ -94,9 +94,23 @@
     $('clientsBody').innerHTML = rows.map(c => `<tr><td><strong>${escapeHtml(c.name)}</strong></td><td>${escapeHtml(c.phone)}</td><td>${escapeHtml(c.id)}</td><td>${escapeHtml(c.email)}</td><td>${badge(c.status)}</td></tr>`).join('') || '<tr><td colspan="5">No hay clientes.</td></tr>';
   }
 
+  function actionButtons(order){
+    const id = escapeHtml(order.id);
+    if (order.status === 'Pendiente') {
+      return `<div class="order-actions"><button data-order="${id}" data-status="Asignado">Asignar</button><button data-order="${id}" data-status="Cancelado">Cancelar</button></div>`;
+    }
+    if (order.status === 'Asignado') {
+      return `<div class="order-actions"><button data-order="${id}" data-status="En ruta">Iniciar ruta</button><button data-order="${id}" data-status="Cancelado">Cancelar</button></div>`;
+    }
+    if (order.status === 'En ruta') {
+      return `<div class="order-actions"><button data-order="${id}" data-status="Entregado">Entregado</button></div>`;
+    }
+    return '<span class="muted">Sin acciones</span>';
+  }
+
   function renderOrders(filter='all'){
     const rows = data.orders.filter(o => filter === 'all' || o.status === filter);
-    $('ordersBody').innerHTML = rows.map(o => `<tr><td><strong>${escapeHtml(o.id)}</strong></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td></tr>`).join('') || '<tr><td colspan="7">No hay solicitudes en este estado.</td></tr>';
+    $('ordersBody').innerHTML = rows.map(o => `<tr><td><strong>${escapeHtml(o.id)}</strong></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`).join('') || '<tr><td colspan="8">No hay solicitudes en este estado.</td></tr>';
   }
 
   function renderCouriers(){
@@ -107,7 +121,7 @@
     $('paymentsBody').innerHTML = data.payments.map(p => `<tr><td>${escapeHtml(p.date)}</td><td>${escapeHtml(p.order)}</td><td>${escapeHtml(p.client)}</td><td>${escapeHtml(p.method)}</td><td>${money(p.value)}</td><td>${badge(p.status)}</td></tr>`).join('') || '<tr><td colspan="6">Aún no hay cobros registrados.</td></tr>';
   }
 
-  function renderAll(){ renderDashboard(); renderClients(); renderOrders(); renderCouriers(); renderPayments(); }
+  function renderAll(){ renderDashboard(); renderClients(); renderOrders($('orderFilter')?.value || 'all'); renderCouriers(); renderPayments(); }
 
   function showView(view){
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
@@ -136,6 +150,18 @@
     }
   }
 
+  async function updateOrderStatus(code, status, button){
+    if (button) button.disabled = true;
+    try {
+      await api(`/admin/requests/${encodeURIComponent(code)}`, {method:'PATCH', body:JSON.stringify({status})});
+      await loadData();
+    } catch(err) {
+      alert(err.message || 'No se pudo actualizar la solicitud');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   $('today').textContent = new Intl.DateTimeFormat('es-EC',{dateStyle:'full'}).format(new Date());
   $('loginForm').addEventListener('submit', async e => {
     e.preventDefault(); $('loginMessage').textContent = '';
@@ -145,16 +171,22 @@
 
   $('logoutBtn').addEventListener('click',()=>{sessionStorage.removeItem('goyAdminToken'); location.reload();});
   $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)showView(b.dataset.view);});
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)showView(b.dataset.go);});
+  document.addEventListener('click',e=>{
+    const go = e.target.closest('[data-go]');
+    if(go){ showView(go.dataset.go); return; }
+    const statusButton = e.target.closest('[data-order][data-status]');
+    if(statusButton) updateOrderStatus(statusButton.dataset.order, statusButton.dataset.status, statusButton);
+  });
   $('clientSearch').addEventListener('input',e=>renderClients(e.target.value));
   $('orderFilter').addEventListener('change',e=>renderOrders(e.target.value));
 
   $('inviteForm').addEventListener('submit', async e => {
     e.preventDefault();
     try {
-      const invite = await api('/admin/invites', {method:'POST', body:JSON.stringify({label:'Invitación GOY XPRESS'})});
+      const label = $('inviteName').value.trim() || 'Invitación GOY XPRESS';
+      const invite = await api('/admin/invites', {method:'POST', body:JSON.stringify({label})});
       const base = String(config.registrationBaseUrl || '').replace(/\/$/, '');
-      $('inviteLink').value = `${base}?token=${encodeURIComponent(invite.token)}`;
+      $('inviteLink').value = `${base}/${encodeURIComponent(invite.token)}`;
       $('inviteResult').classList.remove('hidden');
     } catch(err) { alert(err.message || 'No se pudo crear la invitación'); }
   });
