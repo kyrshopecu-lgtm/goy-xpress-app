@@ -1,9 +1,5 @@
 window.GOY_ADMIN_CONFIG = {
-  mode: 'demo',
-  apiBaseUrl: '',
-  registrationBaseUrl: 'https://goyxpress.com/registro',
-  demoAdmin: {
-    email: 'admin@goyxpress.com',
-    password: 'Cambiar123!'
-  }
+  mode: 'api',
+  apiBaseUrl: 'http://localhost:8787',
+  registrationBaseUrl: 'http://localhost:8080/registro.html'
 };
