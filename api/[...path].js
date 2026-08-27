@@ -1,1 +1,1 @@
-module.exports = require('../server/server-v5');
+module.exports = require('../server/server-v6');
