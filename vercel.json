@@ -4,6 +4,7 @@
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
     {"source": "/registro/:token", "destination": "/register.html"},
+    {"source": "/api/goy-notification-sound", "destination": "/api/goy-notification-sound.js"},
     {"source": "/api/courier/otp/request", "destination": "/api/courier-otp-request.js"},
     {"source": "/api/courier/otp/verify", "destination": "/api/courier-otp-verify.js"},
     {"source": "/api/admin-create-request", "destination": "/api/admin-create-request.js"},
