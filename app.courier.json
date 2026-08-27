@@ -5,7 +5,7 @@
     "version": "1.3.0",
     "scheme": "goyxpressmensajero",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/goy-logo.jpg",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -31,7 +31,7 @@
       "package": "com.goyxpress.mensajero",
       "versionCode": 4,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/goy-logo.jpg",
         "backgroundColor": "#0D2F41"
       },
       "permissions": [
