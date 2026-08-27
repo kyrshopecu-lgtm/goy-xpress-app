@@ -5,7 +5,7 @@
     "version": "1.2.0",
     "scheme": "goyxpresscliente",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/goy-logo.jpg",
     "userInterfaceStyle": "light",
     "splash": {"image":"./assets/splash.png","resizeMode":"contain","backgroundColor":"#0D2F41"},
     "plugins": [
@@ -14,7 +14,7 @@
     "android": {
       "package": "com.goyxpress.cliente",
       "versionCode": 3,
-      "adaptiveIcon": {"foregroundImage":"./assets/adaptive-icon.png","backgroundColor":"#0D2F41"},
+      "adaptiveIcon": {"foregroundImage":"./assets/goy-logo.jpg","backgroundColor":"#0D2F41"},
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
