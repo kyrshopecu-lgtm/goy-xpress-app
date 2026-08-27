@@ -3,6 +3,19 @@
   let audio = null;
   let unlocked = false;
 
+  function fallbackSpeech() {
+    try {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance('GOY, goy, goy');
+      utterance.lang = 'es-EC';
+      utterance.rate = 1.35;
+      utterance.pitch = 1.08;
+      utterance.volume = 0.95;
+      window.speechSynthesis.speak(utterance);
+    } catch {}
+  }
+
   function getAudio() {
     if (!audio) {
       audio = new Audio(SOUND_URL);
@@ -35,16 +48,14 @@
       player.volume = 0.9;
       await player.play();
     } catch (error) {
-      console.warn('GOY notification sound was blocked by the browser', error);
+      console.warn('GOY generated notification unavailable; using browser voice fallback.', error);
+      fallbackSpeech();
     }
   }
 
-  // Prepara el audio en la primera interacción del administrador para cumplir
-  // las políticas de reproducción automática de navegadores móviles.
   document.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
   document.addEventListener('keydown', unlockAudio, { once: true });
 
-  // Observa las respuestas de creación de órdenes sin modificar la lógica existente.
   const originalFetch = window.fetch.bind(window);
   window.fetch = async (...args) => {
     const response = await originalFetch(...args);
