@@ -1,5 +1,10 @@
 const crypto = require('crypto');
 const backendV5 = require('../server/server-v5');
+const {
+  notifyAdminNewOrder,
+  notifyCourierAssigned,
+  safeNotify,
+} = require('../server/whatsappNotifications');
 
 function signToken(payload, secret) {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -124,11 +129,18 @@ function createHandler(options = {}) {
         else assignmentWarning = assigned.body?.error || 'La orden se creó, pero no pudo asignarse automáticamente.';
       }
 
+      const whatsapp = {};
+      whatsapp.admin = await safeNotify('admin-new-order', () => notifyAdminNewOrder({request, client}));
+      if (courier && !assignmentWarning) {
+        whatsapp.courier = await safeNotify('courier-assigned', () => notifyCourierAssigned({request, courier}));
+      }
+
       return send(res, 201, {
         ok:true,
         request,
         client:{id:clientId,name:client.businessName || client.name || client.email || 'Cliente'},
         assigned:Boolean(courier && !assignmentWarning),
+        whatsapp,
         ...(assignmentWarning ? {assignmentWarning} : {}),
       });
     } catch (error) {
