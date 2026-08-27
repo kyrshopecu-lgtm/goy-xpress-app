@@ -5,7 +5,7 @@
     "version": "3.3.0",
     "scheme": "goyxpress",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/goy-logo.jpg",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -20,7 +20,7 @@
       "package": "com.goyxpress.mensajeria",
       "versionCode": 9,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/goy-logo.jpg",
         "backgroundColor": "#0D2F41"
       },
       "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
