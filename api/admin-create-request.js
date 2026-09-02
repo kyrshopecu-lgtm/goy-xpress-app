@@ -80,6 +80,7 @@ function createHandler(options = {}) {
       const body = await readBody(req);
       const clientId = String(body.clientId || '').trim();
       const courierId = String(body.courierId || '').trim();
+      const isCustomService = body.customService === true;
       const client = (adminData.body.clients || []).find(item => String(item.id || item.userId) === clientId && item.active !== false);
       if (!client) return send(res, 400, {error:'Selecciona un cliente registrado y activo.'});
 
@@ -87,7 +88,7 @@ function createHandler(options = {}) {
       if (courierId) {
         courier = (adminData.body.couriers || []).find(item => String(item.id || item.userId) === courierId && item.approved && item.active !== false);
         if (!courier) return send(res, 400, {error:'Selecciona un mensajero registrado, activo y aprobado.'});
-        if (String(body.kind || '') === 'diverse') {
+        if (String(body.kind || '') === 'diverse' && !isCustomService) {
           return send(res, 400, {error:'Los servicios diversos deben cotizarse y ser aceptados por el cliente antes de asignar mensajero.'});
         }
       }
@@ -118,6 +119,20 @@ function createHandler(options = {}) {
 
       let request = created.body.request;
       let assignmentWarning = '';
+
+      if (isCustomService) {
+        const customCost = Number(body.serviceCost);
+        if (!Number.isFinite(customCost) || customCost < 0) return send(res, 400, {error:'La tarifa del servicio personalizado no es válida.'});
+        const adjusted = await invokeBackend(backend, {
+          method:'PATCH',
+          url:`/api/admin/requests/${encodeURIComponent(request.code || request.id)}`,
+          body:{serviceLabel:String(body.serviceLabel || 'Servicio personalizado').trim(),serviceCost:customCost,status:'Aceptado',reason:'Tarifa de servicio personalizado'},
+          headers:{authorization},
+        });
+        if (adjusted.status >= 200 && adjusted.status < 300) request = adjusted.body.request;
+        else return send(res, adjusted.status, adjusted.body);
+      }
+
       if (courier) {
         const assigned = await invokeBackend(backend, {
           method:'PATCH',
