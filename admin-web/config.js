@@ -42,4 +42,11 @@ window.addEventListener('load',()=>{
     clients.dataset.clientAccounts='1';
     document.body.appendChild(clients);
   }
+
+  if(!document.querySelector('script[data-admin-management]')){
+    const management=document.createElement('script');
+    management.src='/admin/admin-management.js';
+    management.dataset.adminManagement='1';
+    document.body.appendChild(management);
+  }
 });
