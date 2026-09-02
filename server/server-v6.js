@@ -60,6 +60,7 @@ function safeEqual(a,b) {
   return x.length===y.length && crypto.timingSafeEqual(x,y);
 }
 function normalizeEmail(v){return String(v||'').trim().toLowerCase();}
+function normalizeUsername(v){return String(v||'').trim().toLowerCase();}
 function cleanPhone(v){return String(v||'').replace(/\D/g,'');}
 function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(v));}
 function validatePassword(v){const p=String(v||'');if(p.length<8)return 'La contraseña debe tener al menos 8 caracteres.';if(!/[A-Za-z]/.test(p)||!(/\d/.test(p)))return 'La contraseña debe incluir letras y números.';return '';}
@@ -96,7 +97,7 @@ function createUser(role,body){
 
 function syncMirror(data,user){
   if(user.role==='client'){
-    const item={id:user.id,userId:user.id,name:user.name,businessName:user.businessName,whatsapp:user.phone,phone:user.phone,email:user.email,documentId:user.documentId||'',address:user.address||'',logo:user.logo||'',approved:Boolean(user.approved),active:user.active!==false,status:user.active===false?'Inactivo':user.approved?'Activo':'Pendiente de aprobación',registeredAt:user.createdAt};
+    const item={id:user.id,userId:user.id,name:user.name,businessName:user.businessName,username:user.username||'',whatsapp:user.phone,phone:user.phone,email:user.email||'',documentId:user.documentId||'',address:user.address||'',logo:user.logo||'',approved:Boolean(user.approved),active:user.active!==false,status:user.active===false?'Inactivo':user.approved?'Activo':'Pendiente de aprobación',registeredAt:user.createdAt};
     const i=data.clients.findIndex(x=>x.userId===user.id||x.id===user.id);if(i>=0)data.clients[i]={...data.clients[i],...item};else data.clients.unshift(item);
   } else {
     const item={id:user.id,userId:user.id,name:user.name,fullName:user.name,whatsapp:user.phone,phone:user.phone,email:user.email,photo:user.photo||'',approved:Boolean(user.approved),active:user.active!==false,status:user.active===false?'Inactivo':user.approved?'Disponible':'Pendiente de aprobación',registeredAt:user.createdAt};
@@ -119,8 +120,10 @@ async function handler(req,res){
     }
     if(req.method==='POST'&&p==='/auth/login'){
       if(!config.tokenSecret)return json(res,503,{error:'Autenticación del servidor sin configurar.'},config.allowedOrigin);
-      const body=await readBody(req),role=body.role==='courier'?'courier':'client',data=await readState(config),email=normalizeEmail(body.email),user=data.users.find(u=>u.role===role&&normalizeEmail(u.email)===email);
-      if(!user||user.active===false||!verifyPassword(body.password,user))return json(res,401,{error:'Correo o contraseña incorrectos.'},config.allowedOrigin);
+      const body=await readBody(req),role=body.role==='courier'?'courier':'client',data=await readState(config);
+      const identifier=String(body.username||body.email||body.identifier||'').trim().toLowerCase();
+      const user=data.users.find(u=>u.role===role&&(normalizeEmail(u.email)===identifier||normalizeUsername(u.username)===identifier));
+      if(!user||user.active===false||!verifyPassword(body.password,user))return json(res,401,{error:'Usuario/correo o contraseña incorrectos.'},config.allowedOrigin);
       if(!user.approved)return json(res,403,{error:'Tu cuenta está pendiente de aprobación por el administrador.',pendingApproval:true,user:publicUser(user)},config.allowedOrigin);
       return json(res,200,session(user,config),config.allowedOrigin);
     }
@@ -133,7 +136,6 @@ async function handler(req,res){
       return json(res,200,{user:publicUser(user)},config.allowedOrigin);
     }
 
-    // Bloqueo central: una cuenta registrada pero pendiente solo puede consultar su perfil.
     const payload=verifyToken(bearer(req),config.tokenSecret);
     if(payload?.userId&&['client','courier'].includes(payload.role)&&p!=='/me'){
       const data=await readState(config),user=data.users.find(u=>u.id===payload.userId&&u.role===payload.role);
