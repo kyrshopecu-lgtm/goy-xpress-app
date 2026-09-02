@@ -56,4 +56,11 @@ window.addEventListener('load',()=>{
     customOrders.dataset.customServiceOrders='1';
     document.body.appendChild(customOrders);
   }
+
+  if(!document.querySelector('script[data-courier-profile]')){
+    const courierProfile=document.createElement('script');
+    courierProfile.src='/admin/courier-profile.js';
+    courierProfile.dataset.courierProfile='1';
+    document.body.appendChild(courierProfile);
+  }
 });
