@@ -45,11 +45,16 @@ jobs:
           node-version: 22
           cache: npm
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Ejecutar pruebas de seguridad, logística y panel
         run: npm test
-      - name: Verificar sintaxis serverless
+      - name: Verificar sintaxis serverless y panel
         run: |
+          node --check api/[...path].js
           node --check api/admin-create-request.js
+          node --check admin-web/config.js
+          node --check admin-web/client-accounts.js
           node --check admin-web/modern-admin.js
+          node --check server/admin-clients.js
           node --check server/server-v5.js
+          node --check server/server-v6.js
