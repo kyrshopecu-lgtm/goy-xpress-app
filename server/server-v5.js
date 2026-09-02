@@ -560,6 +560,24 @@ function createHandler(options = {}) {
         if(!requireAdmin(req,res,config))return;const data=await store.read();const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);const cycle=url.searchParams.get('cycle')||monthlyCycleKey(new Date());
         return json(res,200,{clients:data.users.filter(u=>u.role==='client').map(clientSummary),couriers:data.users.filter(u=>u.role==='courier').map(u=>courierSummary(data,u)),requests:currentCycleRequests(data,cycle).map(sanitizeRequest),payments:data.payments,invites:data.invites,templates:data.templates,walletEntries:data.walletEntries,monthlyArchives:data.monthlyArchives,activeCycle:cycle,availableCycles:[...new Set(data.requests.map(r=>r.cycleKey||monthlyCycleKey(r.createdAt||new Date())))].sort().reverse()},config.allowedOrigin);
       }
+      if(req.method==='POST'&&pathname==='/admin/clients'){
+        if(!requireAdmin(req,res,config))return;
+        const body=await readBody(req);
+        const data=await store.read();
+        const email=normalizeEmail(body.email);
+        if(data.users.some(user=>normalizeEmail(user.email)===email)){
+          return json(res,409,{error:'Este correo ya está registrado.'},config.allowedOrigin);
+        }
+        const user=createUserFromBody('client',body);
+        user.approved=true;
+        user.active=true;
+        user.registrationSource='admin';
+        data.users.unshift(user);
+        syncUserMirror(data,user);
+        claimLegacyRequests(data,user);
+        await store.write(data);
+        return json(res,201,{user:clientSummary(user),message:'Cliente creado y habilitado para ingresar.'},config.allowedOrigin);
+      }
       if(req.method==='POST'&&pathname==='/admin/invites'){
         if(!requireAdmin(req,res,config))return;const body=await readBody(req);const data=await store.read();const invite={token:crypto.randomBytes(18).toString('base64url'),createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+7*24*60*60*1000).toISOString(),usedAt:null,label:String(body.label||'').trim(),email:normalizeEmail(body.email),whatsapp:String(body.whatsapp||body.phone||'').trim()};data.invites.unshift(invite);await store.write(data);return json(res,201,invite,config.allowedOrigin);
       }

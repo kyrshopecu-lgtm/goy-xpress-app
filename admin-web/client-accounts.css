@@ -1,0 +1,13 @@
+.client-account-modal{width:min(760px,100%)}
+.password-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.password-tools .ghost{height:100%;white-space:nowrap}
+.credentials-card{margin-top:16px;padding:18px;border:1px solid #cfe5ef;border-radius:18px;background:#f2faff}
+.credentials-card .eyebrow{margin-bottom:10px}
+.credential-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:11px 0;border-bottom:1px solid #dcebf1;align-items:center}
+.credential-row:last-of-type{border-bottom:0}
+.credential-row span{color:var(--muted);font-size:12px;font-weight:800}
+.credential-row strong{font-size:15px;overflow-wrap:anywhere;color:var(--navy)}
+.credentials-card p{margin:12px 0 0;color:#6a7880;font-size:12px;line-height:1.5}
+.client-account-actions{flex-wrap:wrap;margin-top:16px}
+.client-account-success{margin-top:4px}
+@media(max-width:780px){.password-tools{grid-template-columns:1fr}.password-tools .ghost{width:100%}.credential-row{grid-template-columns:1fr;gap:4px}.client-account-actions{flex-direction:column}.client-account-actions button{width:100%}}
