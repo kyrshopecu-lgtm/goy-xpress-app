@@ -55,6 +55,10 @@ jobs:
           node --check admin-web/config.js
           node --check admin-web/client-accounts.js
           node --check admin-web/modern-admin.js
+          node --check admin-web/admin-management.js
+          node --check admin-web/courier-profile.js
           node --check server/admin-clients.js
+          node --check server/admin-management.js
+          node --check server/courier-profile.js
           node --check server/server-v5.js
           node --check server/server-v6.js
