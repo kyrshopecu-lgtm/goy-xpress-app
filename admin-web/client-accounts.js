@@ -2,6 +2,7 @@
   const config=window.GOY_ADMIN_CONFIG||{};
   const apiBase=String(config.apiBaseUrl||'').replace(/\/$/,'');
   const token=()=>sessionStorage.getItem('goyAdminToken')||'';
+  const esc=value=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const clients=document.getElementById('clients');
   if(!clients||document.getElementById('createClientBtn'))return;
 
@@ -55,7 +56,7 @@
       let body={};try{body=await response.json();}catch{}
       if(!response.ok)throw new Error(body.error||'No se pudo crear el cliente.');
       message.textContent='Cliente creado y activo.';
-      success.innerHTML=`<strong>Credenciales listas para enviar</strong><code>Correo: ${payload.email}</code><code>Contraseña: ${payload.password}</code><button id="copyClientCredentials" class="ghost goy-client-copy" type="button">Copiar credenciales</button><button id="refreshClients" class="primary goy-client-copy" type="button">Cerrar y actualizar lista</button>`;
+      success.innerHTML=`<strong>Credenciales listas para enviar</strong><code>Correo: ${esc(payload.email)}</code><code>Contraseña: ${esc(payload.password)}</code><button id="copyClientCredentials" class="ghost goy-client-copy" type="button">Copiar credenciales</button><button id="refreshClients" class="primary goy-client-copy" type="button">Cerrar y actualizar lista</button>`;
       success.classList.remove('hidden');
       $('copyClientCredentials')?.addEventListener('click',async()=>{const text=`GOY XPRESS\nCorreo: ${payload.email}\nContraseña: ${payload.password}`;try{await navigator.clipboard.writeText(text);$('copyClientCredentials').textContent='Copiado';}catch{alert(text);}});
       $('refreshClients')?.addEventListener('click',()=>location.reload());
