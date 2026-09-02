@@ -1,4 +1,5 @@
 const baseHandler = require('../server/server-v6');
-const {wrap} = require('../server/admin-clients');
+const {wrap:wrapClients} = require('../server/admin-clients');
+const {wrap:wrapManagement} = require('../server/admin-management');
 
-module.exports = wrap(baseHandler);
+module.exports = wrapManagement(wrapClients(baseHandler));
