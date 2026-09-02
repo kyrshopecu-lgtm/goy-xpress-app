@@ -17,15 +17,25 @@
   function token(){return sessionStorage.getItem('goyAdminToken')||'';}
   async function api(path,options={}){
     if(!apiBase) throw new Error('La URL de la API no está configurada');
-    const headers={'Content-Type':'application/json',...(options.headers||{})};
+    const {timeoutMs=15000,...requestOptions}=options;
+    const headers={'Content-Type':'application/json',...(requestOptions.headers||{})};
     if(token()) headers.Authorization=`Bearer ${token()}`;
-    const response=await fetch(`${apiBase}${path}`,{...options,headers});
-    let body={}; try{body=await response.json();}catch{}
-    if(!response.ok){
-      if(response.status===401&&path!=='/admin/login'){sessionStorage.removeItem('goyAdminToken');throw new Error('Tu sesión venció. Vuelve a iniciar sesión.');}
-      throw new Error(body.error||'No se pudo completar la operación');
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const response=await fetch(`${apiBase}${path}`,{...requestOptions,headers,signal:controller.signal});
+      let body={}; try{body=await response.json();}catch{}
+      if(!response.ok){
+        if(response.status===401&&path!=='/admin/login'){sessionStorage.removeItem('goyAdminToken');throw new Error('Tu sesión venció. Vuelve a iniciar sesión.');}
+        throw new Error(body.error||'No se pudo completar la operación');
+      }
+      return body;
+    }catch(error){
+      if(error?.name==='AbortError')throw new Error('El servidor tardó demasiado en responder. Intenta nuevamente.');
+      throw error;
+    }finally{
+      clearTimeout(timeout);
     }
-    return body;
   }
 
   function mapClient(c){return{name:c.name||c.businessName||'-',phone:c.whatsapp||c.phone||c.contactPhone||'-',id:c.documentId||c.id||'-',email:c.email||'-',status:c.status||'Activo'};}
@@ -45,6 +55,7 @@
     data.clients=(result.clients||[]).map(mapClient); data.orders=(result.requests||[]).map(mapOrder); data.couriers=(result.couriers||[]).map(mapCourier); data.payments=(result.payments||[]).map(mapPayment);
     data.activeCycle=result.activeCycle||cycle||''; data.availableCycles=result.availableCycles||[];
     renderAll(); renderReportControls();
+    window.dispatchEvent(new CustomEvent('goy:admin-data',{detail:result}));
   }
 
   function renderDashboard(){
@@ -57,7 +68,7 @@
   }
   function renderClients(query=''){
     const q=query.trim().toLowerCase(); const rows=data.clients.filter(c=>!q||[c.name,c.phone,c.id,c.email].some(v=>String(v).toLowerCase().includes(q)));
-    $('clientsBody').innerHTML=rows.map(c=>`<tr><td><strong>${escapeHtml(c.name)}</strong></td><td>${escapeHtml(c.phone)}</td><td>${escapeHtml(c.id)}</td><td>${escapeHtml(c.email)}</td><td>${badge(c.status)}</td></tr>`).join('')||'<tr><td colspan="5">No hay clientes.</td></tr>';
+    $('clientsBody').innerHTML=rows.map(c=>`<tr><td data-client-field="name"><strong>${escapeHtml(c.name)}</strong></td><td data-client-field="phone">${escapeHtml(c.phone)}</td><td data-client-field="document">${escapeHtml(c.id)}</td><td data-client-field="email">${escapeHtml(c.email)}</td><td data-client-field="status">${badge(c.status)}</td></tr>`).join('')||'<tr><td colspan="5">No hay clientes.</td></tr>';
   }
 
   function actionButtons(o){
@@ -120,7 +131,17 @@
   function downloadBlob(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);}
 
   $('today').textContent=new Intl.DateTimeFormat('es-EC',{dateStyle:'full'}).format(new Date());
-  $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginMessage').textContent='';try{await authenticate($('email').value.trim(),$('password').value);await enterApp();}catch(err){$('loginMessage').textContent=err.message||'No se pudo iniciar sesión';}});
+  $('loginForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const submit=e.currentTarget.querySelector('button[type="submit"]');
+    if(submit?.disabled)return;
+    const originalLabel=submit?.textContent||'Ingresar al panel';
+    if(submit){submit.disabled=true;submit.textContent='Ingresando…';}
+    $('loginMessage').textContent='Validando acceso…';
+    try{await authenticate($('email').value.trim(),$('password').value);await enterApp();}
+    catch(err){$('loginMessage').textContent=err.message||'No se pudo iniciar sesión';}
+    finally{if(submit){submit.disabled=false;submit.textContent=originalLabel;}}
+  });
   $('logoutBtn').addEventListener('click',()=>{sessionStorage.removeItem('goyAdminToken');location.reload();});
   $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)showView(b.dataset.view);});
   document.addEventListener('click',e=>{
@@ -136,5 +157,6 @@
   $('inviteForm').addEventListener('submit',async e=>{e.preventDefault();try{const label=$('inviteName').value.trim()||'Invitación GOY XPRESS';const invite=await api('/admin/invites',{method:'POST',body:JSON.stringify({label})});const base=String(config.registrationBaseUrl||'').replace(/\/$/,'');$('inviteLink').value=`${base}/${encodeURIComponent(invite.token)}`;$('inviteResult').classList.remove('hidden');}catch(err){alert(err.message||'No se pudo crear la invitación');}});
   $('copyInvite').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('inviteLink').value);$('copyInvite').textContent='Copiado';setTimeout(()=>$('copyInvite').textContent='Copiar',1300);}catch{$('inviteLink').select();}});
   $('downloadCsv').addEventListener('click',downloadCsv);
+  window.addEventListener('goy:reload-admin-data',()=>{if(token())loadData(data.activeCycle).catch(()=>{});});
   if(token())enterApp();
 })();

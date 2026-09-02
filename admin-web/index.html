@@ -7,6 +7,7 @@
   <title>GOY XPRESS | Centro de control</title>
   <link rel="icon" href="/assets/icon.png" />
   <link rel="stylesheet" href="/admin/styles.css" />
+  <link rel="stylesheet" href="/admin/client-accounts.css" />
   <style>
     .stat[data-stat-target]{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;user-select:none}
     .stat[data-stat-target]:hover,.stat[data-stat-target]:focus-visible{transform:translateY(-2px);box-shadow:0 10px 24px rgba(7,28,42,.13);outline:none;border-color:rgba(0,169,232,.38)}
@@ -91,11 +92,11 @@
         </div>
         <div class="panel-grid">
           <article class="panel wide"><div class="panel-head"><div><span class="eyebrow">Operación</span><h3>Solicitudes recientes</h3></div><button class="ghost" data-go="orders">Ver todas</button></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead><tbody id="recentOrders"></tbody></table></div></article>
-          <article class="panel quick-panel"><span class="eyebrow">Accesos directos</span><h3>Acciones rápidas</h3><div class="quick-actions"><button id="quickNewOrder" class="quick-highlight">＋ Crear orden para cliente</button><button data-go="invites">✦ Crear invitación</button><button data-go="orders">▤ Gestionar solicitudes</button><button data-go="clients">◎ Buscar cliente</button><button data-go="reports">↧ Generar reporte</button></div></article>
+          <article class="panel quick-panel"><span class="eyebrow">Accesos directos</span><h3>Acciones rápidas</h3><div class="quick-actions"><button id="quickNewOrder" class="quick-highlight">＋ Crear orden para cliente</button><button id="quickCreateClient">◎ Crear cuenta de cliente</button><button data-go="invites">✦ Crear invitación</button><button data-go="orders">▤ Gestionar solicitudes</button><button data-go="clients">◎ Buscar cliente</button><button data-go="reports">↧ Generar reporte</button></div></article>
         </div>
       </section>
 
-      <section id="clients" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Base comercial</span><h3>Clientes</h3></div><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
+      <section id="clients" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Base comercial</span><h3>Clientes</h3></div><div class="panel-tools"><button id="createClientButton" class="primary compact" type="button">＋ Crear cliente</button><input id="clientSearch" class="search" placeholder="Buscar por nombre, teléfono o cédula/RUC" /></div></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Cédula/RUC</th><th>Correo</th><th>Estado</th></tr></thead><tbody id="clientsBody"></tbody></table></div></div></section>
 
       <section id="orders" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">Operación diaria</span><h3>Solicitudes y trámites</h3></div><div class="panel-tools"><button id="ordersNewOrder" class="primary compact" type="button">＋ Nueva orden</button><select id="orderFilter"><option value="all">Todos</option><option value="Pendiente">Pendientes</option><option value="Cotizado">Cotizados</option><option value="Aceptado">Aceptados</option><option value="Asignado">Asignados</option><option value="Recogido">Recogidos</option><option value="En camino">En camino</option><option value="Entrega finalizada">Finalizados</option><option value="Cancelado">Cancelados</option></select></div></div><div class="table-wrap"><table><thead><tr><th># / Tracking</th><th>Cliente</th><th>Servicio</th><th>Dirección</th><th>Mensajero</th><th>Estado</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div></section>
 
@@ -113,6 +114,7 @@
   <script src="/admin/quote-whatsapp.js"></script>
   <script src="/admin/role-security.js"></script>
   <script src="/admin/app.js"></script>
+  <script src="/admin/client-accounts.js"></script>
   <script src="/admin/modern-admin.js"></script>
   <script src="/admin/client-locations.js"></script>
   <script src="/admin/tracking-labels.js"></script>

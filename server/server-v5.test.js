@@ -215,3 +215,72 @@ test('no permite crear solicitudes sin registro ni reutilizar correos', async t 
   });
   assert.equal(duplicate.status, 409);
 });
+
+test('administración crea una cuenta de cliente activa y la contraseña queda protegida', async t => {
+  const store = serverV5.createMemoryStore();
+  const handler = serverV5.createHandler({
+    store,
+    config:{
+      tokenSecret:'test-secret-admin-client',
+      adminEmail:'admin@goy.test',
+      adminPassword:'Admin1234',
+      allowedOrigin:'*',
+      databaseUrl:'',
+    },
+  });
+  const {server, base} = await startServer(handler);
+  t.after(() => server.close());
+
+  const payload = {
+    name:'María Cliente',
+    businessName:'Tienda María',
+    phone:'0993334455',
+    documentId:'1712345678',
+    address:'Av. República, Quito',
+    email:'creada-por-admin@goy.test',
+    password:'Cliente987',
+  };
+
+  const unauthorized = await call(base, '/api/admin/clients', {method:'POST', body:payload});
+  assert.equal(unauthorized.status, 401);
+
+  const adminLogin = await call(base, '/api/admin/login', {
+    method:'POST',
+    body:{email:'admin@goy.test', password:'Admin1234'},
+  });
+  assert.equal(adminLogin.status, 200);
+
+  const created = await call(base, '/api/admin/clients', {
+    method:'POST',
+    token:adminLogin.body.token,
+    body:payload,
+  });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.user.email, payload.email);
+  assert.equal(created.body.user.approved, true);
+  assert.equal(created.body.user.active, true);
+  assert.equal(created.body.user.registrationSource, 'admin');
+  assert.equal(created.body.user.passwordHash, undefined);
+  assert.equal(created.body.user.passwordSalt, undefined);
+
+  const data = await store.read();
+  const stored = data.users.find(user => user.email === payload.email);
+  assert.ok(stored.passwordHash);
+  assert.ok(stored.passwordSalt);
+  assert.notEqual(stored.passwordHash, payload.password);
+  assert.equal(stored.password, undefined);
+
+  const clientLogin = await call(base, '/api/auth/login', {
+    method:'POST',
+    body:{role:'client', email:payload.email, password:payload.password},
+  });
+  assert.equal(clientLogin.status, 200);
+  assert.equal(clientLogin.body.user.id, created.body.user.id);
+
+  const duplicate = await call(base, '/api/admin/clients', {
+    method:'POST',
+    token:adminLogin.body.token,
+    body:payload,
+  });
+  assert.equal(duplicate.status, 409);
+});

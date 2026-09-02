@@ -3,16 +3,18 @@
   const apiBase=String(config.apiBaseUrl||'/api').replace(/\/$/,'');
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const token=()=>sessionStorage.getItem('goyAdminToken')||'';
+  const REFRESH_MS=30000;
   let busy=false,lastData=null,decorating=false,decorateQueued=false;
   let clientsTarget=null,couriersTarget=null;
 
   async function api(path,options={}){
-    const headers={'Content-Type':'application/json',...(options.headers||{})};
+    const {timeoutMs=12000,...requestOptions}=options;
+    const headers={'Content-Type':'application/json',...(requestOptions.headers||{})};
     if(token())headers.Authorization=`Bearer ${token()}`;
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),10000);
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
     try{
-      const r=await fetch(`${apiBase}${path}`,{...options,headers,signal:options.signal||controller.signal});
+      const r=await fetch(`${apiBase}${path}`,{...requestOptions,headers,signal:requestOptions.signal||controller.signal});
       const body=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(body.error||'No se pudo completar la operación');
       return body;
@@ -30,15 +32,22 @@
     return `<button type="button" data-account-${action}="${esc(user.id)}" data-account-role="${role}" style="margin-left:8px;padding:6px 9px;border:0;border-radius:9px;font-weight:800;cursor:pointer;background:${user.approved?'#eef3f5':'#38A844'};color:${user.approved?'#0b2f40':'#fff'}">${label}</button>`;
   }
 
+  function updateHtml(node,html){
+    if(!node||node.innerHTML===html)return;
+    node.innerHTML=html;
+  }
+
   function decorateClients(clients){
     document.querySelectorAll('#clientsBody tr').forEach(row=>{
       const cells=row.querySelectorAll('td');if(cells.length<5)return;
-      const email=(cells[3]?.textContent||'').trim().toLowerCase();
-      const phone=digits(cells[1]?.textContent||'');
+      const emailCell=row.querySelector('[data-client-field="email"]')||cells[3];
+      const phoneCell=row.querySelector('[data-client-field="phone"]')||cells[1];
+      const statusCell=row.querySelector('[data-client-field="status"]')||cells[4];
+      const email=(emailCell?.textContent||'').trim().toLowerCase();
+      const phone=digits(phoneCell?.textContent||'');
       const user=clients.find(c=>(c.email||'').toLowerCase()===email||(phone&&digits(c.phone||c.whatsapp)===phone));
       if(!user)return;
-      const next=`<span class="badge ${user.approved?'active':'pending'}">${esc(statusText(user))}</span>${buttonHtml('clients',user)}`;
-      if(cells[4].innerHTML!==next)cells[4].innerHTML=next;
+      updateHtml(statusCell,`<span class="badge ${user.approved?'active':'pending'}">${esc(statusText(user))}</span>${buttonHtml('clients',user)}`);
     });
   }
 
@@ -50,8 +59,7 @@
       if(!user)return;
       let actions=card.querySelector('.account-approval-actions');
       if(!actions){actions=document.createElement('div');actions.className='account-approval-actions';actions.style.marginTop='10px';card.appendChild(actions);}
-      const next=`<strong style="font-size:11px">${esc(statusText(user))}</strong>${buttonHtml('couriers',user)}`;
-      if(actions.innerHTML!==next)actions.innerHTML=next;
+      updateHtml(actions,`<strong style="font-size:11px">${esc(statusText(user))}</strong>${buttonHtml('couriers',user)}`);
     });
   }
 
@@ -77,10 +85,15 @@
     decorateQueued=true;
     requestAnimationFrame(()=>{decorateQueued=false;redecorate();});
   }
+  function applyData(nextData){
+    if(!nextData)return;
+    lastData=nextData;
+    redecorate();
+  }
 
   async function refresh(){
     if(busy||!token())return;busy=true;
-    try{lastData=await api('/admin/data');redecorate();}catch{}finally{busy=false;}
+    try{applyData(await api('/admin/data'));}catch{}finally{busy=false;}
   }
 
   async function setApproval(role,id,approved,button){
@@ -99,12 +112,14 @@
     if(revoke){if(confirm('¿Deseas revocar el acceso de esta cuenta?'))setApproval(revoke.dataset.accountRole,revoke.dataset.accountRevocar,false,revoke);}
   });
 
+  window.addEventListener('goy:admin-data',e=>applyData(e.detail));
+
   const start=()=>{
     clientsTarget=document.getElementById('clientsBody');
     couriersTarget=document.getElementById('courierCards');
     observeTargets();
     refresh();
-    setInterval(refresh,15000);
+    setInterval(()=>{if(!document.hidden)refresh();},REFRESH_MS);
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
