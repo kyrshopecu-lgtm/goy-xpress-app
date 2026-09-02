@@ -3,11 +3,13 @@
   "rewrites": [
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
+    {"source": "/tracking", "destination": "/tracking-web/index.html"},
     {"source": "/registro/:token", "destination": "/register.html"},
     {"source": "/api/goy-notification-sound", "destination": "/api/goy-notification-sound.js"},
     {"source": "/api/courier/otp/request", "destination": "/api/courier-otp-request.js"},
     {"source": "/api/courier/otp/verify", "destination": "/api/courier-otp-verify.js"},
     {"source": "/api/admin-create-request", "destination": "/api/admin-create-request.js"},
+    {"source": "/api/public-tracking", "destination": "/api/public-tracking.js"},
     {"source": "/api/:path*", "destination": "/api/[...path].js"}
   ],
   "headers": [
@@ -17,6 +19,13 @@
         {"key": "X-Frame-Options", "value": "DENY"},
         {"key": "X-Content-Type-Options", "value": "nosniff"},
         {"key": "Referrer-Policy", "value": "same-origin"}
+      ]
+    },
+    {
+      "source": "/tracking",
+      "headers": [
+        {"key": "X-Content-Type-Options", "value": "nosniff"},
+        {"key": "Referrer-Policy", "value": "no-referrer"}
       ]
     }
   ]
