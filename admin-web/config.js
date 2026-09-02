@@ -49,4 +49,11 @@ window.addEventListener('load',()=>{
     management.dataset.adminManagement='1';
     document.body.appendChild(management);
   }
+
+  if(!document.querySelector('script[data-custom-service-orders]')){
+    const customOrders=document.createElement('script');
+    customOrders.src='/admin/custom-service-orders.js';
+    customOrders.dataset.customServiceOrders='1';
+    document.body.appendChild(customOrders);
+  }
 });
