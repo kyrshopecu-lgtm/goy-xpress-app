@@ -1,3 +1,3 @@
 import {registerRootComponent} from 'expo';
-import App from './src/CourierAppV14';
+import App from './src/CourierAppV16';
 registerRootComponent(App);
