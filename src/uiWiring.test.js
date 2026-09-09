@@ -32,6 +32,19 @@ test('Cliente v1.2: botones cableados, cuenta previa, logo y Maps automático', 
   assert.doesNotMatch(code, /label=["'](?:Distancia|Kilómetros|Km manual)/i);
 });
 
+test('Cliente v1.3 muestra evidencias de retiro, entrega y depósito', () => {
+  const wrapper = source('ClientAppV13.js');
+  const evidence = source('ClientEvidenceOverlay.js');
+  assert.match(wrapper, /ClientEvidenceOverlay/);
+  assert.match(wrapper, /token=\{session\}/);
+  assert.match(evidence, /getClientRequests/);
+  assert.match(evidence, /pickupPhoto/);
+  assert.match(evidence, /deliveryPhoto/);
+  assert.match(evidence, /depositPhoto/);
+  assert.match(evidence, /Fotos de mis servicios/);
+  assert.match(evidence, /onPress=\{load\}/);
+});
+
 test('Mensajero v1.3: OTP, foto, botones cableados y trabajos asignados', () => {
   const code = source('CourierAppV13.js');
   assertInteractiveElementsAreWired(code, 'Mensajero');
