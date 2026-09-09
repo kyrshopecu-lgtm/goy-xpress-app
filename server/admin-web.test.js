@@ -40,3 +40,15 @@ test('crear orden no permite kilometraje manual y mantiene cálculo de Maps en s
   assert.doesNotMatch(modern, /name=\\?["']distanceKm/);
   assert.match(modern, /La distancia, duración y tarifa se calcularán automáticamente con Google Maps/);
 });
+
+test('administración carga y valida el visor de evidencias fotográficas', () => {
+  const config = read('admin-web/config.js');
+  const evidence = read('admin-web/order-evidence.js');
+  assert.match(config, /order-evidence\.js/);
+  assert.match(config, /data-order-evidence/);
+  assert.match(evidence, /pickupPhoto/);
+  assert.match(evidence, /deliveryPhoto/);
+  assert.match(evidence, /depositPhoto/);
+  assert.match(evidence, /\/admin\/data/);
+  new vm.Script(evidence, {filename:'order-evidence.js'});
+});
