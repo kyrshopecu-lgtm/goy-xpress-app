@@ -1,0 +1,18 @@
+const crypto=require('crypto');
+const{neon}=require('@neondatabase/serverless');
+function send(res,status,body){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.end(JSON.stringify(body));}
+function safeEqual(a,b){const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)}
+function verifyToken(token,secret){if(!token||!secret)return null;const[body,signature]=String(token).split('.');if(!body||!signature)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(signature,expected))return null;try{const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));if(!payload.exp||Date.now()>payload.exp)return null;return payload}catch{return null}}
+function bearer(req){const a=String(req.headers.authorization||'');return a.startsWith('Bearer ')?a.slice(7):''}
+function validImage(v){const t=String(v||'');return t.length>0&&t.length<=1800000&&/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t)}
+async function bodyOf(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const c of req){raw+=c;if(raw.length>2200000)throw new Error('Payload demasiado grande')}return raw?JSON.parse(raw):{}}
+module.exports=async function handler(req,res){
+ if(req.method!=='POST')return send(res,405,{error:'Método no permitido'});
+ const databaseUrl=String(process.env.DATABASE_URL||''),tokenSecret=String(process.env.TOKEN_SECRET||'');if(!databaseUrl||!tokenSecret)return send(res,503,{error:'Servicio temporalmente no disponible'});
+ const payload=verifyToken(bearer(req),tokenSecret);if(!payload||payload.role!=='courier'||!payload.userId)return send(res,401,{error:'Sesión de mensajero inválida'});
+ try{const body=await bodyOf(req),code=String(body.code||'').trim(),type=String(body.type||'service').trim();if(!code)return send(res,400,{error:'Código obligatorio'});if(!['pickup','service','deposit','delivery'].includes(type))return send(res,400,{error:'Tipo de evidencia inválido'});if(!validImage(body.photo))return send(res,400,{error:'Fotografía inválida'});
+  const sql=neon(databaseUrl);const rows=await sql`SELECT data FROM goy_state WHERE id=1 LIMIT 1`;const data=rows[0]?.data||{};const courier=(data.users||[]).find(u=>u.id===payload.userId&&u.role==='courier'&&u.active!==false&&u.approved);if(!courier)return send(res,403,{error:'Mensajero no autorizado'});const request=(data.requests||[]).find(r=>(r.code===code||r.id===code)&&r.courierId===courier.id);if(!request)return send(res,404,{error:'Operación no asignada a tu cuenta'});
+  request.evidence=request.evidence||{};request.evidence.additional=request.evidence.additional||{};const arr=Array.isArray(request.evidence.additional[type])?request.evidence.additional[type]:[];arr.push({id:crypto.randomUUID(),photo:body.photo,at:new Date().toISOString()});request.evidence.additional[type]=arr.slice(-12);request.updatedAt=new Date().toISOString();request.events=Array.isArray(request.events)?request.events:[];request.events.unshift({id:crypto.randomUUID(),type:'additional_evidence',evidenceType:type,at:new Date().toISOString()});
+  await sql`UPDATE goy_state SET data=${JSON.stringify(data)}::jsonb,updated_at=NOW() WHERE id=1`;return send(res,200,{ok:true,request});
+ }catch(error){console.error('courier-additional-evidence',error);return send(res,500,{error:error.message||'No se pudo guardar la fotografía'})}
+};
