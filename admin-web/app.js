@@ -3,6 +3,8 @@
   const $ = id => document.getElementById(id);
   const apiBase = String(config.apiBaseUrl || '').replace(/\/$/, '');
   const data = {clients:[],orders:[],couriers:[],payments:[],activeCycle:'',availableCycles:[]};
+  const announcedWaits = new Set();
+  let liveRefresh = null;
 
   const statusMap = {pending:'Pendiente',quoted:'Cotizado',accepted:'Aceptado',assigned:'Asignado',pickedUp:'Recogido',onRoute:'En camino',finished:'Entrega finalizada',cancelled:'Cancelado','En ruta':'En camino',Entregado:'Entrega finalizada',Finalizado:'Entrega finalizada'};
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -38,13 +40,25 @@
   };}
   function mapCourier(c){return{name:c.name||c.fullName||'-',phone:c.phone||c.whatsapp||'-',status:c.status||'Disponible',jobs:Number(c.jobs||0)};}
   function mapPayment(p){return{date:p.date||p.createdAt||'-',order:p.order||p.requestCode||'-',client:p.client||'-',method:p.method||'-',value:Number(p.value||p.amount||0),status:p.status||'Pendiente'};}
+  function waitNeedsDecision(o){
+    const free=Number(o.wait?.freeMinutes||10),elapsed=Number(o.wait?.elapsedMinutes||0),notes=String(o.raw?.adminNotes||'');
+    return elapsed>=free&&!notes.includes('WAIT_CONTINUE')&&!notes.includes('WAIT_NEXT_DELIVERY')&&!['Entrega finalizada','Cancelado'].includes(o.status);
+  }
+  function announceWaitAlerts(){
+    data.orders.filter(waitNeedsDecision).forEach(o=>{
+      if(announcedWaits.has(o.id))return;
+      announcedWaits.add(o.id);
+      const message=`Tiempo de espera agotado\n\nSolicitud: ${o.id}\nMensajero: ${o.courier}\nSe alcanzaron ${Number(o.wait?.freeMinutes||10)} minutos sin recargo.\n\nDecide si continúa esperando o pasa a la siguiente entrega.`;
+      setTimeout(()=>alert(message),150);
+    });
+  }
 
   async function loadData(cycle=data.activeCycle){
     const suffix=cycle?`?cycle=${encodeURIComponent(cycle)}`:'';
     const result=await api(`/admin/data${suffix}`);
     data.clients=(result.clients||[]).map(mapClient); data.orders=(result.requests||[]).map(mapOrder); data.couriers=(result.couriers||[]).map(mapCourier); data.payments=(result.payments||[]).map(mapPayment);
     data.activeCycle=result.activeCycle||cycle||''; data.availableCycles=result.availableCycles||[];
-    renderAll(); renderReportControls();
+    renderAll(); renderReportControls(); announceWaitAlerts();
   }
 
   function renderDashboard(){
@@ -62,6 +76,10 @@
 
   function actionButtons(o){
     const id=escapeHtml(o.id); const buttons=[];
+    if(waitNeedsDecision(o)){
+      buttons.push(`<button class="primary" data-wait-decision="continue" data-wait-order="${id}">Continuar esperando</button>`);
+      buttons.push(`<button data-wait-decision="next" data-wait-order="${id}">Siguiente entrega</button>`);
+    }
     if(o.status==='Pendiente') buttons.push(`<button data-order="${id}" data-status="Asignado">Asignar</button>`);
     if(o.status==='Asignado') buttons.push(`<button data-order="${id}" data-status="Recogido">Recogido</button>`);
     if(o.status==='Recogido') buttons.push(`<button data-order="${id}" data-status="En camino">En camino</button>`);
@@ -76,7 +94,11 @@
 
   function renderOrders(filter='all'){
     const rows=data.orders.filter(o=>filter==='all'||o.status===filter);
-    $('ordersBody').innerHTML=rows.map(o=>`<tr><td><strong>${escapeHtml(o.id)}</strong><br><small>${escapeHtml(o.cycleKey)}</small></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}${o.wait?.extraMinutes?`<br><small>Espera +${o.wait.extraMinutes} min (${money(o.wait.extraCost)})</small>`:''}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`).join('')||'<tr><td colspan="8">No hay solicitudes en este estado.</td></tr>';
+    $('ordersBody').innerHTML=rows.map(o=>{
+      const waitAlert=waitNeedsDecision(o)?`<br><strong style="color:#9a6500">⚠ Espera al límite · requiere decisión</strong>`:'';
+      const waitExtra=o.wait?.extraMinutes?`<br><small>Espera +${o.wait.extraMinutes} min (${money(o.wait.extraCost)})</small>`:'';
+      return `<tr><td><strong>${escapeHtml(o.id)}</strong><br><small>${escapeHtml(o.cycleKey)}</small></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}${waitAlert}${waitExtra}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`;
+    }).join('')||'<tr><td colspan="8">No hay solicitudes en este estado.</td></tr>';
   }
   function renderCouriers(){ $('courierCards').innerHTML=data.couriers.map(c=>`<article class="courier-card"><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.phone)}</small><p>${badge(c.status)}</p><small>${c.jobs} solicitud(es) asignada(s)</small></article>`).join('')||'<p>Aún no hay mensajeros registrados.</p>'; }
   function renderPayments(){ $('paymentsBody').innerHTML=data.payments.map(p=>`<tr><td>${escapeHtml(p.date)}</td><td>${escapeHtml(p.order)}</td><td>${escapeHtml(p.client)}</td><td>${escapeHtml(p.method)}</td><td>${money(p.value)}</td><td>${badge(p.status)}</td></tr>`).join('')||'<tr><td colspan="6">Aún no hay cobros registrados.</td></tr>'; }
@@ -94,9 +116,20 @@
 
   function showView(view){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));document.querySelectorAll('.nav-item').forEach(v=>v.classList.toggle('active',v.dataset.view===view));const el=$(view);if(el)el.classList.add('active-view');$('pageTitle').textContent={dashboard:'Dashboard',clients:'Clientes',orders:'Solicitudes',couriers:'Mensajeros',payments:'Cobros',invites:'Invitaciones',reports:'Reportes'}[view]||'GOY XPRESS';if(innerWidth<760)scrollTo({top:0,behavior:'smooth'});}
   async function authenticate(email,password){const result=await api('/admin/login',{method:'POST',body:JSON.stringify({email,password})});if(!result.token)throw new Error('El servidor no devolvió una sesión válida');sessionStorage.setItem('goyAdminToken',result.token);}
-  async function enterApp(){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');try{await loadData();}catch(err){sessionStorage.removeItem('goyAdminToken');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginMessage').textContent=err.message||'No se pudieron cargar los datos';}}
+  async function enterApp(){
+    $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+    try{await loadData();if(liveRefresh)clearInterval(liveRefresh);liveRefresh=setInterval(()=>{if(token()&&!document.hidden)loadData(data.activeCycle).catch(()=>undefined);},12000);}
+    catch(err){sessionStorage.removeItem('goyAdminToken');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginMessage').textContent=err.message||'No se pudieron cargar los datos';}
+  }
 
   async function updateOrder(code,patch,button){if(button)button.disabled=true;try{await api(`/admin/requests/${encodeURIComponent(code)}`,{method:'PATCH',body:JSON.stringify(patch)});await loadData(data.activeCycle);}catch(err){alert(err.message||'No se pudo actualizar la solicitud');}finally{if(button)button.disabled=false;}}
+  async function decideWait(code,decision,button){
+    const continueWaiting=decision==='continue';
+    const message=continueWaiting?'¿Autorizar espera adicional? Desde el siguiente minuto se aplicará el recargo configurado.':'¿Indicar al mensajero que deje de esperar y pase a la siguiente entrega?';
+    if(!confirm(message))return;
+    announcedWaits.delete(code);
+    await updateOrder(code,{adminNotes:continueWaiting?'WAIT_CONTINUE':'WAIT_NEXT_DELIVERY'},button);
+  }
   async function manageOrder(code){
     const o=data.orders.find(x=>x.id===code); if(!o)return;
     const serviceLabel=prompt('Tipo o nombre del servicio:',o.service); if(serviceLabel===null)return;
@@ -121,10 +154,11 @@
 
   $('today').textContent=new Intl.DateTimeFormat('es-EC',{dateStyle:'full'}).format(new Date());
   $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginMessage').textContent='';try{await authenticate($('email').value.trim(),$('password').value);await enterApp();}catch(err){$('loginMessage').textContent=err.message||'No se pudo iniciar sesión';}});
-  $('logoutBtn').addEventListener('click',()=>{sessionStorage.removeItem('goyAdminToken');location.reload();});
+  $('logoutBtn').addEventListener('click',()=>{if(liveRefresh)clearInterval(liveRefresh);sessionStorage.removeItem('goyAdminToken');location.reload();});
   $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)showView(b.dataset.view);});
   document.addEventListener('click',e=>{
     const go=e.target.closest('[data-go]');if(go){showView(go.dataset.go);return;}
+    const wait=e.target.closest('[data-wait-decision]');if(wait){decideWait(wait.dataset.waitOrder,wait.dataset.waitDecision,wait);return;}
     const status=e.target.closest('[data-order][data-status]');if(status){updateOrder(status.dataset.order,{status:status.dataset.status},status);return;}
     const manage=e.target.closest('[data-manage]');if(manage){manageOrder(manage.dataset.manage);return;}
     const quote=e.target.closest('[data-quote]');if(quote){quoteOrder(quote.dataset.quote);return;}
