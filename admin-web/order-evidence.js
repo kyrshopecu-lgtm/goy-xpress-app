@@ -7,9 +7,17 @@
   let loading=false;
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const validImage=v=>/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(v||''));
+  const addMany=(list,label,items)=>{(Array.isArray(items)?items:[]).forEach((item,index)=>{const src=typeof item==='string'?item:item?.photo;if(validImage(src))list.push([`${label} ${index+1}`,src]);});};
   function photosOf(r){
     const e=r?.evidence||{};
-    const list=[['Retiro',e.pickupPhoto],['Entrega',e.deliveryPhoto],['Depósito',e.depositPhoto||r?.wallet?.depositPhoto]].filter(([,src])=>validImage(src));
+    const list=[];
+    if(validImage(e.pickupPhoto))list.push(['Retiro principal',e.pickupPhoto]);
+    addMany(list,'Retiro adicional',e.pickupPhotos);
+    addMany(list,'Servicio',e.servicePhotos);
+    if(validImage(e.deliveryPhoto))list.push(['Entrega principal',e.deliveryPhoto]);
+    addMany(list,'Entrega adicional',e.deliveryPhotos);
+    const deposit=e.depositPhoto||r?.wallet?.depositPhoto;if(validImage(deposit))list.push(['Depósito principal',deposit]);
+    addMany(list,'Depósito adicional',e.depositPhotos);
     return list;
   }
   function ensureStyle(){if(document.getElementById('goy-evidence-style'))return;const s=document.createElement('style');s.id='goy-evidence-style';s.textContent=`
