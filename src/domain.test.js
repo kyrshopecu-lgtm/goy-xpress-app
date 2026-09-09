@@ -25,32 +25,32 @@ test('mensajería ejecutiva suma $0.10 por minuto adicional', () => {
   assert.equal(calculateExecutivePrice(55).total, 8);
 });
 
-test('envío express incluye 5 km y cobra cada km adicional iniciado', () => {
-  assert.equal(calculateDeliveryPrice('express', 5).total, 3);
-  assert.equal(calculateDeliveryPrice('express', 5.1).total, 3.5);
-  assert.equal(calculateDeliveryPrice('express', 8).total, 4.5);
+test('envío express incluye 4 km por $3.50 y cobra $0.50 por km adicional iniciado', () => {
+  assert.equal(calculateDeliveryPrice('express', 4).total, 3.5);
+  assert.equal(calculateDeliveryPrice('express', 4.1).total, 4);
+  assert.equal(calculateDeliveryPrice('express', 7).total, 5);
 });
 
-test('envío programado se limita al radio de 5 km', () => {
-  assert.equal(calculateDeliveryPrice('scheduled', 5).eligible, true);
-  assert.equal(calculateDeliveryPrice('scheduled', 6).eligible, false);
-  assert.equal(calculateDeliveryPrice('scheduled', 5).total, 3);
+test('envío programado se limita al radio de 4 km', () => {
+  assert.equal(calculateDeliveryPrice('scheduled', 4).eligible, true);
+  assert.equal(calculateDeliveryPrice('scheduled', 4.1).eligible, false);
+  assert.equal(calculateDeliveryPrice('scheduled', 4).total, 3.5);
 });
 
 test('cobro contra entrega suma el envío solo cuando paga el destinatario', () => {
   assert.equal(
     calculateCollectTotal({
       productValue: 25,
-      deliveryCost: 3,
+      deliveryCost: 3.5,
       cashOnDelivery: true,
       deliveryPayer: 'recipient',
     }),
-    28,
+    28.5,
   );
   assert.equal(
     calculateCollectTotal({
       productValue: 25,
-      deliveryCost: 3,
+      deliveryCost: 3.5,
       cashOnDelivery: true,
       deliveryPayer: 'sender',
     }),
@@ -59,7 +59,7 @@ test('cobro contra entrega suma el envío solo cuando paga el destinatario', () 
   assert.equal(
     calculateCollectTotal({
       productValue: 25,
-      deliveryCost: 3,
+      deliveryCost: 3.5,
       cashOnDelivery: false,
       deliveryPayer: 'recipient',
     }),
@@ -83,6 +83,10 @@ test('normaliza solicitudes creadas por la versión anterior', () => {
 });
 
 test('mantiene las tarifas comerciales centrales', () => {
+  assert.equal(PRICING.scheduledDelivery, 3.5);
+  assert.equal(PRICING.expressBase, 3.5);
+  assert.equal(PRICING.expressIncludedKm, 4);
+  assert.equal(PRICING.expressExtraKm, 0.5);
   assert.equal(PRICING.executiveBase, 6.5);
   assert.equal(PRICING.executiveIncludedMinutes, 40);
   assert.equal(PRICING.executiveExtraMinute, 0.1);
