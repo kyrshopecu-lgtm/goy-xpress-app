@@ -1,7 +1,7 @@
 const PRICING = Object.freeze({
-  scheduledDelivery: 3,
-  expressBase: 3,
-  expressIncludedKm: 5,
+  scheduledDelivery: 3.5,
+  expressBase: 3.5,
+  expressIncludedKm: 4,
   expressExtraKm: 0.5,
   executiveBase: 6.5,
   executiveIncludedMinutes: 40,
