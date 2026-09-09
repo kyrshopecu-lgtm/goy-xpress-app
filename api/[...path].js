@@ -1,4 +1,4 @@
-const baseHandler = require('../server/server-v6');
+const baseHandler = require('../server/server-wait-v7');
 const {wrap:wrapClients} = require('../server/admin-clients');
 const {wrap:wrapManagement} = require('../server/admin-management');
 const {wrap:wrapCourierProfile} = require('../server/courier-profile');

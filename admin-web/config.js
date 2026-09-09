@@ -70,4 +70,11 @@ window.addEventListener('load',()=>{
     evidence.dataset.orderEvidence='1';
     document.body.appendChild(evidence);
   }
+
+  if(!document.querySelector('script[data-wait-admin]')){
+    const waitAdmin=document.createElement('script');
+    waitAdmin.src='/admin/wait-admin.js';
+    waitAdmin.dataset.waitAdmin='1';
+    document.body.appendChild(waitAdmin);
+  }
 });
