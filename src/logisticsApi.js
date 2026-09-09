@@ -28,8 +28,9 @@ async function cameraPhotoDataUrl() {
   if (!permission.granted) throw new Error('Se necesita permiso de cámara para registrar la evidencia.');
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    allowsEditing: false,
-    quality: 0.55,
+    allowsEditing: true,
+    aspect: [16, 9],
+    quality: 0.68,
     base64: true,
   });
   if (result.canceled || !result.assets?.[0]) return null;
