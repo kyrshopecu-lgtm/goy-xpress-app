@@ -1,0 +1,29 @@
+const fs=require('fs');
+const path=require('path');
+const crypto=require('crypto');
+const v6=require('./server-v6');
+const {LOGISTICS}=require('../src/logisticsRules');
+
+function config(){return{databaseUrl:String(process.env.DATABASE_URL||''),tokenSecret:String(process.env.TOKEN_SECRET||''),allowedOrigin:String(process.env.ALLOWED_ORIGIN||'*'),dataFile:process.env.DATA_FILE||path.join(__dirname,'data-v5.json')}}
+let sqlClient;
+function safeEqual(a,b){const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)}
+function verifyToken(token,secret){if(!token||!secret)return null;const[body,sig]=String(token).split('.');if(!body||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(sig,expected))return null;try{const p=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));return p.exp&&Date.now()<=p.exp?p:null}catch{return null}}
+function bearer(req){const a=String(req.headers.authorization||'');return a.startsWith('Bearer ')?a.slice(7):''}
+function pathname(req){const u=new URL(req.url,`http://${req.headers.host||'localhost'}`);let p=u.pathname.replace(/\/$/,'')||'/';if(p==='/api')p='/';else if(p.startsWith('/api/'))p=p.slice(4);return p}
+function json(res,status,body,origin='*'){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization, X-Request-Secret');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,OPTIONS');res.end(JSON.stringify(body))}
+async function body(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const c of req)raw+=c;return raw?JSON.parse(raw):{}}
+function normalize(d){d=d&&typeof d==='object'?d:{};for(const k of['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives'])if(!Array.isArray(d[k]))d[k]=[];return d}
+async function readState(c){if(c.databaseUrl){if(!sqlClient){const{neon}=require('@neondatabase/serverless');sqlClient=neon(c.databaseUrl)};await sqlClient`CREATE TABLE IF NOT EXISTS goy_state (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;const r=await sqlClient`SELECT data FROM goy_state WHERE id=1 LIMIT 1`;return normalize(r[0]?.data||{})}try{return normalize(JSON.parse(fs.readFileSync(c.dataFile,'utf8')))}catch{return normalize({})}}
+async function writeState(c,d){d=normalize(d);if(c.databaseUrl){if(!sqlClient){const{neon}=require('@neondatabase/serverless');sqlClient=neon(c.databaseUrl)};await sqlClient`UPDATE goy_state SET data=${JSON.stringify(d)}::jsonb,updated_at=NOW() WHERE id=1`;return}fs.writeFileSync(c.dataFile,JSON.stringify(d,null,2))}
+function event(r,type,payload={}){r.events=Array.isArray(r.events)?r.events:[];r.events.unshift({id:crypto.randomUUID(),type,...payload,at:new Date().toISOString()});r.updatedAt=new Date().toISOString()}
+function clean(r){const x={...r};delete x.accessSecretHash;delete x.clientAccessHash;delete x.courierAccessHash;return x}
+
+async function handler(req,res){const c=config(),p=pathname(req);if(req.method==='OPTIONS')return v6(req,res);try{
+ const adminDecision=p.match(/^\/admin\/requests\/([^/]+)\/wait-decision$/);
+ if(req.method==='POST'&&adminDecision){const auth=verifyToken(bearer(req),c.tokenSecret);if(!auth||auth.role!=='admin')return json(res,401,{error:'No autorizado'},c.allowedOrigin);const b=await body(req);if(!['continue','next'].includes(b.decision))return json(res,400,{error:'Decisión inválida.'},c.allowedOrigin);const data=await readState(c),code=decodeURIComponent(adminDecision[1]),r=data.requests.find(x=>x.code===code||x.id===code);if(!r)return json(res,404,{error:'Solicitud no encontrada.'},c.allowedOrigin);r.wait={...(r.wait||{}),decision:b.decision,decisionAt:new Date().toISOString(),requiresDecision:false};if(b.decision==='next'){r.wait.stoppedAtMinutes=Number(r.wait.elapsedMinutes||LOGISTICS.courierFreeWaitMinutes)}event(r,'admin_wait_decision',{decision:b.decision});await writeState(c,data);return json(res,200,{request:clean(r)},c.allowedOrigin)}
+ const wait=p.match(/^\/requests\/([^/]+)\/wait$/);
+ if(req.method==='POST'&&wait){const auth=verifyToken(bearer(req),c.tokenSecret);if(!auth||auth.role!=='courier')return json(res,401,{error:'Inicia sesión como mensajero.'},c.allowedOrigin);const b=await body(req),data=await readState(c),code=decodeURIComponent(wait[1]),r=data.requests.find(x=>(x.code===code||x.id===code)&&x.courierId===auth.userId);if(!r)return json(res,404,{error:'Operación no asignada a tu cuenta.'},c.allowedOrigin);const elapsed=Math.max(0,Math.floor(Number(b.elapsedMinutes||0))),free=LOGISTICS.courierFreeWaitMinutes||10,decision=r.wait?.decision||null;let billable=0,requiresDecision=false;if(elapsed>=free&&!decision)requiresDecision=true;if(decision==='continue')billable=Math.max(0,elapsed-free);const extraCost=Math.round(billable*Number(LOGISTICS.courierExtraWaitMinute||0.1)*100)/100;r.wait={...(r.wait||{}),elapsedMinutes:elapsed,freeMinutes:free,extraMinutes:billable,extraCost,requiresDecision,decision};r.serviceCost=Math.round((Number(r.baseServiceCost??r.serviceCost??0)+extraCost)*100)/100;event(r,requiresDecision?'wait_admin_required':'wait_updated',{elapsedMinutes:elapsed,extraCost});await writeState(c,data);return json(res,200,clean(r),c.allowedOrigin)}
+ return v6(req,res)
+}catch(e){console.error('GOY wait v7',e);return json(res,Number(e.status||500),{error:e.message||'Error interno.'},c.allowedOrigin)}}
+handler.createHandler=v6.createHandler;handler.createMemoryStore=v6.createMemoryStore;handler.computeGoogleRoute=v6.computeGoogleRoute;handler.emptyData=v6.emptyData;
+module.exports=handler;
