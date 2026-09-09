@@ -4,6 +4,7 @@ import {
   registerPickupEvidence,
   registerDeliveryEvidence,
   registerDepositEvidence,
+  registerAdditionalEvidence,
   sendCurrentLocation,
   startLocationTracking,
   updateCourierWait,
@@ -76,7 +77,7 @@ export function CourierWaitController({request,secret,onUpdated}){
   useEffect(()=>{if(!running||minutes===0)return;updateCourierWait(request.code,secret,minutes).then(onUpdated).catch(()=>undefined);},[minutes,running,request.code,secret,onUpdated]);
   const notifyAdmin=()=>notifyAdminWhatsApp(`GOY XPRESS - Novedad de espera\nSolicitud: ${request.code}\nSe cumplieron 10 minutos de espera. El mensajero requiere instrucción.`);
   const decide=async decision=>{try{const updated=await setWaitDecision(request.code,secret,decision);onUpdated?.(updated);if(decision==='withdraw')setRunning(false);}catch(e){Alert.alert('No se pudo registrar',e.message);}};
-  return <View style={s.subcard}><View style={s.subcardHead}><Text style={s.subcardTitle}>Tiempo de espera</Text><View style={[s.liveDot,running&&s.liveDotActive]}/></View><Text style={s.timer}>{String(Math.floor(seconds/60)).padStart(2,'0')}:{String(seconds%60).padStart(2,'0')}</Text><Text style={s.note}>10 minutos incluidos. Después se agregan $0.10 por minuto.</Text><View style={s.waitCost}><Text style={s.waitLabel}>Recargo actual</Text><Text style={s.waitValue}>{money(rule.extraCost)}</Text></View>{!running?<Button title="Iniciar espera" kind="navy" onPress={()=>setRunning(true)}/>:<Button title="Pausar contador" kind="light" onPress={()=>setRunning(false)}/>} {rule.requiresDecision?<><Button title="Avisar novedad por WhatsApp" kind="green" onPress={notifyAdmin}/><View style={s.row}><Button title="Me retiro" kind="danger" onPress={()=>decide('withdraw')}/><Button title="Seguir esperando" kind="green" onPress={()=>decide('continue')}/></View></>:null}</View>;
+  return <View style={s.subcard}><View style={s.subcardHead}><Text style={s.subcardTitle}>Tiempo de espera</Text><View style={[s.liveDot,running&&s.liveDotActive]}/></View><Text style={s.timer}>{String(Math.floor(seconds/60)).padStart(2,'0')}:{String(seconds%60).padStart(2,'0')}</Text><Text style={s.note}>El tiempo de espera se registra automáticamente para administración. El mensajero no visualiza valores ni recargos.</Text>{!running?<Button title="Iniciar espera" kind="navy" onPress={()=>setRunning(true)}/>:<Button title="Pausar contador" kind="light" onPress={()=>setRunning(false)}/>} {rule.requiresDecision?<><Button title="Avisar novedad por WhatsApp" kind="green" onPress={notifyAdmin}/><View style={s.row}><Button title="Me retiro" kind="danger" onPress={()=>decide('withdraw')}/><Button title="Seguir esperando" kind="green" onPress={()=>decide('continue')}/></View></>:null}</View>;
 }
 
 export function CourierJobTools({request,secret,onUpdated}){
@@ -85,7 +86,8 @@ export function CourierJobTools({request,secret,onUpdated}){
 
   useEffect(()=>()=>{if(stopTrackingRef.current) stopTrackingRef.current();},[]);
 
-  const run=async fn=>{try{const updated=await fn();if(updated)onUpdated?.(updated);return updated;}catch(e){Alert.alert('No se pudo completar',e.message);return null;}};
+  const run=async fn=>{try{const updated=await fn();if(updated?.request)onUpdated?.(updated.request);else if(updated)onUpdated?.(updated);return updated;}catch(e){Alert.alert('No se pudo completar',e.message);return null;}};
+  const extraPhoto=type=>run(()=>registerAdditionalEvidence(request.code,secret,type));
 
   const pickup=async()=>{
     const updated=await run(()=>registerPickupEvidence(request.code,secret));
@@ -107,15 +109,15 @@ export function CourierJobTools({request,secret,onUpdated}){
 
   return <View style={s.card}>
     <Header eyebrow="OPERACIÓN ACTIVA" title="Ruta del mensajero" icon="➜"/>
-    <Text style={s.note}>Sigue los pasos en orden. Evidencias y ubicación se sincronizan con administración.</Text>
+    <Text style={s.note}>Sigue los pasos en orden. Los valores del servicio son privados de administración y cliente. Puedes registrar varias fotografías durante la operación.</Text>
     <View style={s.steps}>
-      <View style={s.step}><View style={s.stepNumber}><Text style={s.stepNumberText}>1</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>Recoger</Text><Text style={s.stepText}>Confirma la recogida con fotografía.</Text></View></View><Button title="Recogido · tomar foto" kind="navy" onPress={pickup}/>
+      <View style={s.step}><View style={s.stepNumber}><Text style={s.stepNumberText}>1</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>Recoger</Text><Text style={s.stepText}>Confirma la recogida con fotografía.</Text></View></View><Button title="Recogido · tomar foto" kind="navy" onPress={pickup}/><Button title="＋ Otra foto de retiro" kind="light" onPress={()=>extraPhoto('pickup')}/>
       <View style={s.stepDivider}/>
-      <View style={s.step}><View style={s.stepNumber}><Text style={s.stepNumberText}>2</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>En camino</Text><Text style={s.stepText}>Activa GPS para seguimiento operativo.</Text></View></View><Button title="Enviar ubicación ahora" onPress={()=>run(()=>sendCurrentLocation(request.code,secret))}/><Button title={tracking?'Detener seguimiento GPS':'Iniciar seguimiento GPS'} kind={tracking?'danger':'green'} onPress={toggleTracking}/>{tracking?<View style={s.trackingPill}><View style={s.trackingDot}/><Text style={s.tracking}>GPS activo · actualización cada 30 s o 25 m</Text></View>:null}
-      {request.kind==='deposit'?<Button title="Foto de cheques / depósito" kind="light" onPress={()=>run(()=>registerDepositEvidence(request.code,secret,request.cashAmount||0))}/>:null}
+      <View style={s.step}><View style={s.stepNumber}><Text style={s.stepNumberText}>2</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>En camino</Text><Text style={s.stepText}>Activa GPS y registra evidencias adicionales cuando sea necesario.</Text></View></View><Button title="Enviar ubicación ahora" onPress={()=>run(()=>sendCurrentLocation(request.code,secret))}/><Button title={tracking?'Detener seguimiento GPS':'Iniciar seguimiento GPS'} kind={tracking?'danger':'green'} onPress={toggleTracking}/>{tracking?<View style={s.trackingPill}><View style={s.trackingDot}/><Text style={s.tracking}>GPS activo · actualización cada 30 s o 25 m</Text></View>:null}<Button title="＋ Foto adicional del servicio" kind="light" onPress={()=>extraPhoto('service')}/>
+      {request.kind==='deposit'?<><Button title="Foto de cheques / depósito" kind="light" onPress={()=>run(()=>registerDepositEvidence(request.code,secret,request.cashAmount||0))}/><Button title="＋ Otra foto del depósito" kind="light" onPress={()=>extraPhoto('deposit')}/></>:null}
       <View style={s.stepDivider}/><CourierWaitController request={request} secret={secret} onUpdated={onUpdated}/>
       <View style={s.stepDivider}/>
-      <View style={s.step}><View style={[s.stepNumber,{backgroundColor:C.green}]}><Text style={s.stepNumberText}>3</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>Finalizar</Text><Text style={s.stepText}>Registra la evidencia de entrega.</Text></View></View><Button title="Entrega finalizada · tomar foto" kind="green" onPress={delivery}/>{Number(request.totalToCollect||0)>0?<Button title="Foto de depósito de valores recaudados" kind="light" onPress={()=>run(()=>registerDepositEvidence(request.code,secret,request.totalToCollect))}/>:null}
+      <View style={s.step}><View style={[s.stepNumber,{backgroundColor:C.green}]}><Text style={s.stepNumberText}>3</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>Finalizar</Text><Text style={s.stepText}>Registra la evidencia de entrega.</Text></View></View><Button title="Entrega finalizada · tomar foto" kind="green" onPress={delivery}/><Button title="＋ Otra foto de entrega" kind="light" onPress={()=>extraPhoto('delivery')}/>{Number(request.totalToCollect||0)>0?<><Button title="Foto de depósito de valores recaudados" kind="light" onPress={()=>run(()=>registerDepositEvidence(request.code,secret,request.totalToCollect))}/><Button title="＋ Otra foto del depósito" kind="light" onPress={()=>extraPhoto('deposit')}/></>:null}
     </View>
   </View>;
 }
