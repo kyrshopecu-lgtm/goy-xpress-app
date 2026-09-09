@@ -14,6 +14,8 @@
     {"source": "/api/admin-create-request", "destination": "/api/admin-create-request.js"},
     {"source": "/api/public-tracking", "destination": "/api/public-tracking.js"},
     {"source": "/api/additional-evidence", "destination": "/api/additional-evidence.js"},
+    {"source": "/api/courier-client-info", "destination": "/api/courier-client-info.js"},
+    {"source": "/api/courier-additional-evidence", "destination": "/api/courier-additional-evidence.js"},
     {"source": "/api/:path*", "destination": "/api/[...path].js"}
   ],
   "headers": [
