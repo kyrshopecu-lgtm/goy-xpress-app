@@ -1,7 +1,9 @@
 {
   "version": 2,
+  "redirects": [
+    {"source": "/", "destination": "/admin", "permanent": false}
+  ],
   "rewrites": [
-    {"source": "/", "destination": "/admin-web/index.html"},
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
     {"source": "/tracking", "destination": "/tracking-web/index.html"},
