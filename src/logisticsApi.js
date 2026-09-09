@@ -57,6 +57,12 @@ export async function registerDepositEvidence(code, secret, amount=0) {
   return api(`/requests/${encodeURIComponent(code)}/deposit-evidence`, {secret, body:{photo,amount}});
 }
 
+export async function registerAdditionalEvidence(code, secret, type='service') {
+  const photo = await cameraPhotoDataUrl();
+  if (!photo) return null;
+  return api('/additional-evidence', {secret, body:{code,type,photo}});
+}
+
 async function ensureLocationPermission() {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (permission.status !== 'granted') {
@@ -81,8 +87,6 @@ export async function sendCurrentLocation(code, secret) {
   return postLocation(code, secret, location);
 }
 
-// Seguimiento en primer plano mientras el mensajero mantiene la operación abierta.
-// No se comparte con el cliente: cada punto se guarda en el backend para el administrador.
 export async function startLocationTracking(code, secret, onUpdated, onError) {
   await ensureLocationPermission();
   const subscription = await Location.watchPositionAsync(
