@@ -23,6 +23,7 @@
   }
 
   const digits=v=>String(v||'').replace(/\D/g,'');
+  const norm=v=>String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   function statusText(user){return user.active===false?'Inactivo':user.approved?'Aprobado':'Pendiente de aprobación';}
   function buttonHtml(role,user){
     const action=user.approved?'revocar':'aprobar';
@@ -30,15 +31,25 @@
     return `<button type="button" data-account-${action}="${esc(user.id)}" data-account-role="${role}" style="margin-left:8px;padding:6px 9px;border:0;border-radius:9px;font-weight:800;cursor:pointer;background:${user.approved?'#eef3f5':'#38A844'};color:${user.approved?'#0b2f40':'#fff'}">${label}</button>`;
   }
 
+  function clientColumnIndexes(){
+    const headers=[...document.querySelectorAll('#clients table thead th')].map(th=>norm(th.textContent));
+    const find=(...names)=>headers.findIndex(h=>names.some(n=>h===n||h.includes(n)));
+    return {phone:find('whatsapp','telefono'),email:find('correo'),status:find('estado')};
+  }
+
   function decorateClients(clients){
+    const idx=clientColumnIndexes();
     document.querySelectorAll('#clientsBody tr').forEach(row=>{
       const cells=row.querySelectorAll('td');if(cells.length<5)return;
-      const email=(cells[3]?.textContent||'').trim().toLowerCase();
-      const phone=digits(cells[1]?.textContent||'');
-      const user=clients.find(c=>(c.email||'').toLowerCase()===email||(phone&&digits(c.phone||c.whatsapp)===phone));
-      if(!user)return;
+      const phoneIndex=idx.phone>=0?idx.phone:1;
+      const emailIndex=idx.email>=0?idx.email:3;
+      const statusIndex=idx.status>=0?idx.status:cells.length-1;
+      const email=(cells[emailIndex]?.textContent||'').trim().toLowerCase();
+      const phone=digits(cells[phoneIndex]?.textContent||'');
+      const user=clients.find(c=>(email&&(c.email||'').toLowerCase()===email)||(phone&&digits(c.phone||c.whatsapp)===phone));
+      if(!user||!cells[statusIndex])return;
       const next=`<span class="badge ${user.approved?'active':'pending'}">${esc(statusText(user))}</span>${buttonHtml('clients',user)}`;
-      if(cells[4].innerHTML!==next)cells[4].innerHTML=next;
+      if(cells[statusIndex].innerHTML!==next)cells[statusIndex].innerHTML=next;
     });
   }
 
@@ -62,49 +73,20 @@
   }
   function redecorate(){
     if(decorating||!lastData)return;
-    decorating=true;
-    observer.disconnect();
-    try{
-      decorateClients(lastData.clients||[]);
-      decorateCouriers(lastData.couriers||[]);
-    }finally{
-      observeTargets();
-      decorating=false;
-    }
+    decorating=true;observer.disconnect();
+    try{decorateClients(lastData.clients||[]);decorateCouriers(lastData.couriers||[]);}finally{observeTargets();decorating=false;}
   }
-  function queueDecorate(){
-    if(decorateQueued||decorating||!lastData)return;
-    decorateQueued=true;
-    requestAnimationFrame(()=>{decorateQueued=false;redecorate();});
-  }
-
-  async function refresh(){
-    if(busy||!token())return;busy=true;
-    try{lastData=await api('/admin/data');redecorate();}catch{}finally{busy=false;}
-  }
-
+  function queueDecorate(){if(decorateQueued||decorating||!lastData)return;decorateQueued=true;requestAnimationFrame(()=>{decorateQueued=false;redecorate();});}
+  async function refresh(){if(busy||!token())return;busy=true;try{lastData=await api('/admin/data');redecorate();}catch{}finally{busy=false;}}
   async function setApproval(role,id,approved,button){
     if(button)button.disabled=true;
-    try{
-      await api(`/admin/${role}/${encodeURIComponent(id)}/approve`,{method:'POST',body:JSON.stringify({approved})});
-      await refresh();
-      document.querySelector('[data-view="clients"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
-    }catch(e){alert(e.message||'No se pudo actualizar la cuenta');}finally{if(button)button.disabled=false;}
+    try{await api(`/admin/${role}/${encodeURIComponent(id)}/approve`,{method:'POST',body:JSON.stringify({approved})});await refresh();document.querySelector('[data-view="clients"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));}
+    catch(e){alert(e.message||'No se pudo actualizar la cuenta');}finally{if(button)button.disabled=false;}
   }
-
   document.addEventListener('click',e=>{
-    const approve=e.target.closest('[data-account-aprobar]');
-    if(approve){setApproval(approve.dataset.accountRole,approve.dataset.accountAprobar,true,approve);return;}
-    const revoke=e.target.closest('[data-account-revocar]');
-    if(revoke){if(confirm('¿Deseas revocar el acceso de esta cuenta?'))setApproval(revoke.dataset.accountRole,revoke.dataset.accountRevocar,false,revoke);}
+    const approve=e.target.closest('[data-account-aprobar]');if(approve){setApproval(approve.dataset.accountRole,approve.dataset.accountAprobar,true,approve);return;}
+    const revoke=e.target.closest('[data-account-revocar]');if(revoke){if(confirm('¿Deseas revocar el acceso de esta cuenta?'))setApproval(revoke.dataset.accountRole,revoke.dataset.accountRevocar,false,revoke);}
   });
-
-  const start=()=>{
-    clientsTarget=document.getElementById('clientsBody');
-    couriersTarget=document.getElementById('courierCards');
-    observeTargets();
-    refresh();
-    setInterval(refresh,15000);
-  };
+  const start=()=>{clientsTarget=document.getElementById('clientsBody');couriersTarget=document.getElementById('courierCards');observeTargets();refresh();setInterval(refresh,15000);};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
