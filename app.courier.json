@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOY XPRESS Mensajero",
     "slug": "goy-xpress-mensajero",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "scheme": "goyxpressmensajero",
     "orientation": "portrait",
     "icon": "./assets/goy-logo.jpg",
@@ -16,7 +16,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "GOY XPRESS Mensajero necesita la cámara para tu foto de perfil y para registrar evidencias de recogida, depósitos y entrega.",
+          "cameraPermission": "GOY XPRESS Mensajero necesita la cámara para tu foto de perfil y para registrar evidencias de recogida, servicios, depósitos y entrega.",
           "photosPermission": "GOY XPRESS Mensajero necesita acceso a tus imágenes únicamente para que puedas elegir tu foto de perfil."
         }
       ],
@@ -29,7 +29,7 @@
     ],
     "android": {
       "package": "com.goyxpress.mensajero",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/goy-logo.jpg",
         "backgroundColor": "#0D2F41"
@@ -42,7 +42,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.goyxpress.mensajero",
-      "buildNumber": "4"
+      "buildNumber": "5"
     }
   }
 }
