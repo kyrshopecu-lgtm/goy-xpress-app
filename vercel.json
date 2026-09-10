@@ -1,7 +1,10 @@
 {
   "version": 2,
+  "redirects": [
+    {"source": "/", "destination": "/inicio", "permanent": false}
+  ],
   "rewrites": [
-    {"source": "/", "destination": "/public-web/index.html"},
+    {"source": "/inicio", "destination": "/public-web/index.html"},
     {"source": "/web/:path*", "destination": "/public-web/:path*"},
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
@@ -34,7 +37,7 @@
       ]
     },
     {
-      "source": "/",
+      "source": "/inicio",
       "headers": [
         {"key": "X-Content-Type-Options", "value": "nosniff"},
         {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}
