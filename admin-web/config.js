@@ -64,6 +64,13 @@ window.addEventListener('load',()=>{
     document.body.appendChild(courierProfile);
   }
 
+  if(!document.querySelector('script[data-wait-notifications]')){
+    const waitNotifications=document.createElement('script');
+    waitNotifications.src='/admin/wait-notifications.js';
+    waitNotifications.dataset.waitNotifications='1';
+    document.body.appendChild(waitNotifications);
+  }
+
   if(!document.querySelector('script[data-order-evidence]')){
     const evidence=document.createElement('script');
     evidence.src='/admin/order-evidence.js';
