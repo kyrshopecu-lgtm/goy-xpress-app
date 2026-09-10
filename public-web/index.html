@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#082b3b" />
+  <meta name="theme-color" content="#072b3d" />
   <meta name="description" content="GOY XPRESS: mensajería, entregas, trámites, depósitos, logística para emprendedores y gestión vehicular en Quito." />
-  <title>GOY XPRESS | Logística, mensajería y trámites en Quito</title>
+  <title>GOY XPRESS | Logística y mensajería en Quito</title>
   <link rel="icon" href="/assets/icon.png" />
   <link rel="stylesheet" href="/web/styles.css" />
 </head>
 <body>
+  <div class="top-note"><span class="live-dot"></span> Operación logística en Quito <b>·</b> Seguimiento digital por orden</div>
+
   <header class="site-header" id="inicio">
     <a class="brand" href="#inicio" aria-label="GOY XPRESS inicio">
       <img src="/assets/goy-logo.jpg" alt="GOY XPRESS" />
@@ -17,96 +19,156 @@
     </a>
     <button class="menu-btn" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button>
     <nav class="main-nav" aria-label="Navegación principal">
-      <a href="#servicios">Servicios</a><a href="#como-funciona">Cómo funciona</a><a href="#emprendedores">Emprendedores</a><a href="#vehicular">Vehículos</a><a href="#contacto">Contacto</a>
-      <a class="nav-track" href="/tracking">Seguimiento</a>
+      <a href="#soluciones">Servicios</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#emprendedores">Negocios</a>
+      <a href="#vehicular">Vehículos</a>
+      <a href="#preguntas">Preguntas</a>
+      <a class="nav-track" href="/tracking">Rastrear pedido</a>
     </nav>
   </header>
 
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <span class="eyebrow">QUITO · MENSAJERÍA · TRÁMITES · LOGÍSTICA</span>
-        <h1>Tu tiempo vale. <em>Nosotros hacemos la vuelta.</em></h1>
-        <p>Coordinamos entregas, trámites, depósitos y gestiones logísticas para personas y negocios que necesitan resolver rápido, con seguimiento y control desde un solo sistema.</p>
+        <span class="eyebrow light">MENSAJERÍA · TRÁMITES · LOGÍSTICA · QUITO</span>
+        <h1>Resuelve tus vueltas <span>sin perder tu tiempo.</span></h1>
+        <p>GOY XPRESS coordina tus entregas, trámites y gestiones con mensajero asignado, seguimiento de la operación y evidencias desde un solo sistema.</p>
         <div class="hero-actions">
-          <a class="btn primary" href="#solicitar">Solicitar servicio</a>
-          <a class="btn secondary" href="/tracking">Rastrear una orden</a>
+          <a class="btn primary" href="#solicitar">Solicitar un servicio <span>→</span></a>
+          <a class="btn glass" href="/tracking">Tengo un código de tracking</a>
         </div>
-        <div class="trust-row"><span>✓ Operación en Quito</span><span>✓ Seguimiento de pedidos</span><span>✓ Evidencia fotográfica</span></div>
+        <div class="hero-proof">
+          <div><strong>7+</strong><span>años de experiencia</span></div>
+          <div><strong>Quito</strong><span>operación local</span></div>
+          <div><strong>Digital</strong><span>control y evidencias</span></div>
+        </div>
       </div>
-      <div class="hero-visual" aria-hidden="true">
-        <div class="phone-card">
-          <div class="phone-top"><span class="dot"></span><strong>GOY XPRESS</strong><span>●</span></div>
-          <div class="route-map"><span class="pin a">A</span><span class="route-line"></span><span class="pin b">B</span></div>
-          <div class="status-card"><small>ESTADO DE LA ENTREGA</small><strong>En camino</strong><span>Mensajero asignado · Seguimiento activo</span></div>
-          <div class="mini-grid"><div><b>📷</b><span>Evidencias</span></div><div><b>⌖</b><span>Ruta</span></div><div><b>✓</b><span>Entrega</span></div></div>
+
+      <div class="hero-panel">
+        <div class="hero-panel-head"><span>¿Qué necesitas resolver hoy?</span><small>Elige una opción</small></div>
+        <div class="need-grid" id="needGrid">
+          <button class="need-card active" data-service="Entrega programada" data-title="Enviar un paquete" data-copy="Recogemos y entregamos paquetes, productos o documentos dentro de Quito." data-icon="↗"><b>↗</b><span>Enviar algo</span><small>Paquetes y documentos</small></button>
+          <button class="need-card" data-service="Trámite o gestión" data-title="Hacer un trámite" data-copy="Realizamos diligencias, ingreso o retiro de documentos y otras gestiones administrativas." data-icon="▤"><b>▤</b><span>Hacer un trámite</span><small>Documentos y gestiones</small></button>
+          <button class="need-card" data-service="Depósito / cobranza" data-title="Realizar un depósito" data-copy="Coordinamos la gestión y dejamos evidencia de la operación para tu control." data-icon="$"><b>$</b><span>Depósito</span><small>Gestión con evidencia</small></button>
+          <button class="need-card" data-service="Matriculación / revisión vehicular" data-title="Gestionar mi vehículo" data-copy="Te ayudamos a coordinar revisión, matriculación y traslado del vehículo para la inspección." data-icon="◆"><b>◆</b><span>Mi vehículo</span><small>Revisión y matriculación</small></button>
+        </div>
+        <div class="need-result" id="needResult">
+          <span class="result-icon">↗</span>
+          <div><small>RECOMENDADO</small><strong>Enviar un paquete</strong><p>Recogemos y entregamos paquetes, productos o documentos dentro de Quito.</p></div>
+          <button class="mini-cta" id="needCta" type="button">Solicitar</button>
         </div>
       </div>
     </section>
 
-    <section class="quick-strip" aria-label="Servicios destacados">
-      <div><b>⚡</b><span><strong>Entregas</strong><small>Programadas y exprés</small></span></div>
-      <div><b>📄</b><span><strong>Trámites</strong><small>Gestiones y documentos</small></span></div>
-      <div><b>🏦</b><span><strong>Depósitos</strong><small>Gestión con evidencia</small></span></div>
-      <div><b>🚗</b><span><strong>Vehicular</strong><small>Revisión y matriculación</small></span></div>
+    <section class="action-bar" aria-label="Acciones rápidas">
+      <a href="#solicitar"><span class="action-icon">＋</span><div><strong>Nueva solicitud</strong><small>Cuéntanos qué necesitas</small></div><b>→</b></a>
+      <a href="/tracking"><span class="action-icon">⌖</span><div><strong>Rastrear pedido</strong><small>Consulta una orden</small></div><b>→</b></a>
+      <a href="#emprendedores"><span class="action-icon">▣</span><div><strong>Soy negocio</strong><small>Soluciones para emprendedores</small></div><b>→</b></a>
     </section>
 
-    <section class="section" id="servicios">
-      <div class="section-head"><span class="eyebrow">TODO EN UN SOLO LUGAR</span><h2>Servicios pensados para resolver</h2><p>Elige la gestión que necesitas y nuestro equipo coordina la operación de principio a fin.</p></div>
-      <div class="services-grid">
-        <article class="service-card featured"><div class="icon">🛵</div><h3>Mensajería y entregas</h3><p>Retiro y entrega de paquetes, documentos y productos dentro de Quito, con mensajero asignado y evidencia de cada etapa.</p><ul><li>Entrega programada</li><li>Entrega exprés</li><li>Seguimiento de operación</li></ul></article>
-        <article class="service-card"><div class="icon">📋</div><h3>Trámites y gestiones</h3><p>Realizamos diligencias para que no tengas que detener tu jornada: ingreso y retiro de documentos, pagos y gestiones administrativas.</p><ul><li>Ingreso de documentos</li><li>Retiros y entregas</li><li>Gestiones personalizadas</li></ul></article>
-        <article class="service-card"><div class="icon">🏦</div><h3>Depósitos y cobranzas</h3><p>Gestión de depósitos y operaciones de cobranza con registro de evidencias para mantener control sobre cada solicitud.</p><ul><li>Comprobante fotográfico</li><li>Registro de la operación</li><li>Control desde administración</li></ul></article>
-        <article class="service-card"><div class="icon">💼</div><h3>Mensajería ejecutiva</h3><p>Apoyo para empresas y profesionales que necesitan un operador confiable para documentos, trámites y entregas recurrentes.</p><ul><li>Atención empresarial</li><li>Rutas coordinadas</li><li>Historial de servicios</li></ul></article>
-        <article class="service-card"><div class="icon">📦</div><h3>Logística para emprendedores</h3><p>Presencia operativa en Quito sin necesidad de montar toda una infraestructura propia.</p><ul><li>Recepción y despacho</li><li>Punto físico de apoyo</li><li>Entregas a clientes</li></ul></article>
-        <article class="service-card"><div class="icon">🧩</div><h3>Servicios personalizados</h3><p>¿Tu necesidad no está en la lista? La administración puede crear una operación especial y asignar un valor según el trabajo requerido.</p><ul><li>Cotización personalizada</li><li>Mensajero asignado</li><li>Seguimiento y evidencias</li></ul></article>
+    <section class="section solutions" id="soluciones">
+      <div class="section-head left">
+        <span class="eyebrow">SOLUCIONES GOY XPRESS</span>
+        <h2>Un solo equipo para muchas vueltas.</h2>
+        <p>Explora cada servicio y presiona el que necesites para ver cómo podemos ayudarte.</p>
+      </div>
+
+      <div class="solution-layout">
+        <div class="service-tabs" role="tablist" aria-label="Servicios GOY XPRESS">
+          <button class="service-tab active" data-tab="delivery"><span>01</span><div><strong>Mensajería y entregas</strong><small>Programadas y exprés</small></div></button>
+          <button class="service-tab" data-tab="procedures"><span>02</span><div><strong>Trámites y gestiones</strong><small>Tu tiempo sigue contigo</small></div></button>
+          <button class="service-tab" data-tab="finance"><span>03</span><div><strong>Depósitos y cobranzas</strong><small>Operación documentada</small></div></button>
+          <button class="service-tab" data-tab="business"><span>04</span><div><strong>Logística para negocios</strong><small>Tu apoyo operativo en Quito</small></div></button>
+          <button class="service-tab" data-tab="vehicle"><span>05</span><div><strong>Gestión vehicular</strong><small>Revisión y matriculación</small></div></button>
+          <button class="service-tab" data-tab="custom"><span>06</span><div><strong>Servicio personalizado</strong><small>Cuéntanos tu necesidad</small></div></button>
+        </div>
+
+        <article class="service-detail" id="serviceDetail">
+          <div class="service-detail-top"><span class="detail-badge">SERVICIO ACTIVO</span><span class="detail-number">01</span></div>
+          <div class="detail-icon">↗</div>
+          <h3>Mensajería y entregas</h3>
+          <p>Recogemos y entregamos paquetes, productos y documentos dentro de Quito con operación coordinada desde administración.</p>
+          <div class="feature-list"><span>✓ Mensajero asignado</span><span>✓ Seguimiento del estado</span><span>✓ Evidencias fotográficas</span><span>✓ Entrega programada o exprés</span></div>
+          <button class="btn primary service-request" type="button" data-service="Entrega programada">Solicitar este servicio</button>
+        </article>
       </div>
     </section>
 
     <section class="section process" id="como-funciona">
-      <div class="section-head light"><span class="eyebrow">SIMPLE Y CONTROLADO</span><h2>Así funciona GOY XPRESS</h2><p>Un proceso claro desde la solicitud hasta la entrega final.</p></div>
-      <div class="steps">
-        <article><span>01</span><h3>Solicitas</h3><p>Indicas qué necesitas, origen, destino y detalles de la gestión.</p></article>
-        <article><span>02</span><h3>Coordinamos</h3><p>Administración revisa la solicitud y asigna el mensajero adecuado.</p></article>
-        <article><span>03</span><h3>Ejecutamos</h3><p>El mensajero realiza la operación, registra estados, ubicación y evidencias.</p></article>
-        <article><span>04</span><h3>Confirmamos</h3><p>La entrega o trámite queda registrado para consulta y seguimiento.</p></article>
+      <div class="section-head light">
+        <span class="eyebrow light">FÁCIL DE ENTENDER</span>
+        <h2>De tu solicitud a la entrega, paso a paso.</h2>
+        <p>La operación está diseñada para que siempre sepas qué está pasando.</p>
+      </div>
+      <div class="process-line">
+        <article><span>1</span><div class="process-icon">＋</div><h3>Solicitas</h3><p>Nos dices qué necesitas y dónde debemos actuar.</p></article>
+        <article><span>2</span><div class="process-icon">◎</div><h3>Asignamos</h3><p>Administración coordina el servicio y asigna un mensajero.</p></article>
+        <article><span>3</span><div class="process-icon">➜</div><h3>Ejecutamos</h3><p>El mensajero realiza la gestión y registra el avance.</p></article>
+        <article><span>4</span><div class="process-icon">✓</div><h3>Confirmamos</h3><p>La operación queda finalizada con su historial y evidencias.</p></article>
       </div>
     </section>
 
-    <section class="section split" id="emprendedores">
-      <div class="split-visual business-visual"><div class="city-card"><span>QUITO</span><strong>Tu operación en la ciudad</strong><small>Sin montar toda una estructura propia</small></div></div>
-      <div class="split-copy"><span class="eyebrow">PARA EMPRENDEDORES</span><h2>Vende en Quito y nosotros te ayudamos con la operación</h2><p>GOY XPRESS puede convertirse en tu apoyo logístico para recibir, coordinar y despachar productos a tus clientes en Quito.</p><div class="benefits"><div><b>01</b><span><strong>Presencia operativa</strong><small>Apoyo físico para entregas y despachos.</small></span></div><div><b>02</b><span><strong>Ahorro de estructura</strong><small>Reduce la necesidad de personal y reparto propio.</small></span></div><div><b>03</b><span><strong>Control de servicios</strong><small>Historial de operaciones y reportes desde el sistema.</small></span></div></div><a class="btn primary" href="#solicitar">Quiero ser cliente</a></div>
+    <section class="section experience">
+      <div class="experience-card">
+        <div class="experience-copy"><span class="eyebrow">SEGUIMIENTO MÁS CLARO</span><h2>Tu servicio no desaparece después de solicitarlo.</h2><p>Cada operación tiene su propio código. Puedes consultar la información disponible y saber el estado de tu entrega o gestión.</p></div>
+        <form class="track-box" id="trackForm"><label for="trackingInput">Código de tracking</label><div><input id="trackingInput" placeholder="Ej. GOY-TRK-..." autocomplete="off" /><button type="submit">Consultar →</button></div><small>También puedes escanear el QR de tu orden.</small></form>
+      </div>
+    </section>
+
+    <section class="section business-section" id="emprendedores">
+      <div class="business-board">
+        <div class="business-visual" aria-hidden="true">
+          <div class="warehouse-card"><span>QUITO</span><strong>Tu operación local</strong><div class="warehouse-row"><i>□</i><i>□</i><i>□</i></div><small>Recepción · coordinación · despacho</small></div>
+          <div class="floating-card fc-one">✓ Entrega coordinada</div>
+          <div class="floating-card fc-two">⌖ Presencia en Quito</div>
+        </div>
+        <div class="business-copy"><span class="eyebrow">PARA EMPRENDEDORES Y EMPRESAS</span><h2>Ten apoyo logístico en Quito sin montar toda la estructura.</h2><p>Si vendes desde otra ciudad o necesitas delegar tu operación local, GOY XPRESS puede ayudarte a recibir, coordinar y despachar productos a tus clientes.</p><div class="business-benefits"><div><span>01</span><strong>Ahorra infraestructura</strong><small>Reduce la necesidad de local, personal operativo y reparto propio.</small></div><div><span>02</span><strong>Centraliza la operación</strong><small>Solicitudes, mensajeros e historial en un mismo sistema.</small></div><div><span>03</span><strong>Da confianza al cliente</strong><small>Seguimiento y evidencia de la gestión realizada.</small></div></div><button class="btn primary service-request" data-service="Logística para emprendimiento" type="button">Quiero información para mi negocio</button></div>
+      </div>
     </section>
 
     <section class="section vehicle" id="vehicular">
-      <div class="vehicle-copy"><span class="eyebrow">GESTIÓN VEHICULAR</span><h2>Matriculación y revisión sin perder tu día</h2><p>Coordinamos la gestión de pagos, documentación y un conductor profesional para llevar el vehículo al proceso de inspección, según el servicio contratado y los requisitos aplicables.</p><div class="vehicle-points"><span>✓ Coordinación previa</span><span>✓ Gestión documental</span><span>✓ Traslado del vehículo</span><span>✓ Seguimiento del trámite</span></div><a class="btn dark" href="#solicitar">Solicitar gestión vehicular</a></div>
-      <div class="vehicle-card" aria-hidden="true"><div class="road"><span class="car">🚙</span><span class="check">✓</span></div><strong>Menos filas. Más tiempo para ti.</strong></div>
+      <div class="vehicle-copy"><span class="eyebrow">GESTIÓN VEHICULAR</span><h2>Tu vehículo hace la fila. Tú no.</h2><p>Coordinamos el proceso para reducir el tiempo que inviertes en revisión y matriculación: documentación, pagos y traslado del vehículo para inspección según el servicio solicitado.</p><div class="vehicle-points"><span><b>✓</b> Coordinación previa</span><span><b>✓</b> Revisión de requisitos</span><span><b>✓</b> Conductor asignado</span><span><b>✓</b> Seguimiento del trámite</span></div><button class="btn dark service-request" data-service="Matriculación / revisión vehicular" type="button">Solicitar gestión vehicular</button></div>
+      <div class="vehicle-flow" aria-hidden="true"><div class="vehicle-road"><span class="road-step rs1"><b>1</b><small>Recibimos</small></span><span class="road-path"></span><span class="road-step rs2"><b>2</b><small>Inspección</small></span><span class="road-path"></span><span class="road-step rs3"><b>✓</b><small>Listo</small></span></div><div class="vehicle-caption"><strong>Menos filas. Más tiempo para ti.</strong><small>GOY XPRESS coordina la operación.</small></div></div>
     </section>
 
-    <section class="section tracking-cta">
-      <div><span class="eyebrow">¿YA TIENES UNA ORDEN?</span><h2>Consulta el estado de tu servicio</h2><p>Usa el código de tracking de GOY XPRESS para revisar la información disponible de tu operación.</p></div>
-      <a class="btn primary" href="/tracking">Abrir seguimiento</a>
+    <section class="section faq" id="preguntas">
+      <div class="section-head left"><span class="eyebrow">PREGUNTAS FRECUENTES</span><h2>Lo importante, explicado fácil.</h2></div>
+      <div class="faq-list">
+        <details open><summary>¿Cómo solicito un servicio?<span>＋</span></summary><p>Elige el servicio, completa el formulario y prepara el mensaje de solicitud. Nuestro equipo continúa la coordinación contigo.</p></details>
+        <details><summary>¿Puedo saber dónde está mi orden?<span>＋</span></summary><p>Sí. Las órdenes pueden contar con código de tracking para consultar el estado y la información pública disponible.</p></details>
+        <details><summary>¿Atienden empresas y emprendedores?<span>＋</span></summary><p>Sí. Podemos apoyar operaciones recurrentes, entregas, trámites, despachos y necesidades logísticas personalizadas.</p></details>
+        <details><summary>¿Puedo solicitar algo que no aparece en la lista?<span>＋</span></summary><p>Sí. Selecciona “Servicio personalizado” y describe lo que necesitas para revisar si podemos realizarlo.</p></details>
+      </div>
     </section>
 
     <section class="section request" id="solicitar">
-      <div class="request-copy"><span class="eyebrow">SOLICITA TU SERVICIO</span><h2>Cuéntanos qué necesitas</h2><p>Completa los datos principales. Al terminar podrás compartir la solicitud por WhatsApp y continuar la coordinación con GOY XPRESS.</p><div class="contact-cards" id="contacto"><div><b>📍</b><span><strong>Operación</strong><small>Quito, Ecuador</small></span></div><div><b>🕘</b><span><strong>Coordinación</strong><small>Según disponibilidad operativa</small></span></div><div><b>🔎</b><span><strong>Seguimiento</strong><small>Tracking digital por orden</small></span></div></div></div>
+      <div class="request-copy"><span class="eyebrow light">EMPECEMOS</span><h2>¿Qué necesitas que resolvamos?</h2><p>Completa los datos principales. Hemos simplificado el formulario para que puedas solicitar el servicio sin perder tiempo.</p><div class="request-checks"><span>✓ Información clara</span><span>✓ Coordinación personalizada</span><span>✓ Seguimiento según la operación</span></div></div>
       <form class="lead-form" id="leadForm">
-        <label>Nombre o empresa<input id="leadName" required placeholder="¿Cómo te llamas?" /></label>
-        <label>Servicio<select id="leadService" required><option value="">Selecciona una opción</option><option>Entrega programada</option><option>Entrega exprés</option><option>Trámite o gestión</option><option>Depósito / cobranza</option><option>Mensajería ejecutiva</option><option>Logística para emprendimiento</option><option>Matriculación / revisión vehicular</option><option>Servicio personalizado</option></select></label>
-        <label>Origen o lugar de retiro<input id="leadOrigin" placeholder="Sector o dirección" /></label>
-        <label>Destino o lugar de gestión<input id="leadDestination" placeholder="Sector o dirección" /></label>
-        <label class="wide">Detalle<textarea id="leadDetail" rows="4" placeholder="Describe brevemente lo que necesitas"></textarea></label>
-        <button class="btn primary wide" type="submit">Preparar solicitud por WhatsApp</button>
-        <p class="form-note">No se envían datos automáticamente. Tú eliges el contacto de WhatsApp al compartir.</p>
+        <div class="form-progress"><span>Paso único</span><strong>Datos de tu solicitud</strong></div>
+        <label>Nombre o empresa<input id="leadName" required placeholder="Ej. María / Mi emprendimiento" /></label>
+        <label>¿Qué necesitas?<select id="leadService" required><option value="">Selecciona una opción</option><option>Entrega programada</option><option>Entrega exprés</option><option>Trámite o gestión</option><option>Depósito / cobranza</option><option>Mensajería ejecutiva</option><option>Logística para emprendimiento</option><option>Matriculación / revisión vehicular</option><option>Servicio personalizado</option></select></label>
+        <label>¿Dónde iniciamos?<input id="leadOrigin" placeholder="Dirección, sector o referencia" /></label>
+        <label>¿Dónde terminamos?<input id="leadDestination" placeholder="Dirección, sector o lugar de gestión" /></label>
+        <label class="wide">Cuéntanos un poco más<textarea id="leadDetail" rows="4" placeholder="Ej. necesito retirar un documento y entregarlo en... "></textarea></label>
+        <button class="btn primary wide submit-btn" type="submit">Preparar mi solicitud <span>→</span></button>
+        <p class="form-note">Tú decides cuándo compartir el mensaje por WhatsApp. No enviamos nada sin tu acción.</p>
       </form>
     </section>
   </main>
 
+  <div class="floating-actions">
+    <a href="#solicitar" class="float-primary"><span>＋</span><b>Solicitar servicio</b></a>
+    <a href="/tracking" class="float-secondary" aria-label="Rastrear pedido">⌖</a>
+  </div>
+
   <footer>
-    <div class="footer-brand"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /><div><strong>GOY XPRESS</strong><small>Logística · Mensajería · Trámites</small></div></div>
-    <div class="footer-links"><a href="#servicios">Servicios</a><a href="/tracking">Seguimiento</a><a href="#solicitar">Solicitar servicio</a><a href="/admin">Administración</a></div>
-    <p>© <span id="year"></span> GOY XPRESS · Quito, Ecuador.</p>
+    <div class="footer-main"><div class="footer-brand"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /><div><strong>GOY XPRESS</strong><small>Logística · Mensajería · Trámites</small></div></div><p>Soluciones operativas para personas, emprendedores y empresas en Quito.</p></div>
+    <div class="footer-col"><strong>Servicios</strong><a href="#soluciones">Mensajería</a><a href="#vehicular">Gestión vehicular</a><a href="#emprendedores">Para negocios</a></div>
+    <div class="footer-col"><strong>Accesos</strong><a href="/tracking">Seguimiento</a><a href="#solicitar">Solicitar servicio</a><a href="/admin">Administración</a></div>
+    <div class="footer-bottom">© <span id="year"></span> GOY XPRESS · Quito, Ecuador.</div>
   </footer>
+
   <script src="/web/site.js"></script>
 </body>
 </html>
