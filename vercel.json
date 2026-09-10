@@ -1,9 +1,8 @@
 {
   "version": 2,
-  "redirects": [
-    {"source": "/", "destination": "/admin", "permanent": false}
-  ],
   "rewrites": [
+    {"source": "/", "destination": "/public-web/index.html"},
+    {"source": "/web/:path*", "destination": "/public-web/:path*"},
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
     {"source": "/tracking", "destination": "/tracking-web/index.html"},
@@ -32,6 +31,13 @@
       "headers": [
         {"key": "X-Content-Type-Options", "value": "nosniff"},
         {"key": "Referrer-Policy", "value": "no-referrer"}
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {"key": "X-Content-Type-Options", "value": "nosniff"},
+        {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}
       ]
     }
   ]
