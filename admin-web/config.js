@@ -5,7 +5,6 @@ window.GOY_ADMIN_CONFIG = {
   requestTimeoutMs: 15000
 };
 
-// Evita que el panel quede cargando indefinidamente cuando la API no responde.
 (()=>{
   const nativeFetch=window.fetch.bind(window);
   const timeoutMs=Number(window.GOY_ADMIN_CONFIG.requestTimeoutMs||15000);
@@ -22,66 +21,15 @@ window.GOY_ADMIN_CONFIG = {
 })();
 
 window.addEventListener('load',()=>{
-  if(!document.querySelector('script[data-goy-sound]')){
-    const sound=document.createElement('script');
-    sound.src='/admin/goy-sound.js';
-    sound.dataset.goySound='1';
-    document.body.appendChild(sound);
-  }
-
-  if(!document.querySelector('script[data-account-approvals]')){
-    const approvals=document.createElement('script');
-    approvals.src='/admin/account-approvals.js';
-    approvals.dataset.accountApprovals='1';
-    document.body.appendChild(approvals);
-  }
-
-  if(!document.querySelector('script[data-client-accounts]')){
-    const clients=document.createElement('script');
-    clients.src='/admin/client-accounts.js';
-    clients.dataset.clientAccounts='1';
-    document.body.appendChild(clients);
-  }
-
-  if(!document.querySelector('script[data-admin-management]')){
-    const management=document.createElement('script');
-    management.src='/admin/admin-management.js';
-    management.dataset.adminManagement='1';
-    document.body.appendChild(management);
-  }
-
-  if(!document.querySelector('script[data-custom-service-orders]')){
-    const customOrders=document.createElement('script');
-    customOrders.src='/admin/custom-service-orders.js';
-    customOrders.dataset.customServiceOrders='1';
-    document.body.appendChild(customOrders);
-  }
-
-  if(!document.querySelector('script[data-courier-profile]')){
-    const courierProfile=document.createElement('script');
-    courierProfile.src='/admin/courier-profile.js';
-    courierProfile.dataset.courierProfile='1';
-    document.body.appendChild(courierProfile);
-  }
-
-  if(!document.querySelector('script[data-wait-notifications]')){
-    const waitNotifications=document.createElement('script');
-    waitNotifications.src='/admin/wait-notifications.js';
-    waitNotifications.dataset.waitNotifications='1';
-    document.body.appendChild(waitNotifications);
-  }
-
-  if(!document.querySelector('script[data-order-evidence]')){
-    const evidence=document.createElement('script');
-    evidence.src='/admin/order-evidence.js';
-    evidence.dataset.orderEvidence='1';
-    document.body.appendChild(evidence);
-  }
-
-  if(!document.querySelector('script[data-report-filters]')){
-    const reports=document.createElement('script');
-    reports.src='/admin/report-filters.js';
-    reports.dataset.reportFilters='1';
-    document.body.appendChild(reports);
-  }
+  const load=(attr,src)=>{if(document.querySelector(`script[${attr}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(attr,'1');document.body.appendChild(s);};
+  load('data-goy-sound','/admin/goy-sound.js');
+  load('data-account-approvals','/admin/account-approvals.js');
+  load('data-client-accounts','/admin/client-accounts.js');
+  load('data-admin-management','/admin/admin-management.js');
+  load('data-custom-service-orders','/admin/custom-service-orders.js');
+  load('data-courier-profile','/admin/courier-profile.js');
+  load('data-wait-notifications','/admin/wait-notifications.js');
+  load('data-order-evidence','/admin/order-evidence.js');
+  load('data-report-filters','/admin/report-filters.js');
+  load('data-client-banking','/admin/client-banking.js');
 });
