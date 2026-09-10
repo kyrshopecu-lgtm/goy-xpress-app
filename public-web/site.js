@@ -4,12 +4,12 @@
   const leadForm=document.getElementById('leadForm');
   const serviceSelect=document.getElementById('leadService');
   const serviceData={
-    delivery:{number:'01',icon:'↗',title:'Mensajería y entregas',copy:'Recogemos y entregamos paquetes, productos y documentos dentro de Quito con operación coordinada desde administración.',features:['Mensajero asignado','Seguimiento del estado','Evidencias fotográficas','Entrega programada o exprés'],service:'Entrega programada'},
-    procedures:{number:'02',icon:'▤',title:'Trámites y gestiones',copy:'Realizamos diligencias, ingreso o retiro de documentos y gestiones administrativas para que tú puedas seguir con tu día.',features:['Ingreso de documentos','Retiros programados','Gestiones administrativas','Registro de la operación'],service:'Trámite o gestión'},
-    finance:{number:'03',icon:'$',title:'Depósitos y cobranzas',copy:'Coordinamos depósitos y gestiones de cobro con evidencia de la operación y seguimiento desde el sistema.',features:['Comprobante fotográfico','Registro de gestión','Control administrativo','Seguimiento de solicitud'],service:'Depósito / cobranza'},
-    business:{number:'04',icon:'▣',title:'Logística para negocios',copy:'Apoyamos a emprendedores y empresas que necesitan presencia operativa en Quito sin montar toda una estructura propia.',features:['Recepción y despacho','Apoyo operativo local','Entregas a clientes','Historial de servicios'],service:'Logística para emprendimiento'},
-    vehicle:{number:'05',icon:'◆',title:'Gestión vehicular',copy:'Coordinamos revisión, matriculación, documentación y traslado del vehículo para reducir el tiempo que tú inviertes.',features:['Coordinación previa','Revisión de requisitos','Conductor asignado','Seguimiento del trámite'],service:'Matriculación / revisión vehicular'},
-    custom:{number:'06',icon:'＋',title:'Servicio personalizado',copy:'Si tu necesidad no está en la lista, cuéntanos qué necesitas y revisamos cómo podemos ayudarte.',features:['Evaluación de necesidad','Cotización personalizada','Asignación operativa','Seguimiento y evidencias'],service:'Servicio personalizado'}
+    delivery:{number:'01',icon:'↗',title:'Mensajería y entregas',copy:'Retiramos y entregamos paquetes, productos y documentos dentro de Quito, con coordinación administrativa y seguimiento del servicio.',features:['Mensajero asignado','Seguimiento del estado','Evidencias fotográficas','Entrega programada o exprés'],service:'Entrega programada'},
+    procedures:{number:'02',icon:'▤',title:'Trámites y gestiones',copy:'Realizamos diligencias, ingreso o retiro de documentos y otras gestiones administrativas de acuerdo con la solicitud registrada.',features:['Ingreso de documentos','Retiros programados','Gestiones administrativas','Registro de la operación'],service:'Trámite o gestión'},
+    finance:{number:'03',icon:'$',title:'Depósitos y cobranzas',copy:'Coordinamos depósitos y gestiones de cobro con registro de la operación y evidencias disponibles para su control.',features:['Comprobante fotográfico','Registro de gestión','Control administrativo','Seguimiento de solicitud'],service:'Depósito / cobranza'},
+    business:{number:'04',icon:'▣',title:'Logística para empresas',copy:'Brindamos apoyo a emprendedores y empresas que requieren presencia operativa en Quito sin asumir toda la infraestructura logística.',features:['Recepción y despacho','Apoyo operativo local','Entregas a clientes','Historial de servicios'],service:'Logística para emprendimiento'},
+    vehicle:{number:'05',icon:'◆',title:'Gestión vehicular',copy:'Coordinamos revisión, matriculación, documentación y traslado del vehículo para facilitar el cumplimiento del proceso solicitado.',features:['Coordinación previa','Revisión de requisitos','Conductor asignado','Seguimiento del trámite'],service:'Matriculación / revisión vehicular'},
+    custom:{number:'06',icon:'＋',title:'Servicio personalizado',copy:'Si el servicio que necesita no aparece en la lista, describa su requerimiento para que nuestro equipo revise la posibilidad de realizarlo.',features:['Evaluación de necesidad','Cotización personalizada','Asignación operativa','Seguimiento y evidencias'],service:'Servicio personalizado'}
   };
 
   menu?.addEventListener('click',()=>{const open=nav?.classList.toggle('open');menu.setAttribute('aria-expanded',open?'true':'false');menu.textContent=open?'×':'☰';});
@@ -56,7 +56,7 @@
     const origin=document.getElementById('leadOrigin').value.trim();
     const destination=document.getElementById('leadDestination').value.trim();
     const detailText=document.getElementById('leadDetail').value.trim();
-    const text=['Hola, quiero solicitar un servicio con GOY XPRESS.','',`Nombre/empresa: ${name}`,`Servicio: ${service}`,origin?`Origen/retiro: ${origin}`:'',destination?`Destino/gestión: ${destination}`:'',detailText?`Detalle: ${detailText}`:'','','Por favor ayúdenme con la coordinación.'].filter(Boolean).join('\n');
+    const text=['Hola, deseo solicitar un servicio con GOY XPRESS.','',`Nombre o empresa: ${name}`,`Servicio requerido: ${service}`,origin?`Lugar de inicio: ${origin}`:'',destination?`Destino o lugar de gestión: ${destination}`:'',detailText?`Detalle de la solicitud: ${detailText}`:'','','Agradezco su ayuda para coordinar este servicio.'].filter(Boolean).join('\n');
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank','noopener');
   });
 })();
