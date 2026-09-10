@@ -5,6 +5,7 @@
   ],
   "rewrites": [
     {"source": "/inicio", "destination": "/public-web/index.html"},
+    {"source": "/servicio", "destination": "/public-web/service.html"},
     {"source": "/web/:path*", "destination": "/public-web/:path*"},
     {"source": "/admin", "destination": "/admin-web/index.html"},
     {"source": "/admin/:path*", "destination": "/admin-web/:path*"},
@@ -21,27 +22,9 @@
     {"source": "/api/:path*", "destination": "/api/[...path].js"}
   ],
   "headers": [
-    {
-      "source": "/admin/:path*",
-      "headers": [
-        {"key": "X-Frame-Options", "value": "DENY"},
-        {"key": "X-Content-Type-Options", "value": "nosniff"},
-        {"key": "Referrer-Policy", "value": "same-origin"}
-      ]
-    },
-    {
-      "source": "/tracking",
-      "headers": [
-        {"key": "X-Content-Type-Options", "value": "nosniff"},
-        {"key": "Referrer-Policy", "value": "no-referrer"}
-      ]
-    },
-    {
-      "source": "/inicio",
-      "headers": [
-        {"key": "X-Content-Type-Options", "value": "nosniff"},
-        {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}
-      ]
-    }
+    {"source": "/admin/:path*","headers":[{"key":"X-Frame-Options","value":"DENY"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"same-origin"}]},
+    {"source": "/tracking","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"}]},
+    {"source": "/inicio","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}]},
+    {"source": "/servicio","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}]}
   ]
 }
