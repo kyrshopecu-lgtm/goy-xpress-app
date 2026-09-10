@@ -77,4 +77,11 @@ window.addEventListener('load',()=>{
     evidence.dataset.orderEvidence='1';
     document.body.appendChild(evidence);
   }
+
+  if(!document.querySelector('script[data-report-filters]')){
+    const reports=document.createElement('script');
+    reports.src='/admin/report-filters.js';
+    reports.dataset.reportFilters='1';
+    document.body.appendChild(reports);
+  }
 });
