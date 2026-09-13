@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/web/service-images.css" />
   <link rel="stylesheet" href="/web/youthful.css" />
   <link rel="stylesheet" href="/web/mockup.css" />
+  <link rel="stylesheet" href="/web/mockup-final.css" />
 </head>
 <body>
   <div class="ref-topbar">
@@ -52,7 +53,7 @@
         </div>
       </div>
       <a class="ref-contact-art reveal" target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20necesito%20informaci%C3%B3n" aria-label="Contactar a GOY XPRESS por WhatsApp">
-        <img src="/web/assets/contact-hero.svg" alt="Contáctanos por WhatsApp GOY XPRESS" />
+        <img id="approvedMascot" src="/web/assets/contact-hero.svg" alt="Contáctanos por WhatsApp GOY XPRESS" />
       </a>
       <div class="ref-help-note">Estamos<br>para ayudarte</div>
     </section>
@@ -89,12 +90,12 @@
     <section class="section access-section" id="contacto"><div class="access-card reveal"><span class="eyebrow light">HABLEMOS</span><h2>¿Qué necesitas resolver hoy?</h2><p class="access-copy">Escríbenos directamente y te ayudamos a identificar el servicio correcto.</p><div class="access-grid"><a target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20quiero%20solicitar%20un%20servicio"><b>💬</b><span><strong>WhatsApp</strong><small>+593 99 270 5565</small></span></a><a href="tel:+593992705565"><b>☎</b><span><strong>Llamar</strong><small>Contacto directo</small></span></a><a href="/tracking"><b>⌖</b><span><strong>Seguimiento</strong><small>Consultar una orden</small></span></a></div></div></section>
   </main>
 
-  <a class="floating-whatsapp" target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20necesito%20informaci%C3%B3n" aria-label="Contactar a GOY XPRESS por WhatsApp"><span>💬</span><b>WhatsApp</b></a>
-
   <footer><div class="footer-brand"><span class="logo-3d small"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /></span><div><strong>GOY XPRESS</strong><small>Servicios logísticos y operativos</small></div></div><div class="footer-links"><a href="#servicios">Servicios</a><a href="#empresa">Empresa</a><a href="#ubicacion">Ubicación</a><a href="tel:+593992705565">+593 99 270 5565</a></div><p>© <span id="year"></span> GOY XPRESS · Quito, Ecuador.</p></footer>
+  <script src="/web/mascot-data.js"></script>
   <script src="/web/site.js"></script>
   <script src="/web/interactions.js"></script>
   <script>
+    const approvedMascot=document.getElementById('approvedMascot');if(approvedMascot&&window.GOY_MASCOT){approvedMascot.src=window.GOY_MASCOT;}
     const menu=document.querySelector('.ref-menu');const nav=document.querySelector('.ref-nav');if(menu&&nav){menu.addEventListener('click',()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open))});nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')))}
   </script>
 </body>
