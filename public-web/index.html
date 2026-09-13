@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/web/youthful.css" />
   <link rel="stylesheet" href="/web/mockup.css" />
   <link rel="stylesheet" href="/web/mockup-final.css" />
+  <link rel="stylesheet" href="/web/exact-reference.css" />
 </head>
 <body>
   <div class="ref-topbar">
@@ -20,7 +21,7 @@
       <span>◷ Lun - Sáb: 8:00 - 18:00</span>
       <a href="tel:+593992705565">☎ +593 99 270 5565</a>
     </div>
-    <div class="ref-top-right"><span>Síguenos</span><span>● Facebook</span><span>● Instagram</span></div>
+    <div class="ref-top-right"><span>● Facebook</span><span>● Instagram</span><span>● TikTok</span><span>Síguenos</span></div>
   </div>
 
   <header class="ref-header">
@@ -48,12 +49,12 @@
         <p>GOY XPRESS realiza tus trámites, gestiones y envíos en Quito de forma rápida, segura y confiable.</p>
         <div class="ref-benefits">
           <div class="ref-benefit"><b>⚡</b><div><strong>RÁPIDO</strong><small>Ahorras tiempo</small></div></div>
-          <div class="ref-benefit"><b>⬢</b><div><strong>SEGURO</strong><small>Tu gestión en buenas manos</small></div></div>
+          <div class="ref-benefit"><b>🛡</b><div><strong>SEGURO</strong><small>Tu gestión en buenas manos</small></div></div>
           <div class="ref-benefit"><b>●●●</b><div><strong>CONFIABLE</strong><small>Equipo con experiencia</small></div></div>
         </div>
       </div>
       <a class="ref-contact-art reveal" target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20necesito%20informaci%C3%B3n" aria-label="Contactar a GOY XPRESS por WhatsApp">
-        <img id="approvedMascot" src="/web/assets/contact-hero.svg" alt="Contáctanos por WhatsApp GOY XPRESS" />
+        <img src="/web/assets/contact-hero.svg" alt="Contáctanos por WhatsApp GOY XPRESS" />
       </a>
       <div class="ref-help-note">Estamos<br>para ayudarte</div>
     </section>
@@ -66,7 +67,6 @@
         <a class="ref-service-card" href="/servicio?tipo=apostilla"><img src="/web/assets/apostilla.svg" alt="Apostilla de documentos" /><span><strong>Apostilla de<br>Documentos</strong><small>Ver más →</small></span></a>
         <a class="ref-service-card" href="/servicio?tipo=vehicular"><img src="/web/assets/vehicular.svg" alt="Revisión y matriculación vehicular" /><span><strong>Revisión y<br>Matriculación Vehicular</strong><small>Ver más →</small></span></a>
         <a class="ref-service-card" href="/servicio?tipo=repuestos"><img src="/web/assets/repuestos.svg" alt="Búsqueda y gestión de repuestos" /><span><strong>Búsqueda y Gestión<br>de Repuestos</strong><small>Ver más →</small></span></a>
-        <a class="ref-service-card" href="/servicio?tipo=depositos"><img src="/web/assets/depositos.svg" alt="Depósitos y cobranzas" /><span><strong>Depósitos y<br>Cobranzas</strong><small>Ver más →</small></span></a>
         <a class="ref-service-card" href="/servicio?tipo=empresas"><img src="/web/assets/empresas.svg" alt="Logística para empresas" /><span><strong>Logística para<br>Empresas</strong><small>Ver más →</small></span></a>
         <a class="ref-service-card" href="/servicio?tipo=personalizado"><img src="/web/assets/personalizado.svg" alt="Servicios personalizados" /><span><strong>Servicios<br>Personalizados</strong><small>Ver más →</small></span></a>
       </div>
@@ -91,11 +91,9 @@
   </main>
 
   <footer><div class="footer-brand"><span class="logo-3d small"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /></span><div><strong>GOY XPRESS</strong><small>Servicios logísticos y operativos</small></div></div><div class="footer-links"><a href="#servicios">Servicios</a><a href="#empresa">Empresa</a><a href="#ubicacion">Ubicación</a><a href="tel:+593992705565">+593 99 270 5565</a></div><p>© <span id="year"></span> GOY XPRESS · Quito, Ecuador.</p></footer>
-  <script src="/web/mascot-data.js"></script>
   <script src="/web/site.js"></script>
   <script src="/web/interactions.js"></script>
   <script>
-    const approvedMascot=document.getElementById('approvedMascot');if(approvedMascot&&window.GOY_MASCOT){approvedMascot.src=window.GOY_MASCOT;}
     const menu=document.querySelector('.ref-menu');const nav=document.querySelector('.ref-nav');if(menu&&nav){menu.addEventListener('click',()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open))});nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')))}
   </script>
 </body>
