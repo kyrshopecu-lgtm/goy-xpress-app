@@ -1,0 +1,1 @@
+window.GOY_MASCOT='data:image/webp;base64,UklGRmzzAABXRUJQVlA4WAoAAAAQAAAALwIAGwIAQUxQSDEpAA...';
