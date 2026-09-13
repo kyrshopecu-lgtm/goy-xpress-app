@@ -1,0 +1,1 @@
+window.GOY_MASCOT_UPLOAD='placeholder';
