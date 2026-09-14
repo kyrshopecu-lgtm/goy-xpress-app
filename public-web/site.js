@@ -9,13 +9,28 @@
   generatedImages.href='/web/generated-service-images.css?v=20260914-1';
   document.head.appendChild(generatedImages);
 
+  const imageHotfix=document.createElement('link');
+  imageHotfix.rel='stylesheet';
+  imageHotfix.href='/web/image-hotfix.css?v=20260914-2';
+  document.head.appendChild(imageHotfix);
+
   const mascot=document.getElementById('approvedMascot');
   if(mascot){
     mascot.alt='Mascota GOY XPRESS';
-    mascot.addEventListener('error',()=>{
-      const art=mascot.closest('.ref-contact-art');
-      if(art) art.style.display='none';
-    },{once:true});
+    const primary='/web/assets/contact-mascot.webp?v=20260914-2';
+    const fallback='/web/assets/mascota-contactanos.webp?v=20260914-2';
+    const useFallback=()=>{
+      if(!mascot.src.includes('mascota-contactanos.webp')){
+        mascot.src=fallback;
+      }else{
+        const art=mascot.closest('.ref-contact-art');
+        if(art) art.style.display='none';
+      }
+    };
+    mascot.addEventListener('error',useFallback);
+    if(mascot.complete && mascot.naturalWidth===0){
+      mascot.src=primary;
+    }
   }
 
   const menu=document.querySelector('.menu-btn');
