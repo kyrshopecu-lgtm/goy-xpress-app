@@ -4,9 +4,14 @@
   polish.href='/web/mobile-polish.css?v=20260913-3';
   document.head.appendChild(polish);
 
+  const generatedImages=document.createElement('link');
+  generatedImages.rel='stylesheet';
+  generatedImages.href='/web/generated-service-images.css?v=20260914-1';
+  document.head.appendChild(generatedImages);
+
   const mascot=document.getElementById('approvedMascot');
   if(mascot){
-    mascot.alt='';
+    mascot.alt='Mascota GOY XPRESS';
     mascot.addEventListener('error',()=>{
       const art=mascot.closest('.ref-contact-art');
       if(art) art.style.display='none';
