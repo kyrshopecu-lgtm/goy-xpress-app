@@ -1,7 +1,7 @@
 (()=>{
   const polish=document.createElement('link');
   polish.rel='stylesheet';
-  polish.href='/web/mobile-polish.css?v=20260913-2';
+  polish.href='/web/mobile-polish.css?v=20260913-3';
   document.head.appendChild(polish);
 
   const mascot=document.getElementById('approvedMascot');
