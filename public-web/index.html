@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="/web/styles.css"/>
 <link rel="stylesheet" href="/web/youthful.css"/>
 <link rel="stylesheet" href="/web/exact-reference.css"/>
-<link rel="stylesheet" href="/web/home-commercial.css?v=20260914-1"/>
+<link rel="stylesheet" href="/web/home-commercial.css?v=20260914-2"/>
 </head>
 <body>
 <div class="ref-topbar">
@@ -67,12 +67,12 @@
 </section>
 
 <section class="facilities-section" id="instalaciones">
-  <div class="section-head"><h2>Nuestras <span>instalaciones</span></h2><p class="installations-note">Conoce nuestro espacio de trabajo, oficina, bodega y área de exhibición</p></div>
+  <div class="section-head"><h2>Nuestra <span>base en Quito</span></h2><p class="installations-note">Espacio físico y apoyo operativo para coordinar tus solicitudes</p></div>
   <div class="facilities-grid">
-    <div class="facility-card"><div class="facility-image facility-fallback">🏢</div><strong>Fachada principal</strong><span>Jorge Juan y Mariana de Jesús, Quito</span></div>
-    <div class="facility-card"><div class="facility-image facility-fallback">👩‍💻</div><strong>Nuestro equipo</strong><span>Atención y gestión de tus solicitudes</span></div>
-    <div class="facility-card"><div class="facility-image facility-fallback">🛍️</div><strong>Área de exhibición</strong><span>Diversos productos de nuestros aliados</span></div>
-    <div class="facility-card"><div class="facility-image facility-fallback">📦</div><strong>Bodega y almacenamiento</strong><span>Espacio seguro para tu mercadería</span></div>
+    <div class="facility-card" data-facility="facade"><div class="facility-image facility-fallback"><div class="facility-visual"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS"/></div><span class="facility-badge real">FOTO REAL</span></div><strong>Fachada principal</strong><span>Nuestra ubicación física en Jorge Juan y Mariana de Jesús, Quito.</span></div>
+    <div class="facility-card"><div class="facility-image facility-fallback"><div class="facility-visual"><img src="/web/assets/tramites.svg" alt="Atención operativa GOY XPRESS"/></div><span class="facility-badge">ÁREA OPERATIVA</span></div><strong>Atención y coordinación</strong><span>Organizamos cada solicitud, verificamos requisitos y asignamos personal.</span></div>
+    <div class="facility-card"><div class="facility-image facility-fallback"><div class="facility-visual"><img src="/web/assets/entregas.svg" alt="Despachos y entregas GOY XPRESS"/></div><span class="facility-badge">OPERACIÓN</span></div><strong>Despachos y entregas</strong><span>Coordinación de retiros, mensajería, documentos y entregas en Quito.</span></div>
+    <div class="facility-card"><div class="facility-image facility-fallback"><div class="facility-visual"><img src="/web/assets/empresas.svg" alt="Logística GOY XPRESS"/></div><span class="facility-badge">LOGÍSTICA</span></div><strong>Apoyo logístico</strong><span>Soporte para empresas y emprendedores que necesitan presencia operativa en Quito.</span></div>
   </div>
 </section>
 
@@ -100,6 +100,9 @@
 const finalCss=document.createElement('link');finalCss.rel='stylesheet';finalCss.href='/web/approved-final.css?v=20260914-5';document.head.appendChild(finalCss);
 const menu=document.querySelector('.ref-menu'),nav=document.querySelector('.ref-nav');if(menu&&nav){menu.addEventListener('click',()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open))});nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')))}
 const year=document.getElementById('year');if(year)year.textContent=new Date().getFullYear();
+const realOfficePhoto=document.querySelector('.office-location-photo');
+const facadeBox=document.querySelector('[data-facility="facade"] .facility-image');
+if(realOfficePhoto&&facadeBox){const photo=realOfficePhoto.cloneNode();photo.className='';photo.alt='Fachada real de GOY XPRESS en Quito';facadeBox.prepend(photo);const visual=facadeBox.querySelector('.facility-visual');if(visual)visual.remove();facadeBox.classList.remove('facility-fallback')}
 </script>
 </body>
 </html>
