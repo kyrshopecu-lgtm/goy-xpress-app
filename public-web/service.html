@@ -15,7 +15,7 @@
 <body>
   <header class="site-header service-header playful-header">
     <a class="brand" href="/inicio"><span class="logo-3d"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /></span><span class="brand-copy"><strong>GOY XPRESS</strong><small>Tu aliado operativo en Quito</small></span></a>
-    <nav class="main-nav simple"><a href="/inicio">Inicio</a><a href="/inicio#servicios">Servicios</a><a href="/tracking">Seguimiento</a><a class="nav-cta" target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20quiero%20solicitar%20un%20servicio">WhatsApp</a></nav>
+    <nav class="main-nav simple"><a href="/inicio">Inicio</a><a href="/inicio#servicios">Servicios</a><a href="/tracking">Seguimiento</a><a class="nav-cta service-wa" target="_blank" rel="noopener" href="https://wa.me/593992705565">WhatsApp</a></nav>
   </header>
 
   <main id="servicePage">
@@ -28,12 +28,23 @@
 
     <section class="section service-flow reveal"><span class="eyebrow">CÓMO TRABAJAMOS</span><h2>Nos indicas qué necesitas. Nosotros nos encargamos de la gestión.</h2><div class="flow-row"><div><b>1</b><strong>Solicitud</strong><span>Recibimos los datos y tu necesidad.</span></div><i>→</i><div><b>2</b><strong>Confirmación</strong><span>Revisamos requisitos y condiciones.</span></div><i>→</i><div><b>3</b><strong>Gestión</strong><span>Asignamos personal y ejecutamos.</span></div><i>→</i><div><b>4</b><strong>Resultado</strong><span>Te informamos y entregamos evidencias.</span></div></div></section>
 
-    <section class="section service-request" id="solicitar"><div class="request-summary reveal"><span class="eyebrow light">SOLICITAR SERVICIO</span><h2 id="requestTitle">Inicie su solicitud.</h2><p id="requestCopy">Complete los datos básicos y prepare el mensaje para continuar la coordinación con GOY XPRESS.</p><div class="service-contact-box"><strong>Atención directa GOY XPRESS</strong><a href="tel:+593992705565">+593 99 270 5565</a><a target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20quiero%20solicitar%20este%20servicio">Escribir por WhatsApp →</a></div></div><form class="lead-form reveal" id="serviceForm"><label>Nombre o empresa<input id="reqName" required placeholder="Nombre del cliente o empresa" /></label><label>Teléfono o WhatsApp<input id="reqPhone" placeholder="Número de contacto" /></label><label>Origen / lugar inicial<input id="reqOrigin" placeholder="Dirección, sector o referencia" /></label><label>Destino / institución / lugar de gestión<input id="reqDestination" placeholder="Dirección, institución o referencia" /></label><label class="wide">Detalle<textarea id="reqDetail" rows="4" placeholder="Cuéntenos qué necesita hacer, fechas, documentos o información importante"></textarea></label><button class="btn primary wide" type="submit">Continuar por WhatsApp</button><p class="form-note">Podrás revisar el mensaje antes de enviarlo. GOY XPRESS confirmará requisitos y condiciones antes de iniciar la gestión.</p></form></section>
+    <section class="section service-request" id="solicitar"><div class="request-summary reveal"><span class="eyebrow light">SOLICITAR SERVICIO</span><h2 id="requestTitle">Inicie su solicitud.</h2><p id="requestCopy">Complete los datos básicos y prepare el mensaje para continuar la coordinación con GOY XPRESS.</p><div class="service-contact-box"><strong>Atención directa GOY XPRESS</strong><a href="tel:+593992705565">+593 99 270 5565</a><a class="service-wa" target="_blank" rel="noopener" href="https://wa.me/593992705565">Escribir por WhatsApp →</a></div></div><form class="lead-form reveal" id="serviceForm"><label>Nombre o empresa<input id="reqName" required placeholder="Nombre del cliente o empresa" /></label><label>Teléfono o WhatsApp<input id="reqPhone" placeholder="Número de contacto" /></label><label>Origen / lugar inicial<input id="reqOrigin" placeholder="Dirección, sector o referencia" /></label><label>Destino / institución / lugar de gestión<input id="reqDestination" placeholder="Dirección, institución o referencia" /></label><label class="wide">Detalle<textarea id="reqDetail" rows="4" placeholder="Cuéntenos qué necesita hacer, fechas, documentos o información importante"></textarea></label><button class="btn primary wide" type="submit">Continuar por WhatsApp</button><p class="form-note">Podrás revisar el mensaje antes de enviarlo. GOY XPRESS confirmará requisitos y condiciones antes de iniciar la gestión.</p></form></section>
   </main>
 
-  <a class="floating-whatsapp" target="_blank" rel="noopener" href="https://wa.me/593992705565?text=Hola%20GOY%20XPRESS%2C%20necesito%20informaci%C3%B3n" aria-label="Contactar por WhatsApp"><span>💬</span><b>WhatsApp</b></a>
+  <a class="floating-whatsapp service-wa" target="_blank" rel="noopener" href="https://wa.me/593992705565" aria-label="Contactar por WhatsApp"><span>💬</span><b>WhatsApp</b></a>
   <footer><div class="footer-brand"><span class="logo-3d small"><img src="/assets/goy-logo.jpg" alt="GOY XPRESS" /></span><div><strong>GOY XPRESS</strong><small>Tu tiempo en nuestras manos</small></div></div><div class="footer-links"><a href="/inicio">Inicio</a><a href="/inicio#servicios">Servicios</a><a href="/tracking">Seguimiento</a><a href="tel:+593992705565">+593 99 270 5565</a></div><p>© <span id="year"></span> GOY XPRESS · Quito, Ecuador.</p></footer>
   <script src="/web/service.js"></script>
+  <script>
+    (()=>{
+      const title=document.getElementById('serviceTitle')?.textContent?.trim()||'un servicio de GOY XPRESS';
+      const type=new URLSearchParams(location.search).get('tipo')||'entregas';
+      const msg=`Hola GOY XPRESS, estoy revisando el servicio: ${title}. Deseo conocer requisitos, disponibilidad y cómo iniciar la gestión.`;
+      const url=`https://wa.me/593992705565?text=${encodeURIComponent(msg)}`;
+      document.querySelectorAll('.service-wa').forEach(link=>{link.href=url;link.dataset.service=type;link.setAttribute('aria-label',`Consultar por WhatsApp sobre ${title}`)});
+      const meta=document.querySelector('meta[name="description"]');
+      if(meta)meta.content=`${title}. Conoce qué incluye, requisitos, proceso y cómo solicitar este servicio de GOY XPRESS en Quito.`;
+    })();
+  </script>
   <script src="/web/interactions.js"></script>
 </body>
 </html>
