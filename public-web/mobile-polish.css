@@ -32,7 +32,58 @@
   .ref-info-item span{display:block!important;font-size:9px!important;line-height:1.35!important;color:#58708a!important;overflow-wrap:anywhere!important}
   .ref-how{grid-column:1/-1!important;min-height:auto!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
   .ref-how a{width:100%!important;display:flex!important;justify-content:center!important;align-items:center!important;min-height:42px!important;border-radius:12px!important;font-size:10px!important;font-weight:800!important;background:#062f63!important;color:#fff!important;padding:10px 14px!important;text-decoration:none!important}
-  .company-friendly,.location-section{border-radius:18px!important}
+
+  /* Company section: shorter, cleaner and more commercial on mobile */
+  .company-friendly{display:grid!important;grid-template-columns:1fr!important;gap:18px!important;margin:18px 10px 0!important;padding:24px 16px!important;border-radius:20px!important;background:#fff!important;box-shadow:0 10px 28px rgba(5,43,80,.08)!important}
+  .company-visual{min-height:150px!important;border-radius:18px!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:16px!important;background:linear-gradient(145deg,#eef6ff,#ffffff)!important}
+  .company-logo-3d{width:min(220px,72vw)!important;max-width:100%!important}
+  .company-logo-3d img{width:100%!important;height:auto!important;display:block!important;object-fit:contain!important;border-radius:16px!important}
+  .company-badge{font-size:10px!important;padding:7px 10px!important;border-radius:999px!important}
+  .company-copy{padding:0!important}
+  .company-copy .eyebrow{font-size:9px!important;letter-spacing:1.6px!important;margin-bottom:8px!important}
+  .company-copy h2{font-size:25px!important;line-height:1.08!important;letter-spacing:-.7px!important;margin:0 0 12px!important;color:#062f63!important}
+  .company-copy>p{font-size:13px!important;line-height:1.55!important;margin:0 0 14px!important;color:#4f647a!important}
+  .company-chips{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin:12px 0 16px!important}
+  .company-chips span{font-size:10px!important;padding:9px 10px!important;border-radius:12px!important;background:#f4f8fc!important;color:#173a5f!important;white-space:normal!important}
+  .values-grid{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:10px!important}
+  .values-grid>div{display:grid!important;grid-template-columns:34px 1fr!important;grid-template-rows:auto auto!important;column-gap:10px!important;padding:11px 12px!important;border:1px solid #e5edf5!important;border-radius:14px!important;background:#fbfdff!important}
+  .values-grid b{grid-row:1/3!important;font-size:17px!important;align-self:start!important;color:#10b8d8!important}
+  .values-grid strong{font-size:11px!important;color:#062f63!important}
+  .values-grid span{font-size:9.5px!important;line-height:1.35!important;color:#61758b!important}
+  .company-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin-top:14px!important}
+  .company-actions .btn{width:100%!important;min-height:44px!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:12px!important;font-size:11px!important;padding:11px 14px!important}
+
+  /* Location section: compact address card + clear action buttons */
+  .location-section{display:grid!important;grid-template-columns:1fr!important;gap:16px!important;margin:18px 10px 0!important;padding:24px 16px!important;border-radius:20px!important;background:#f7fbff!important}
+  .location-copy{padding:0!important}
+  .location-copy .eyebrow{font-size:9px!important;letter-spacing:1.6px!important}
+  .location-copy h2{font-size:24px!important;line-height:1.08!important;margin:7px 0 10px!important;color:#062f63!important}
+  .location-copy>p{font-size:12.5px!important;line-height:1.5!important;margin-bottom:13px!important;color:#52687e!important}
+  .address-card{padding:12px!important;border-radius:15px!important;background:#fff!important;border:1px solid #e3ebf4!important;box-shadow:0 5px 14px rgba(6,47,99,.06)!important}
+  .address-card .pin-dot{font-size:22px!important}
+  .address-card small{font-size:8px!important}
+  .address-card strong{font-size:12px!important;line-height:1.3!important}
+  .address-card span{font-size:9.5px!important}
+  .location-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin-top:12px!important}
+  .location-actions .btn{width:100%!important;min-height:44px!important;display:flex!important;justify-content:center!important;align-items:center!important;border-radius:12px!important;font-size:10.5px!important;padding:11px 12px!important}
+  .map-visual{min-height:190px!important;border-radius:18px!important;overflow:hidden!important;margin-top:2px!important}
+  .map-label{font-size:10px!important;padding:7px 10px!important}
+
+  /* Final contact block */
+  .access-section{padding:18px 10px 28px!important}
+  .access-card{padding:24px 16px!important;border-radius:20px!important}
+  .access-card .eyebrow{font-size:9px!important;letter-spacing:1.5px!important}
+  .access-card h2{font-size:25px!important;line-height:1.08!important;margin:8px 0 10px!important}
+  .access-copy{font-size:12px!important;line-height:1.45!important;margin-bottom:14px!important}
+  .access-grid{display:grid!important;grid-template-columns:1fr!important;gap:9px!important}
+  .access-grid a{min-height:58px!important;padding:12px!important;border-radius:14px!important;display:flex!important;align-items:center!important;gap:10px!important}
+  .access-grid a b{font-size:21px!important}
+  .access-grid strong{font-size:11px!important}
+  .access-grid small{font-size:9px!important}
+
+  footer{padding:24px 14px!important;text-align:center!important}
+  .footer-brand{justify-content:center!important}
+  .footer-links{justify-content:center!important;gap:10px 14px!important;flex-wrap:wrap!important}
 }
 @media (max-width:420px){
   .ref-topbar{padding:0 10px!important}
@@ -56,4 +107,9 @@
   .ref-info-item{min-height:70px!important;padding:11px 12px!important}
   .ref-info-item strong{font-size:11px!important}
   .ref-info-item span{font-size:9.3px!important}
+  .company-friendly,.location-section{margin-left:8px!important;margin-right:8px!important;padding:20px 13px!important}
+  .company-copy h2,.access-card h2{font-size:23px!important}
+  .location-copy h2{font-size:22px!important}
+  .company-chips{grid-template-columns:1fr!important}
+  .map-visual{min-height:170px!important}
 }
