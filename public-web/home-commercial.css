@@ -35,6 +35,29 @@
 .facility-badge{position:absolute!important;left:18px!important;top:18px!important;z-index:4!important;display:inline-flex!important;background:rgba(5,47,95,.9)!important;color:#fff!important;border-radius:999px!important;padding:6px 9px!important;font-size:8px!important;font-weight:900!important;letter-spacing:.05em!important;backdrop-filter:blur(6px)!important}
 .facility-badge.real{background:#12ae3a!important}
 
+.location-band{max-width:1180px!important;margin:0 auto!important;padding:12px 18px 58px!important;display:grid!important;grid-template-columns:1.1fr .9fr!important;gap:18px!important;align-items:stretch!important;background:#fff!important}
+.location-trust-wrap{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important}
+.trust-panel{grid-column:1/-1!important;min-height:auto!important;padding:24px!important;border-radius:22px!important;background:linear-gradient(135deg,#052f61,#07518e)!important;display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:12px!important;box-shadow:0 16px 36px rgba(4,48,96,.16)!important}
+.trust-item{background:rgba(255,255,255,.07)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:16px!important;padding:15px!important;gap:10px!important;align-items:center!important}
+.trust-item b{width:42px!important;height:42px!important;flex:0 0 42px!important;background:#fff!important;color:#064381!important;font-size:19px!important;box-shadow:0 8px 18px rgba(0,0,0,.12)!important}
+.trust-item strong{font-size:13px!important;color:#fff!important}
+.trust-item span{font-size:10px!important;line-height:1.35!important;color:#dcecf8!important}
+.location-card{grid-column:1/-1!important;min-height:auto!important;border-radius:22px!important;padding:24px!important;background:#fff!important;border:1px solid #dfe8f0!important;box-shadow:0 12px 30px rgba(7,55,105,.09)!important;display:grid!important;grid-template-columns:1fr auto!important;gap:18px!important;align-items:center!important}
+.location-card .location-copy-main h3{font-size:25px!important;margin:0 0 8px!important;color:#063a7a!important}
+.location-card .location-copy-main p{margin:0!important;font-size:14px!important;line-height:1.55!important;color:#315b83!important}
+.location-card .location-copy-main small{display:block!important;margin-top:7px!important;color:#66809b!important;font-size:11px!important}
+.location-actions{display:flex!important;gap:9px!important;flex-wrap:wrap!important;justify-content:flex-end!important}
+.location-card .map-btn,.location-card .wa-location-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:44px!important;margin:0!important;padding:12px 17px!important;border-radius:999px!important;text-decoration:none!important;font-size:11px!important;font-weight:900!important;white-space:nowrap!important}
+.location-card .map-btn{background:#0b66b1!important;color:#fff!important}
+.location-card .wa-location-btn{background:#15be3f!important;color:#fff!important;box-shadow:0 8px 18px rgba(21,190,63,.2)!important}
+.location-section{display:block!important;padding:0!important;margin:0!important;background:transparent!important}
+.location-section .location-copy{display:none!important}
+.map-visual{height:100%!important;min-height:300px!important;border-radius:22px!important;overflow:hidden!important;box-shadow:0 16px 36px rgba(7,55,105,.13)!important;border:1px solid #dce7ef!important;background:#edf4f8!important}
+.map-visual.office-photo{min-height:300px!important}
+.office-location-photo{min-height:300px!important;object-position:center center!important}
+.office-photo-caption{left:14px!important;right:14px!important;bottom:14px!important;border-radius:14px!important;padding:12px 14px!important;background:rgba(4,42,86,.88)!important}
+.office-photo-caption strong{font-size:14px!important}.office-photo-caption span{font-size:10px!important}
+
 .access-section{display:block!important;background:linear-gradient(135deg,#052d5c,#084c87)!important;padding:52px 18px!important}
 .access-section .access-card{max-width:1080px!important;margin:auto!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:none!important;text-align:center!important;padding:40px 24px!important}
 .access-section .access-card h2{color:#fff!important;margin:0 0 10px!important}
@@ -83,6 +106,17 @@
   .facility-image{height:165px!important}
   .facility-card strong{font-size:14px!important}
   .facility-card>span{font-size:10px!important;min-height:28px!important}
+
+  .location-band{grid-template-columns:1fr!important;padding:8px 10px 36px!important;gap:12px!important}
+  .location-trust-wrap{grid-template-columns:1fr!important;gap:12px!important}
+  .trust-panel{grid-template-columns:1fr!important;padding:15px!important;border-radius:18px!important;gap:8px!important}
+  .trust-item{padding:11px!important;border-radius:13px!important}
+  .location-card{grid-template-columns:1fr!important;padding:18px!important;border-radius:18px!important;gap:14px!important}
+  .location-card .location-copy-main h3{font-size:21px!important}
+  .location-card .location-copy-main p{font-size:12px!important}
+  .location-actions{justify-content:flex-start!important}
+  .location-card .map-btn,.location-card .wa-location-btn{flex:1 1 100%!important;width:100%!important}
+  .map-visual,.map-visual.office-photo,.office-location-photo{min-height:240px!important}
 
   .access-section{padding:36px 12px 92px!important}
   .access-section .access-card{padding:30px 18px!important;border-radius:24px!important}
