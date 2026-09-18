@@ -28,7 +28,7 @@ function classifyService(message){
   return best ? {id:best.id,name:best.name,confidence:Math.min(0.95,0.55+best.score*0.12)} : {id:'general',name:'Asesoría GOY XPRESS',confidence:0.35};
 }
 
-function isOptOut(message){return /\b(no me escrib|no contactar|dar de baja|salir|stop|cancelar mensajes|no deseo recibir)\b/i.test(normalize(message));}
+function isOptOut(message){return /\b(no me escrib(?:an|as|a)?|no contactar|dar de baja|salir|stop|cancelar mensajes|no deseo recibir)\b/i.test(normalize(message));}
 function wantsMeeting(message){return /\b(reunion|reunir|llamada|videollamada|video llamada|meet|hablar con (una )?persona|asesor)\b/i.test(normalize(message));}
 
 function createProspect(input={}){
