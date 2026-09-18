@@ -471,3 +471,90 @@ img {
     transition-duration: .01ms !important;
   }
 }
+
+/* New Quito hero artwork: full cover on larger screens, readable split on phones. */
+.ref-hero {
+  position: relative !important;
+  isolation: isolate !important;
+  min-height: clamp(540px, 44vw, 640px) !important;
+  background: #073d76 !important;
+}
+
+.ref-hero::before {
+  z-index: 1 !important;
+  background: linear-gradient(
+    90deg,
+    rgba(2, 24, 57, .98) 0%,
+    rgba(3, 43, 86, .91) 32%,
+    rgba(3, 49, 94, .60) 48%,
+    rgba(3, 49, 94, .14) 67%,
+    rgba(3, 49, 94, 0) 82%
+  ) !important;
+}
+
+.ref-hero-copy {
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+.ref-hero .ref-contact-art,
+.ref-hero .ref-contact-art.reveal {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.ref-hero .ref-contact-art img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  filter: none !important;
+}
+
+.ref-help-note {
+  display: none !important;
+}
+
+@media (max-width: 620px) {
+  .ref-hero {
+    min-height: 0 !important;
+    background: linear-gradient(145deg, #052d5c 0%, #07558d 100%) !important;
+  }
+
+  .ref-hero::before {
+    z-index: 1 !important;
+    background: radial-gradient(circle at 90% 8%, rgba(24, 169, 236, .24), transparent 40%) !important;
+  }
+
+  .ref-hero .ref-contact-art,
+  .ref-hero .ref-contact-art.reveal {
+    position: relative !important;
+    inset: auto !important;
+    z-index: 2 !important;
+    order: 2 !important;
+    align-self: center !important;
+    width: calc(100% + 36px) !important;
+    max-width: none !important;
+    height: min(76vw, 300px) !important;
+    margin: 20px -18px 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, .18) !important;
+    pointer-events: auto !important;
+  }
+
+  .ref-hero .ref-contact-art img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: 68% center !important;
+  }
+}
