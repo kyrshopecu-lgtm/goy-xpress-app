@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "goy-xpress-app",
+  "compatibility_date": "2026-09-18",
+  "assets": {
+    "directory": "./public-web",
+    "not_found_handling": "single-page-application"
+  }
+}
