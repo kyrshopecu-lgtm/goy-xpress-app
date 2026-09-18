@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOY XPRESS Cliente",
     "slug": "goy-xpress-cliente",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "scheme": "goyxpresscliente",
     "orientation": "portrait",
     "icon": "./assets/goy-logo.jpg",
@@ -13,7 +13,7 @@
     ],
     "android": {
       "package": "com.goyxpress.cliente",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {"foregroundImage":"./assets/goy-logo.jpg","backgroundColor":"#0D2F41"},
       "blockedPermissions": [
         "android.permission.CAMERA",
@@ -22,6 +22,6 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
-    "ios": {"bundleIdentifier":"com.goyxpress.cliente","buildNumber":"3"}
+    "ios": {"bundleIdentifier":"com.goyxpress.cliente","buildNumber":"4"}
   }
 }
