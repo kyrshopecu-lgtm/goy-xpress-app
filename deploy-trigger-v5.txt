@@ -1,2 +1,3 @@
 GOY XPRESS production deployment trigger for API v5.
 No runtime logic is changed by this file.
+Portada Quito + Vercel Hobby release: 2026-09-18.
