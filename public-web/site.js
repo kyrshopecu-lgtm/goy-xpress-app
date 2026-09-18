@@ -1,19 +1,4 @@
 (()=>{
-  const polish=document.createElement('link');
-  polish.rel='stylesheet';
-  polish.href='/web/mobile-polish.css?v=20260913-3';
-  document.head.appendChild(polish);
-
-  const generatedImages=document.createElement('link');
-  generatedImages.rel='stylesheet';
-  generatedImages.href='/web/generated-service-images.css?v=20260914-1';
-  document.head.appendChild(generatedImages);
-
-  const imageHotfix=document.createElement('link');
-  imageHotfix.rel='stylesheet';
-  imageHotfix.href='/web/image-hotfix.css?v=20260914-2';
-  document.head.appendChild(imageHotfix);
-
   const locationStyle=document.createElement('style');
   locationStyle.textContent=`
     .map-visual.office-photo{padding:0!important;overflow:hidden!important;position:relative!important;background:#eaf2f8!important;min-height:360px!important}

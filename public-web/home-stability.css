@@ -1,0 +1,473 @@
+/* GOY XPRESS — final, deterministic layout safeguards. */
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+}
+
+img {
+  max-width: 100%;
+}
+
+#servicios,
+#como-funciona,
+#instalaciones,
+#contacto {
+  scroll-margin-top: 84px;
+}
+
+/* Important content must never depend on an animation completing. */
+.reveal,
+.reveal.visible,
+.ref-contact-art.reveal {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+/* Service catalog: remove every legacy pseudo-image and stacking rule. */
+#servicios .ref-service-scroll {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  width: min(1240px, 100%) !important;
+  margin: 0 auto !important;
+  padding: 4px 0 12px !important;
+  overflow: visible !important;
+  align-items: stretch !important;
+}
+
+#servicios .ref-service-scroll::after {
+  display: none !important;
+  content: none !important;
+}
+
+#servicios .ref-service-card {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid #dce7f0 !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  box-shadow: 0 9px 26px rgba(7, 53, 91, .12) !important;
+  color: #073b67 !important;
+  text-decoration: none !important;
+  isolation: isolate !important;
+}
+
+#servicios .ref-service-card::before,
+#servicios .ref-service-card::after {
+  display: none !important;
+  content: none !important;
+  background-image: none !important;
+}
+
+#servicios .ref-service-card > img {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  order: 0 !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 3 / 4 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: #eaf3f8 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #dce7f0 !important;
+  transform: none !important;
+}
+
+#servicios .ref-service-card > span {
+  position: static !important;
+  z-index: auto !important;
+  order: 1 !important;
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  min-height: 166px !important;
+  padding: 16px !important;
+  background: #fff !important;
+  text-align: left !important;
+}
+
+#servicios .ref-service-card > span::before {
+  margin-bottom: 9px !important;
+}
+
+#servicios .ref-service-card strong {
+  display: block !important;
+  min-height: 0 !important;
+  margin: 0 0 8px !important;
+  color: #073b67 !important;
+  font-size: 17px !important;
+  line-height: 1.2 !important;
+}
+
+#servicios .ref-service-card .service-desc {
+  display: block !important;
+  min-height: 0 !important;
+  margin: 0 0 15px !important;
+  color: #536d83 !important;
+  font-size: 14px !important;
+  font-style: normal !important;
+  line-height: 1.45 !important;
+}
+
+#servicios .ref-service-card small {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-height: 38px !important;
+  margin: auto 0 0 !important;
+  padding: 9px 14px !important;
+  border-radius: 999px !important;
+  background: #07558d !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+
+#servicios .ref-service-card:hover > img {
+  transform: none !important;
+}
+
+@media (max-width: 1180px) {
+  #servicios .ref-service-scroll {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Tablet, phone, and phone browsers requesting a desktop-width viewport. */
+@media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+  .ref-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    height: 72px !important;
+    padding: 0 14px !important;
+    gap: 10px !important;
+  }
+
+  .ref-brand {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .ref-brand img {
+    width: 54px !important;
+    height: 54px !important;
+  }
+
+  .ref-brand strong {
+    font-size: 20px !important;
+  }
+
+  .ref-brand small {
+    display: none !important;
+  }
+
+  .ref-menu {
+    display: grid !important;
+    place-items: center !important;
+    width: 46px !important;
+    height: 46px !important;
+    flex: 0 0 46px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 13px !important;
+    background: #edf5fb !important;
+    color: #064381 !important;
+    font-size: 25px !important;
+  }
+
+  .ref-nav {
+    position: absolute !important;
+    top: 72px !important;
+    right: 10px !important;
+    left: 10px !important;
+    z-index: 110 !important;
+    display: none !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    margin: 0 !important;
+    padding: 13px !important;
+    border: 1px solid #dce7f0 !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    box-shadow: 0 18px 36px rgba(5, 45, 92, .18) !important;
+  }
+
+  .ref-nav.open {
+    display: flex !important;
+  }
+
+  .ref-nav a {
+    padding: 11px 10px !important;
+    font-size: 15px !important;
+  }
+
+  .ref-header-cta {
+    display: grid !important;
+    place-items: center !important;
+    width: 46px !important;
+    height: 46px !important;
+    flex: 0 0 46px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 0 !important;
+  }
+
+  .ref-header-cta::after {
+    content: "WA" !important;
+    font-size: 12px !important;
+  }
+
+  .ref-hero {
+    grid-template-columns: minmax(0, 56%) minmax(0, 44%) !important;
+    min-height: 430px !important;
+    padding: 28px 12px 16px 18px !important;
+  }
+
+  .ref-hero h1 {
+    font-size: clamp(35px, 5vw, 48px) !important;
+    line-height: .98 !important;
+    letter-spacing: -1.6px !important;
+  }
+
+  .ref-kicker {
+    font-size: 9px !important;
+    letter-spacing: 1.6px !important;
+  }
+
+  .ref-hero-copy > p {
+    max-width: 94% !important;
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+  }
+
+  .ref-benefits {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .ref-benefit {
+    min-height: 68px !important;
+    padding: 8px !important;
+  }
+
+  .ref-benefit strong {
+    font-size: 10px !important;
+  }
+
+  .ref-benefit small {
+    font-size: 8px !important;
+  }
+
+  .ref-contact-art,
+  .ref-contact-art.reveal {
+    align-self: end !important;
+    width: 100% !important;
+    max-width: 470px !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+
+  .ref-contact-art img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 390px !important;
+  }
+
+  #servicios .ref-service-scroll {
+    display: flex !important;
+    width: auto !important;
+    margin: 0 -12px !important;
+    padding: 4px 12px 18px !important;
+    gap: 16px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    scroll-snap-type: x mandatory !important;
+    scroll-padding-inline: 12px !important;
+    touch-action: pan-x !important;
+    scrollbar-width: thin !important;
+  }
+
+  #servicios .ref-service-card {
+    flex: 0 0 min(72vw, 330px) !important;
+    width: min(72vw, 330px) !important;
+    max-width: 330px !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .ref-topbar {
+    min-height: 38px !important;
+    height: auto !important;
+    padding: 6px 10px !important;
+  }
+
+  .ref-topbar .ref-top-left {
+    gap: 8px !important;
+  }
+
+  .ref-topbar a,
+  .ref-topbar span {
+    font-size: 10px !important;
+  }
+
+  .ref-hero {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    padding: 28px 18px 0 !important;
+  }
+
+  .ref-hero-copy {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .ref-kicker {
+    margin-bottom: 12px !important;
+    font-size: 10px !important;
+    letter-spacing: 1.4px !important;
+  }
+
+  .ref-hero h1 {
+    font-size: clamp(38px, 11vw, 50px) !important;
+    line-height: .98 !important;
+  }
+
+  .ref-hero-copy > p {
+    max-width: 100% !important;
+    margin: 16px 0 !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+  }
+
+  .ref-benefits {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 8px 0 2px !important;
+  }
+
+  .ref-benefit {
+    display: block !important;
+    min-height: 76px !important;
+    padding: 9px 6px !important;
+    text-align: center !important;
+  }
+
+  .ref-benefit b {
+    display: block !important;
+    margin-bottom: 4px !important;
+    font-size: 18px !important;
+  }
+
+  .ref-benefit strong {
+    font-size: 10px !important;
+  }
+
+  .ref-benefit small {
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+  }
+
+  .ref-contact-art,
+  .ref-contact-art.reveal {
+    width: min(390px, 100%) !important;
+    max-width: 100% !important;
+    margin: 10px auto 0 !important;
+  }
+
+  .ref-contact-art img {
+    max-height: 360px !important;
+  }
+
+  .ref-services {
+    padding: 26px 14px 30px !important;
+  }
+
+  .section-head {
+    display: block !important;
+    padding: 0 0 14px !important;
+  }
+
+  .section-head h2 {
+    font-size: 31px !important;
+    line-height: 1.08 !important;
+  }
+
+  .section-head p {
+    margin-top: 7px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+
+  #servicios .ref-service-scroll {
+    margin: 0 -14px !important;
+    padding-inline: 14px !important;
+    scroll-padding-inline: 14px !important;
+  }
+
+  #servicios .ref-service-card {
+    flex-basis: min(82vw, 340px) !important;
+    width: min(82vw, 340px) !important;
+    max-width: 340px !important;
+  }
+
+  #servicios .ref-service-card > span {
+    min-height: 176px !important;
+    padding: 17px !important;
+  }
+
+  #servicios .ref-service-card strong {
+    font-size: 19px !important;
+  }
+
+  #servicios .ref-service-card .service-desc {
+    font-size: 15px !important;
+  }
+
+  #servicios .ref-service-card small {
+    min-height: 42px !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
