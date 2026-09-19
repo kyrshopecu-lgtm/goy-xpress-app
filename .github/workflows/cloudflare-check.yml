@@ -9,7 +9,6 @@ on:
       - 'api/**'
       - 'public-web/**'
       - 'package.json'
-      - 'package-lock.json'
       - '.github/workflows/cloudflare-check.yml'
   workflow_dispatch:
 
@@ -21,8 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
       - name: Unit tests
         run: npm test
       - name: Wrangler dry run
