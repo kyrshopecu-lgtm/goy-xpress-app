@@ -1,26 +1,234 @@
+import process from 'node:process';
+import { Buffer } from 'node:buffer';
 import { neon } from '@neondatabase/serverless';
+import backendV5 from './server/server-v5.js';
+import serverV6 from './server/server-v6.js';
+import adminClients from './server/admin-clients.js';
+import adminManagement from './server/admin-management.js';
+import courierProfile from './server/courier-profile.js';
+import courierOtp from './server/courierOtp.js';
+import adminCreateRequest from './api/admin-create-request.js';
+import publicTracking from './api/public-tracking.js';
+import additionalEvidence from './api/additional-evidence.js';
+import courierAdditionalEvidence from './api/courier-additional-evidence.js';
+import courierClientInfo from './api/courier-client-info.js';
+import notificationSound from './api/goy-notification-sound.js';
 
-const enc=new TextEncoder(),dec=new TextDecoder();
-const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'};
-const out=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
-const b64=b=>btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const unb64=t=>Uint8Array.from(atob(t.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-t.length%4)%4)),c=>c.charCodeAt(0));
-async function mac(t,s){const k=await crypto.subtle.importKey('raw',enc.encode(s),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(new Uint8Array(await crypto.subtle.sign('HMAC',k,enc.encode(t))));}
-async function sign(p,s){const body=b64(enc.encode(JSON.stringify(p)));return `${body}.${await mac(body,s)}`;}
-async function verify(t,s){try{const [b,m]=String(t||'').split('.');if(!b||!m||m!==await mac(b,s))return null;const p=JSON.parse(dec.decode(unb64(b)));return p.exp>Date.now()?p:null;}catch{return null;}}
-const bearer=r=>(r.headers.get('Authorization')||'').replace(/^Bearer\s+/,'');
-function clean(v){const d=v&&typeof v==='object'?v:{};for(const k of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives'])if(!Array.isArray(d[k]))d[k]=[];return d;}
-async function sql(env){if(!env.DATABASE_URL)throw new Error('DATABASE_URL no configurado');const s=neon(env.DATABASE_URL);await s`CREATE TABLE IF NOT EXISTS goy_state (id INTEGER PRIMARY KEY,data JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;await s`INSERT INTO goy_state (id,data) VALUES (1,${JSON.stringify(clean({}))}::jsonb) ON CONFLICT (id) DO NOTHING`;return s;}
-async function read(env){const s=await sql(env),r=await s`SELECT data FROM goy_state WHERE id=1 LIMIT 1`;return clean(r[0]?.data||{});}
-async function write(env,d){const s=await sql(env);await s`UPDATE goy_state SET data=${JSON.stringify(clean(d))}::jsonb,updated_at=NOW() WHERE id=1`;}
-async function admin(r,e){const p=await verify(bearer(r),e.TOKEN_SECRET);return p?.role==='admin';}
-async function api(r,e,u){const p=u.pathname.slice(4)||'/';
- if(r.method==='GET'&&p==='/health'){try{const d=await read(e);return out({ok:true,database:'connected',counts:{clients:d.clients.length,couriers:d.couriers.length,requests:d.requests.length}});}catch(x){return out({ok:false,error:x.message},503);}}
- if(r.method==='POST'&&p==='/admin/login'){const b=await r.json().catch(()=>({}));if(!e.ADMIN_EMAIL||!e.ADMIN_PASSWORD||!e.TOKEN_SECRET)return out({error:'Credenciales del administrador sin configurar.'},503);if(String(b.email||'').trim().toLowerCase()!==String(e.ADMIN_EMAIL).trim().toLowerCase()||String(b.password||'')!==String(e.ADMIN_PASSWORD))return out({error:'Correo o contraseña incorrectos.'},401);const expiresIn=43200;return out({token:await sign({role:'admin',exp:Date.now()+expiresIn*1000},e.TOKEN_SECRET),expiresIn});}
- if(!await admin(r,e))return out({error:'No autorizado'},401);const d=await read(e);
- if(r.method==='GET'&&p==='/admin/data'){const cycles=[...new Set(d.requests.map(x=>x.cycleKey).filter(Boolean))].sort().reverse(),active=u.searchParams.get('cycle')||cycles[0]||'';return out({clients:d.clients,couriers:d.couriers,requests:active?d.requests.filter(x=>x.cycleKey===active):d.requests,payments:d.payments,activeCycle:active,availableCycles:cycles});}
- const m=p.match(/^\/admin\/requests\/([^/]+)$/);if(r.method==='PATCH'&&m){const b=await r.json().catch(()=>({})),item=d.requests.find(x=>x.code===decodeURIComponent(m[1])||x.id===decodeURIComponent(m[1]));if(!item)return out({error:'Solicitud no encontrada.'},404);Object.assign(item,b,{updatedAt:new Date().toISOString()});await write(e,d);return out({request:item});}
- return out({error:'Ruta API aún no migrada.',path:p},404);
+const JSON_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+};
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
-async function asset(r,e,u,p){const a=new URL(u);a.pathname=p;return e.ASSETS.fetch(new Request(a,r));}
-export default{async fetch(r,e){const u=new URL(r.url),p=u.pathname;try{if(p.startsWith('/api/'))return api(r,e,u);if(p==='/admin'||p==='/admin/')return asset(r,e,u,'/');if(p.startsWith('/admin/'))return asset(r,e,u,p.slice(6));let q=p;if(q==='/inicio')q='/';if(q==='/servicio')q='/service.html';if(q.startsWith('/web/'))q=q.slice(4)||'/';return asset(r,e,u,q);}catch(x){console.error(x);return out({error:'Error interno del servidor.',detail:x.message},500);}}};
+
+function syncProcessEnv(env) {
+  const keys = [
+    'DATABASE_URL','TOKEN_SECRET','ADMIN_EMAIL','ADMIN_PASSWORD','ALLOWED_ORIGIN',
+    'GOOGLE_MAPS_API_KEY','BREVO_API_KEY','BREVO_SENDER_EMAIL','BREVO_SENDER_NAME',
+    'WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_OTP_TEMPLATE',
+    'WHATSAPP_OTP_TEMPLATE_LANG','WHATSAPP_GRAPH_VERSION','OPENAI_API_KEY'
+  ];
+  for (const key of keys) {
+    if (env[key] === undefined || env[key] === null) delete process.env[key];
+    else process.env[key] = String(env[key]);
+  }
+}
+
+function backendConfig(env) {
+  return {
+    adminEmail: String(env.ADMIN_EMAIL || '').trim().toLowerCase(),
+    adminPassword: String(env.ADMIN_PASSWORD || ''),
+    tokenSecret: String(env.TOKEN_SECRET || ''),
+    allowedOrigin: String(env.ALLOWED_ORIGIN || '*'),
+    databaseUrl: String(env.DATABASE_URL || ''),
+    googleMapsApiKey: String(env.GOOGLE_MAPS_API_KEY || ''),
+    dataFile: '/tmp/goy-xpress-data.json',
+  };
+}
+
+function buildBackend(env) {
+  const config = backendConfig(env);
+  const overrides = {
+    databaseUrl: config.databaseUrl,
+    tokenSecret: config.tokenSecret,
+    allowedOrigin: config.allowedOrigin,
+    dataFile: config.dataFile,
+  };
+  const base = backendV5.createHandler({ config });
+  const withClients = adminClients.wrap(base, overrides);
+  const withManagement = adminManagement.wrap(withClients, overrides);
+  const full = courierProfile.wrap(withManagement, overrides);
+  return { base, full, config };
+}
+
+async function nodeRequest(request) {
+  const url = new URL(request.url);
+  const headers = {};
+  for (const [key, value] of request.headers.entries()) headers[key.toLowerCase()] = value;
+  if (!headers.host) headers.host = url.host;
+
+  let raw = Buffer.alloc(0);
+  let parsedBody;
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    raw = Buffer.from(await request.arrayBuffer());
+    const type = String(headers['content-type'] || '').toLowerCase();
+    if (raw.length && (type.includes('application/json') || type.includes('+json'))) {
+      try { parsedBody = JSON.parse(raw.toString('utf8')); } catch { parsedBody = undefined; }
+    }
+  }
+
+  return {
+    method: request.method,
+    url: `${url.pathname}${url.search}`,
+    headers,
+    query: Object.fromEntries(url.searchParams.entries()),
+    body: parsedBody,
+    async *[Symbol.asyncIterator]() {
+      if (raw.length) yield raw;
+    },
+  };
+}
+
+async function invokeNode(handler, request) {
+  const req = await nodeRequest(request);
+  let statusCode = 200;
+  const responseHeaders = new Headers();
+  const chunks = [];
+  let ended = false;
+
+  const res = {
+    get statusCode() { return statusCode; },
+    set statusCode(value) { statusCode = Number(value) || 200; },
+    setHeader(name, value) {
+      if (Array.isArray(value)) responseHeaders.set(name, value.join(', '));
+      else if (value !== undefined && value !== null) responseHeaders.set(name, String(value));
+    },
+    getHeader(name) { return responseHeaders.get(name); },
+    writeHead(status, nextHeaders = {}) {
+      statusCode = Number(status) || statusCode;
+      for (const [name, value] of Object.entries(nextHeaders || {})) this.setHeader(name, value);
+      return this;
+    },
+    write(value = '') {
+      if (value !== undefined && value !== null) chunks.push(Buffer.isBuffer(value) ? value : Buffer.from(value));
+      return true;
+    },
+    end(value = '') {
+      if (value !== undefined && value !== null && value !== '') this.write(value);
+      ended = true;
+      return this;
+    },
+    status(value) { statusCode = Number(value) || statusCode; return this; },
+    json(value) {
+      if (!responseHeaders.has('Content-Type')) responseHeaders.set('Content-Type', 'application/json; charset=utf-8');
+      this.end(JSON.stringify(value));
+      return this;
+    },
+    send(value) { this.end(value); return this; },
+  };
+
+  await handler(req, res);
+  if (!ended) res.end();
+  const noBody = statusCode === 204 || statusCode === 304 || request.method === 'HEAD';
+  const body = noBody ? null : (chunks.length ? Buffer.concat(chunks) : Buffer.alloc(0));
+  return new Response(body, { status: statusCode, headers: responseHeaders });
+}
+
+async function health(env) {
+  if (!env.DATABASE_URL) return json({ ok: false, error: 'DATABASE_URL no configurado' }, 503);
+  try {
+    const sql = neon(String(env.DATABASE_URL));
+    const rows = await sql`SELECT data, updated_at FROM goy_state WHERE id = 1 LIMIT 1`;
+    const data = rows[0]?.data || {};
+    return json({
+      ok: true,
+      service: 'goy-xpress-cloudflare',
+      database: 'connected',
+      updatedAt: rows[0]?.updated_at || null,
+      counts: {
+        users: Array.isArray(data.users) ? data.users.length : 0,
+        clients: Array.isArray(data.clients) ? data.clients.length : 0,
+        couriers: Array.isArray(data.couriers) ? data.couriers.length : 0,
+        requests: Array.isArray(data.requests) ? data.requests.length : 0,
+      },
+    });
+  } catch (error) {
+    console.error('GOY health', error);
+    return json({ ok: false, database: 'error', error: error.message || 'No se pudo conectar con Neon' }, 503);
+  }
+}
+
+async function handleApi(request, env) {
+  syncProcessEnv(env);
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  if (path === '/api/health' && request.method === 'GET') return health(env);
+
+  if (path === '/api/courier/otp/request') return invokeNode(courierOtp.requestOtp, request);
+  if (path === '/api/courier/otp/verify') return invokeNode(courierOtp.verifyOtp, request);
+
+  if (path === '/api/public-tracking') return invokeNode(publicTracking, request);
+  if (path === '/api/additional-evidence') return invokeNode(additionalEvidence, request);
+  if (path === '/api/courier-additional-evidence') return invokeNode(courierAdditionalEvidence, request);
+  if (path === '/api/courier-client-info') return invokeNode(courierClientInfo, request);
+  if (path === '/api/goy-notification-sound') return invokeNode(notificationSound, request);
+
+  const { base, full } = buildBackend(env);
+
+  if (path === '/api/admin-create-request') {
+    const handler = adminCreateRequest.createHandler({ backend: base, tokenSecret: String(env.TOKEN_SECRET || '') });
+    return invokeNode(handler, request);
+  }
+
+  // Estas rutas pertenecen a v6 porque agregan acceso por usuario y aprobación de clientes.
+  if (
+    path === '/api/auth/login' ||
+    /^\/api\/admin\/(clients|couriers)\/[^/]+\/approve$/.test(path)
+  ) {
+    return invokeNode(serverV6, request);
+  }
+
+  return invokeNode(full, request);
+}
+
+async function asset(request, env, url, pathname) {
+  const target = new URL(url);
+  target.pathname = pathname;
+  const response = await env.ASSETS.fetch(new Request(target, request));
+  const headers = new Headers(response.headers);
+  headers.set('X-Content-Type-Options', 'nosniff');
+  if (pathname.startsWith('/admin/') || pathname === '/admin/index.html') headers.set('Referrer-Policy', 'same-origin');
+  else headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function handleStatic(request, env) {
+  const url = new URL(request.url);
+  let path = url.pathname;
+
+  if (path === '/inicio') path = '/';
+  else if (path === '/servicio') path = '/service.html';
+  else if (path === '/admin' || path === '/admin/') path = '/admin/index.html';
+  else if (path === '/tracking' || path === '/tracking/') path = '/tracking/index.html';
+  else if (/^\/registro\/[^/]+\/?$/.test(path)) path = '/register.html';
+  else if (path.startsWith('/web/')) path = path.slice(4) || '/';
+
+  return asset(request, env, url, path);
+}
+
+export default {
+  async fetch(request, env) {
+    try {
+      const url = new URL(request.url);
+      if (url.pathname === '/api' || url.pathname.startsWith('/api/')) return await handleApi(request, env);
+      return await handleStatic(request, env);
+    } catch (error) {
+      console.error('GOY XPRESS Cloudflare Worker', error);
+      return json({ error: 'Error interno del servidor.', detail: error.message || null }, 500);
+    }
+  },
+};
