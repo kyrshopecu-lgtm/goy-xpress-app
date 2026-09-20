@@ -8,9 +8,9 @@
   async function api(path, options = {}) {
     const headers = {'Content-Type':'application/json', ...(options.headers || {})};
     if (token()) headers.Authorization = `Bearer ${token()}`;
-    const response = await fetch(`${apiBase}${path}`, {...options, headers});
+    const response = await fetch(`${apiBase}${path}`, {...options, headers, cache:'no-store'});
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'No se pudo completar la operación.');
+    if (!response.ok) throw new Error(body.error || `No se pudo completar la operación (HTTP ${response.status}).`);
     return body;
   }
 
@@ -165,7 +165,7 @@
     overlay.addEventListener('click', event => { if (event.target === overlay) closeModal(); });
 
     try {
-      const data = await api('/admin/data');
+      const data = await api('/admin/order-options');
       const clients = (data.clients || []).filter(c => c.active !== false);
       const couriers = (data.couriers || []).filter(c => c.approved && c.active !== false);
       if (!clients.length) {
