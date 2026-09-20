@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 
 export const API_BASE = String(
-  process.env.EXPO_PUBLIC_GOY_API_URL || 'https://goy-xpress-admin.vercel.app/api',
+  process.env.EXPO_PUBLIC_GOY_API_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/api',
 ).replace(/\/$/, '');
 
 async function request(path, {method='GET', token, body, headers={}} = {}) {
