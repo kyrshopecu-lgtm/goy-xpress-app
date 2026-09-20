@@ -36,11 +36,12 @@
           <label>Dirección de retiro<input name="originAddress" required placeholder="Ej. Jorge Juan y Mariana de Jesús, Quito"></label>
           <label>Dirección de entrega<input name="destinationAddress" required placeholder="Ej. Av. República y Eloy Alfaro, Quito"></label>
           <label>Persona que recibe<input name="recipient" placeholder="Nombre del destinatario"></label>
+          <label>WhatsApp del destinatario<input name="recipientPhone" type="tel" required inputmode="tel" placeholder="Ej. 0991234567"></label>
           <label>Valor del producto<input name="productValue" type="number" min="0" step="0.01" value="0"></label>
           <label class="check-line"><input name="cashOnDelivery" type="checkbox"> Cobrar producto contra entrega</label>
           <label>¿Quién paga la entrega?<select name="deliveryPayer"><option value="recipient">Destinatario</option><option value="sender">Cliente/remitente</option></select></label>
         </div>
-        <div class="map-hint">La distancia, duración y tarifa se calcularán automáticamente con Google Maps al guardar.</div>`;
+        <div class="map-hint">La distancia, duración y tarifa se calcularán automáticamente con Google Maps al guardar. El WhatsApp del destinatario quedará disponible para el mensajero.</div>`;
     }
     if (value === 'procedure') {
       return `
@@ -88,6 +89,7 @@
         originAddress:String(fd.get('originAddress') || ''),
         destinationAddress:String(fd.get('destinationAddress') || ''),
         recipient:String(fd.get('recipient') || ''),
+        recipientPhone:String(fd.get('recipientPhone') || '').replace(/\D/g,''),
         productValue:Number(fd.get('productValue') || 0),
         cashOnDelivery:fd.get('cashOnDelivery') === 'on',
         deliveryPayer:String(fd.get('deliveryPayer') || 'recipient'),
