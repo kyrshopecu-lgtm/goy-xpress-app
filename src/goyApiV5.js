@@ -1,9 +1,14 @@
+import {Linking} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 
 export const API_BASE = String(
   process.env.EXPO_PUBLIC_GOY_API_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/api',
 ).replace(/\/$/, '');
+
+const GOY_WHATSAPP = String(
+  process.env.EXPO_PUBLIC_GOY_WHATSAPP_NUMBER || '593997729964',
+).replace(/\D/g, '');
 
 async function request(path, {method='GET', token, body, headers={}} = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -24,6 +29,46 @@ async function request(path, {method='GET', token, body, headers={}} = {}) {
     throw error;
   }
   return data;
+}
+
+function serviceName(kind) {
+  return {
+    shipment:'Entrega',
+    procedure:'Trámite ejecutivo',
+    deposit:'Depósito bancario',
+    diverse:'Servicio diverso',
+  }[kind] || kind || 'Solicitud';
+}
+
+async function notifyGoyWhatsapp(token, created, payload={}) {
+  if (!GOY_WHATSAPP || !created) return;
+  try {
+    const meData = await request('/me', {token});
+    const user = meData.user || {};
+    const recipient = typeof created.recipient === 'string'
+      ? created.recipient
+      : created.recipient?.name || payload.recipient || '-';
+    const lines = [
+      'NUEVA SOLICITUD DESDE APP CLIENTE - GOY XPRESS',
+      '',
+      `Seguimiento: ${created.code || created.id || '-'}`,
+      `Servicio: ${serviceName(created.kind || payload.kind)}`,
+      `Cliente: ${user.businessName || user.name || created.customer || '-'}`,
+      `WhatsApp cliente: ${user.phone || '-'}`,
+      created.originAddress || payload.originAddress ? `Retiro: ${created.originAddress || payload.originAddress}` : '',
+      recipient && recipient !== '-' ? `Destinatario: ${recipient}` : '',
+      created.destinationAddress || payload.destinationAddress ? `Entrega: ${created.destinationAddress || payload.destinationAddress}` : '',
+      Number(created.productValue || payload.productValue || 0) > 0 ? `Valor producto: $${Number(created.productValue || payload.productValue).toFixed(2)}` : '',
+      Number(created.serviceCost || 0) > 0 ? `Valor servicio: $${Number(created.serviceCost).toFixed(2)}` : '',
+      created.cashOnDelivery || payload.cashOnDelivery ? 'Cobro contra entrega: Sí' : '',
+      '',
+      'Solicitud registrada correctamente en el sistema.',
+    ].filter(Boolean);
+    const url = `https://wa.me/${GOY_WHATSAPP}?text=${encodeURIComponent(lines.join('\n'))}`;
+    Linking.openURL(url).catch(() => {});
+  } catch {
+    // La solicitud ya quedó guardada. Un fallo al abrir WhatsApp no debe duplicarla ni bloquearla.
+  }
 }
 
 export async function registerClient(payload) {
@@ -58,6 +103,7 @@ export async function getClientRequests(token) {
 
 export async function createClientRequest(token, payload) {
   const data = await request('/client/requests', {method:'POST', token, body:payload});
+  notifyGoyWhatsapp(token, data.request, payload);
   return data.request;
 }
 
