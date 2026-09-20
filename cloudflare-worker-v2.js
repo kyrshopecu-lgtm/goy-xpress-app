@@ -1,6 +1,7 @@
 import process from 'node:process';
 import { Buffer } from 'node:buffer';
 import { neon } from '@neondatabase/serverless';
+import './cloudflare-node-shim.js';
 import backendV5 from './server/server-v5.js';
 import serverV6 from './server/server-v6.js';
 import adminClients from './server/admin-clients.js';
