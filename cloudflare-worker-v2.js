@@ -162,6 +162,45 @@ async function health(env) {
   }
 }
 
+async function adminOrderOptions(request, base) {
+  const target = new URL(request.url);
+  target.pathname = '/api/admin/data';
+  target.search = '';
+  const internalRequest = new Request(target, {
+    method: 'GET',
+    headers: request.headers,
+  });
+  const response = await invokeNode(base, internalRequest);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) return json({ error: payload.error || 'No autorizado' }, response.status);
+
+  const clients = (payload.clients || [])
+    .filter(item => item && item.active !== false)
+    .map(item => ({
+      id: item.id || item.userId || '',
+      userId: item.userId || item.id || '',
+      name: item.name || '',
+      businessName: item.businessName || '',
+      email: item.email || '',
+      phone: item.phone || item.whatsapp || '',
+      active: item.active !== false,
+    }));
+
+  const couriers = (payload.couriers || [])
+    .filter(item => item && item.approved && item.active !== false)
+    .map(item => ({
+      id: item.id || item.userId || '',
+      userId: item.userId || item.id || '',
+      name: item.name || item.fullName || '',
+      fullName: item.fullName || item.name || '',
+      phone: item.phone || item.whatsapp || '',
+      approved: Boolean(item.approved),
+      active: item.active !== false,
+    }));
+
+  return json({ clients, couriers });
+}
+
 async function handleApi(request, env) {
   syncProcessEnv(env);
   const url = new URL(request.url);
@@ -180,12 +219,15 @@ async function handleApi(request, env) {
 
   const { base, full } = buildBackend(env);
 
+  if (path === '/api/admin/order-options' && request.method === 'GET') {
+    return adminOrderOptions(request, base);
+  }
+
   if (path === '/api/admin-create-request') {
     const handler = adminCreateRequest.createHandler({ backend: base, tokenSecret: String(env.TOKEN_SECRET || '') });
     return invokeNode(handler, request);
   }
 
-  // Estas rutas pertenecen a v6 porque agregan acceso por usuario y aprobación de clientes.
   if (
     path === '/api/auth/login' ||
     /^\/api\/admin\/(clients|couriers)\/[^/]+\/approve$/.test(path)
