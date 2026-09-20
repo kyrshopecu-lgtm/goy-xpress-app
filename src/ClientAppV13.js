@@ -7,6 +7,7 @@ import ClientEvidenceOverlay from'./ClientEvidenceOverlay';
 import{login,pickClientLogo,registerClient}from'./goyApiV5';
 
 const KEY='goy_client_session_v12';
+const MIGRATION='goy_client_cloudflare_migration_v1';
 const C={navy:'#071C2A',navy2:'#0B2F40',cyan:'#00A9E8',green:'#38A844',white:'#fff',muted:'#BFD8E2',line:'#2A5365',input:'#F8FCFD'};
 
 function Logo({size=92}){const f=useRef(new Animated.Value(0)).current;useEffect(()=>{const loop=Animated.loop(Animated.sequence([Animated.timing(f,{toValue:1,duration:1700,useNativeDriver:true}),Animated.timing(f,{toValue:0,duration:1700,useNativeDriver:true})]));loop.start();return()=>loop.stop()},[f]);const y=f.interpolate({inputRange:[0,1],outputRange:[0,-5]});return <Animated.View style={[s.logoShell,{transform:[{translateY:y}]}]}><View style={s.logoGlow}/><Image source={require('../assets/goy-logo.jpg')} style={{width:size,height:size,borderRadius:24}}/></Animated.View>}
@@ -39,7 +40,20 @@ function Auth({onAuthenticated}){
 
 export default function ClientAppV13(){
   const[session,setSession]=useState(null),[checking,setChecking]=useState(true);
-  useEffect(()=>{let mounted=true;(async()=>{const raw=await AsyncStorage.getItem(KEY).catch(()=>null);if(mounted)setSession(raw?JSON.parse(raw)?.token||null:null);if(mounted)setChecking(false)})();const original=AsyncStorage.removeItem.bind(AsyncStorage);AsyncStorage.removeItem=async key=>{const result=await original(key);if(key===KEY&&mounted)setSession(null);return result};return()=>{mounted=false;AsyncStorage.removeItem=original}},[]);
+  useEffect(()=>{
+    let mounted=true;
+    const original=AsyncStorage.removeItem.bind(AsyncStorage);
+    AsyncStorage.removeItem=async key=>{const result=await original(key);if(key===KEY&&mounted)setSession(null);return result};
+    (async()=>{
+      try{
+        const migrated=await AsyncStorage.getItem(MIGRATION);
+        if(!migrated){await original(KEY);await AsyncStorage.setItem(MIGRATION,'1');}
+        const raw=await AsyncStorage.getItem(KEY);
+        if(mounted)setSession(raw?JSON.parse(raw)?.token||null:null);
+      }catch{if(mounted)setSession(null)}finally{if(mounted)setChecking(false)}
+    })();
+    return()=>{mounted=false;AsyncStorage.removeItem=original};
+  },[]);
   if(checking)return <SafeAreaView style={s.loading}><StatusBar style="light" backgroundColor={C.navy}/><Logo size={84}/><Text style={s.loadingText}>GOY XPRESS</Text></SafeAreaView>;
   if(!session)return <Auth onAuthenticated={setSession}/>;
   return <View style={{flex:1}}><ClientAppV12/><ClientEvidenceOverlay token={session}/></View>;
