@@ -162,7 +162,7 @@ async function health(env) {
   }
 }
 
-async function adminOrderOptions(request, base) {
+async function adminOrderOptions(request, backend) {
   const target = new URL(request.url);
   target.pathname = '/api/admin/data';
   target.search = '';
@@ -170,7 +170,7 @@ async function adminOrderOptions(request, base) {
     method: 'GET',
     headers: request.headers,
   });
-  const response = await invokeNode(base, internalRequest);
+  const response = await invokeNode(backend, internalRequest);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) return json({ error: payload.error || 'No autorizado' }, response.status);
 
@@ -217,14 +217,14 @@ async function handleApi(request, env) {
   if (path === '/api/courier-client-info') return invokeNode(courierClientInfo, request);
   if (path === '/api/goy-notification-sound') return invokeNode(notificationSound, request);
 
-  const { base, full } = buildBackend(env);
+  const { full } = buildBackend(env);
 
   if (path === '/api/admin/order-options' && request.method === 'GET') {
-    return adminOrderOptions(request, base);
+    return adminOrderOptions(request, full);
   }
 
   if (path === '/api/admin-create-request') {
-    const handler = adminCreateRequest.createHandler({ backend: base, tokenSecret: String(env.TOKEN_SECRET || '') });
+    const handler = adminCreateRequest.createHandler({ backend: full, tokenSecret: String(env.TOKEN_SECRET || '') });
     return invokeNode(handler, request);
   }
 
