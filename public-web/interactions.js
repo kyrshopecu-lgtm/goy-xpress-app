@@ -7,6 +7,22 @@
     document.head.appendChild(link);
   }
 
+  if(!document.querySelector('link[data-goy-social-mobile-fixes]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='/web/social-mobile-hotfix.css?v=20260920-2';
+    link.dataset.goySocialMobileFixes='1';
+    document.head.appendChild(link);
+  }
+
+  const socialLinks={
+    Facebook:'https://www.facebook.com/share/19K8a7ncxH/',
+    Instagram:'https://www.instagram.com/goyxpress',
+    TikTok:'https://www.tiktok.com/@goyxpressmensajeria',
+    WhatsApp:'https://wa.me/593992705565?text=Hola%20GOY%20XPRESS'
+  };
+  const waIcon='<img class="gx-wa-icon" src="/web/assets/whatsapp-brand.svg" alt="" aria-hidden="true">';
+
   /* Portada profesional: mensaje claro, acciones principales y confianza. */
   const heroCopy=document.querySelector('.ref-hero-copy');
   if(heroCopy){
@@ -29,6 +45,42 @@
     }
   }
 
+  /* Botones de WhatsApp con el icono de marca. */
+  const headerWa=document.querySelector('.ref-header-cta');
+  if(headerWa){
+    headerWa.innerHTML=`${waIcon}<span class="gx-wa-label">WhatsApp</span>`;
+    headerWa.setAttribute('aria-label','Contactar a GOY XPRESS por WhatsApp');
+  }
+
+  const floatingWa=document.querySelector('.floating-wa');
+  if(floatingWa){
+    floatingWa.innerHTML=waIcon;
+    floatingWa.setAttribute('aria-label','Abrir WhatsApp de GOY XPRESS');
+    setTimeout(()=>floatingWa.classList.add('visible'),500);
+  }
+
+  const quickWa=document.querySelector('.gx-quick-card.whatsapp .gx-quick-icon');
+  if(quickWa)quickWa.innerHTML=waIcon;
+
+  const mainWa=document.querySelector('.gx-hero-actions .gx-btn.primary');
+  if(mainWa){
+    mainWa.innerHTML=`${waIcon}<span>Solicitar servicio</span>`;
+  }
+
+  /* Redes sociales oficiales visibles también en teléfonos. */
+  const header=document.querySelector('.ref-header');
+  if(header&&!document.querySelector('.gx-social-strip')){
+    const strip=document.createElement('div');
+    strip.className='gx-social-strip';
+    strip.setAttribute('aria-label','Redes sociales oficiales de GOY XPRESS');
+    strip.innerHTML=`
+      <a href="${socialLinks.Facebook}" target="_blank" rel="noopener noreferrer" aria-label="Facebook de GOY XPRESS"><span class="gx-social-icon">f</span><span class="gx-social-label">Facebook</span></a>
+      <a href="${socialLinks.Instagram}" target="_blank" rel="noopener noreferrer" aria-label="Instagram de GOY XPRESS"><span class="gx-social-icon instagram">◎</span><span class="gx-social-label">Instagram</span></a>
+      <a href="${socialLinks.TikTok}" target="_blank" rel="noopener noreferrer" aria-label="TikTok de GOY XPRESS"><span class="gx-social-icon tiktok">♪</span><span class="gx-social-label">TikTok</span></a>
+      <a href="${socialLinks.WhatsApp}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp de GOY XPRESS"><span class="gx-social-icon whatsapp">${waIcon}</span><span class="gx-social-label">WhatsApp</span></a>`;
+    header.insertAdjacentElement('afterend',strip);
+  }
+
   const stage=document.querySelector('.interactive-stage');
   if(stage){
     stage.addEventListener('pointermove',e=>{
@@ -41,19 +93,10 @@
     stage.addEventListener('pointerleave',()=>stage.style.transform='');
   }
 
-  const wa=document.querySelector('.floating-whatsapp');
-  if(wa)setTimeout(()=>wa.classList.add('visible'),500);
-
   document.querySelectorAll('.company-chips span,.address-card,.access-grid a').forEach(el=>{
     el.addEventListener('pointerenter',()=>el.animate([{transform:'translateY(0)'},{transform:'translateY(-3px)'}],{duration:180,fill:'forwards',easing:'ease-out'}));
     el.addEventListener('pointerleave',()=>el.animate([{transform:'translateY(-3px)'},{transform:'translateY(0)'}],{duration:180,fill:'forwards',easing:'ease-out'}));
   });
-
-  const socialLinks={
-    Facebook:'https://www.facebook.com/share/19K8a7ncxH/',
-    Instagram:'https://www.instagram.com/goyxpress?stkn=Z3k2eDVzczNobGp2',
-    TikTok:'https://www.tiktok.com/@goyxpressmensajeria?_r=1&_d=f1fhe9l6g9515d&sec_uid=MS4wLjABAAAAyQ-tu5sjWwOzwUE15Ui6G8DeAzd_e1dr3a_EC-1FBBjP1OoWzIg43Edzev5cp0FT&share_author_id=6952963572843971590&sharer_language=es&source=h5_m&u_code=e1g61h6h81b7f3&timestamp=1789694874&user_id=7093920362173350917&sec_user_id=MS4wLjABAAAAMAcKlYnF0lh3RZa-lJpaFIPPjC3EcxBLQxrT-zfy_ayBGADmoexa5kMSFDyO8Ygx&item_author_type=2&utm_source=copy&utm_campaign=client_share&utm_medium=android&share_iid=7684721753910593300&share_link_id=39ba2e54-2ca5-4036-9006-adbd1c41c557&share_app_id=1233&ugbiz_name=ACCOUNT&ug_btm=b6880%2Cb5836&social_share_type=5&share_enter_from=others_homepage&item_author_type=2&enable_checksum=1'
-  };
 
   document.querySelectorAll('.ref-top-right span').forEach(el=>{
     const name=Object.keys(socialLinks).find(k=>el.textContent.includes(k));
