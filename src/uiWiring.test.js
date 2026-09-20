@@ -42,7 +42,8 @@ test('Cliente v1.3 muestra evidencias de retiro, entrega y depósito', () => {
   assert.match(evidence, /deliveryPhoto/);
   assert.match(evidence, /depositPhoto/);
   assert.match(evidence, /Fotos de mis servicios/);
-  assert.match(evidence, /onPress=\{load\}/);
+  assert.match(evidence, /onPress=\{\(\)=>load\(\)\}/);
+  assert.match(evidence, /setInterval\(\(\)=>load\(true\),12000\)/);
 });
 
 test('Mensajero v1.3: OTP, foto, botones cableados y trabajos asignados', () => {
