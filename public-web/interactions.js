@@ -7,6 +7,28 @@
     document.head.appendChild(link);
   }
 
+  /* Portada profesional: mensaje claro, acciones principales y confianza. */
+  const heroCopy=document.querySelector('.ref-hero-copy');
+  if(heroCopy){
+    const kicker=heroCopy.querySelector('.ref-kicker');
+    const title=heroCopy.querySelector('h1');
+    const summary=heroCopy.querySelector(':scope > p');
+    const benefits=heroCopy.querySelector('.ref-benefits');
+
+    if(kicker)kicker.textContent='TRÁMITES · ENVÍOS · GESTIONES · EN QUITO';
+    if(title)title.innerHTML='Tu aliado en <em>trámites, envíos y gestiones en Quito</em>';
+    if(summary)summary.textContent='En GOY XPRESS te ayudamos a resolver entregas, mensajería, trámites y gestiones de forma rápida, segura y organizada.';
+
+    if(benefits){
+      benefits.classList.add('gx-hero-trust');
+      benefits.innerHTML=`
+        <div class="ref-benefit"><b>⚡</b><div><strong>ATENCIÓN RÁPIDA</strong><small>Coordinación ágil</small></div></div>
+        <div class="ref-benefit"><b>📦</b><div><strong>SEGUIMIENTO</strong><small>Consulta tu pedido</small></div></div>
+        <div class="ref-benefit"><b>📍</b><div><strong>EN QUITO</strong><small>Gestiones locales</small></div></div>
+        <div class="ref-benefit"><b>💬</b><div><strong>WHATSAPP</strong><small>Soporte directo</small></div></div>`;
+    }
+  }
+
   const stage=document.querySelector('.interactive-stage');
   if(stage){
     stage.addEventListener('pointermove',e=>{
