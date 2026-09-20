@@ -44,7 +44,7 @@ jobs:
           - variant: mensajero
             config: app.courier.json
             entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.3.apk
+            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.4.apk
 
     steps:
       - name: Descargar proyecto
