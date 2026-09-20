@@ -25,6 +25,9 @@ on:
 permissions:
   contents: read
 
+env:
+  EXPO_PUBLIC_GOY_API_URL: https://goy-xpress-app.kyrshopecu.workers.dev/api
+
 jobs:
   build-role-apk:
     name: build-${{ matrix.variant }}
@@ -41,7 +44,7 @@ jobs:
           - variant: mensajero
             config: app.courier.json
             entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.2.apk
+            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.3.apk
 
     steps:
       - name: Descargar proyecto
@@ -67,6 +70,7 @@ jobs:
           cp '${{ matrix.config }}' app.json
           cp '${{ matrix.entry }}' index.js
           node -e "const c=require('./app.json').expo; console.log(c.name,c.android.package,c.version,c.android.versionCode)"
+          echo "API móvil: $EXPO_PUBLIC_GOY_API_URL"
 
       - name: Instalar dependencias
         run: npm install
