@@ -1,6 +1,10 @@
 import {Linking} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import {pbkdf2Async} from '@noble/hashes/pbkdf2.js';
+import {sha256, sha512} from '@noble/hashes/sha2.js';
+import {hmac} from '@noble/hashes/hmac.js';
+import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
 
 export const API_BASE = String(
   process.env.EXPO_PUBLIC_GOY_API_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/api',
@@ -71,18 +75,49 @@ async function notifyGoyWhatsapp(token, created, payload={}) {
   }
 }
 
+async function derivePasswordHash(password, salt, iterations) {
+  const count = Number(iterations);
+  if (!Number.isInteger(count) || count < 1 || count > 1000000) {
+    throw new Error('La configuración de seguridad del acceso no es válida.');
+  }
+  return pbkdf2Async(
+    sha512,
+    utf8ToBytes(String(password || '')),
+    utf8ToBytes(String(salt || '')),
+    {c:count, dkLen:64},
+  );
+}
+
+async function registerWithProof(role, payload) {
+  const start = await request('/auth/register-params', {
+    method:'POST',
+    body:{role, email:payload.email},
+  });
+  const derived = await derivePasswordHash(payload.password, start.salt, start.iterations);
+  return request('/auth/register-proof', {
+    method:'POST',
+    body:{...payload, challenge:start.challenge, passwordHash:bytesToHex(derived)},
+  });
+}
+
 export async function registerClient(payload) {
-  return request('/auth/client/register', {method:'POST', body:payload});
+  return registerWithProof('client', payload);
 }
 
 export async function registerCourier(payload) {
-  return request('/auth/courier/register', {method:'POST', body:payload});
+  return registerWithProof('courier', payload);
 }
 
 export async function login(role, email, password) {
-  return request('/auth/login', {
+  const start = await request('/auth/challenge', {
     method:'POST',
-    body:{role, email, password},
+    body:{role, email},
+  });
+  const derived = await derivePasswordHash(password, start.salt, start.iterations);
+  const proof = bytesToHex(hmac(sha256, derived, utf8ToBytes(String(start.challenge))));
+  return request('/auth/login-proof', {
+    method:'POST',
+    body:{challenge:start.challenge, proof},
   });
 }
 

@@ -40,11 +40,13 @@ jobs:
           - variant: cliente
             config: app.client.json
             entry: index.client.js
-            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.3.1.apk
+            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.3.2.apk
+            apk_arm64: GOY-XPRESS-CLIENTE-v1.3.2-ARM64.apk
           - variant: mensajero
             config: app.courier.json
             entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.5.apk
+            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.6.apk
+            apk_arm64: GOY-XPRESS-MENSAJERO-v1.4.6-ARM64.apk
 
     steps:
       - name: Descargar proyecto
@@ -109,6 +111,20 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: timeout 420s bash scripts/smoke-android.sh '${{ matrix.apk }}' 'smoke-${{ matrix.variant }}'
 
+      - name: Compilar APK ARM64 liviana
+        working-directory: android
+        run: |
+          ./gradlew clean assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Preparar APK ARM64
+        run: cp android/app/build/outputs/apk/release/app-release.apk '${{ matrix.apk_arm64 }}'
+
+      - name: Verificar APK ARM64
+        run: |
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 '${{ matrix.apk_arm64 }}'
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs '${{ matrix.apk_arm64 }}'
+
       - name: Guardar pruebas
         if: always()
         uses: actions/upload-artifact@v4
@@ -123,5 +139,13 @@ jobs:
         with:
           name: GOY-XPRESS-${{ matrix.variant }}-APK
           path: '${{ matrix.apk }}'
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Guardar APK ARM64 liviana
+        uses: actions/upload-artifact@v4
+        with:
+          name: GOY-XPRESS-${{ matrix.variant }}-APK-ARM64
+          path: '${{ matrix.apk_arm64 }}'
           if-no-files-found: error
           retention-days: 30
