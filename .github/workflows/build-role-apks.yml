@@ -18,6 +18,7 @@ on:
       - 'index.client.js'
       - 'index.courier.js'
       - 'scripts/smoke-android.sh'
+      - 'scripts/install-android-ndk.sh'
       - 'scripts/prefix-numeric-assets.js'
       - '.github/workflows/build-role-apks.yml'
   push:
@@ -86,6 +87,9 @@ jobs:
 
       - name: Crear proyecto Android limpio
         run: CI=1 npx expo prebuild --platform android --clean
+
+      - name: Instalar y validar NDK Android
+        run: bash scripts/install-android-ndk.sh 27.1.12297006
 
       - name: Compilar APK release
         working-directory: android
