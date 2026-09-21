@@ -1,4 +1,4 @@
-export const DEFAULT_PASSWORD_ITERATIONS = 180000;
+export const DEFAULT_PASSWORD_ITERATIONS = 100000;
 
 function bytesToHex(bytes) {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
@@ -20,8 +20,8 @@ export async function derivePasswordHashHex(
   iterations = DEFAULT_PASSWORD_ITERATIONS,
 ) {
   const count = Number(iterations);
-  if (!Number.isInteger(count) || count < 1 || count > 1000000) {
-    throw new Error('La configuración de seguridad de la contraseña no es válida.');
+  if (!Number.isInteger(count) || count < 1 || count > 100000) {
+    throw new Error('La configuración de seguridad de la contraseña no es válida para Cloudflare.');
   }
 
   const encoder = new TextEncoder();
