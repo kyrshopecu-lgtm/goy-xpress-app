@@ -1,7 +1,10 @@
 import base from './cloudflare-entry.js';
 import {
+  adminClientAccounts,
   authChallenge,
   authLoginProof,
+  authPasswordLogin,
+  authPasswordRegister,
   authRegisterParams,
   authRegisterProof,
 } from './cloudflare-auth-proof.js';
@@ -22,18 +25,18 @@ export default {
     if (path === '/api/auth/register-proof' && (request.method === 'POST' || request.method === 'OPTIONS')) {
       return authRegisterProof(request, env);
     }
-
-    // Las versiones antiguas intentan PBKDF2 de 180.000 iteraciones dentro de
-    // Cloudflare, que no es compatible. Evitamos mostrar el error técnico y
-    // pedimos instalar la versión corregida.
-    if (path === '/api/auth/login' && request.method === 'POST') {
-      return new Response(JSON.stringify({
-        error:'Actualiza GOY XPRESS a la versión más reciente para iniciar sesión.',
-        code:'APP_UPDATE_REQUIRED',
-      }), {
-        status:426,
-        headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
-      });
+    if (path === '/api/auth/login' && (request.method === 'POST' || request.method === 'OPTIONS')) {
+      return authPasswordLogin(request, env);
+    }
+    if (path === '/api/auth/client/register' && (request.method === 'POST' || request.method === 'OPTIONS')) {
+      return authPasswordRegister(request, env, 'client');
+    }
+    if (path === '/api/auth/courier/register' && (request.method === 'POST' || request.method === 'OPTIONS')) {
+      return authPasswordRegister(request, env, 'courier');
+    }
+    const clientMatch = path.match(/^\/api\/admin\/clients(?:\/([^/]+))?$/);
+    if (clientMatch && ['POST','PATCH','DELETE','OPTIONS'].includes(request.method)) {
+      return adminClientAccounts(request, env, clientMatch[1] || '');
     }
 
     return base.fetch(request, env, ctx);
