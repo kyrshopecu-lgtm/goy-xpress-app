@@ -2,16 +2,15 @@ import React,{useState}from'react';
 import{Image,Modal,Pressable,ScrollView,StyleSheet,Text,View}from'react-native';
 
 const C={navy:'#071C2A',cyan:'#00A9E8',green:'#38A844',white:'#fff',ink:'#132B36',muted:'#687D88',line:'#DCE8ED',bg:'#F4F8FA'};
-const ASSET_BASE='https://goy-xpress-app.kyrshopecu.workers.dev/assets';
 const SERVICES=[
- {title:'Mensajería y Envíos',image:{uri:`${ASSET_BASE}/01_mensajeria_envios.png`}},
- {title:'Trámites Generales',image:{uri:`${ASSET_BASE}/02_tramites_generales.png`}},
- {title:'Cambio de Dinero para tu Negocio',image:{uri:`${ASSET_BASE}/03_cambio_dinero_negocio.png`}},
- {title:'Apoyo Legal y Judicial',image:{uri:`${ASSET_BASE}/04_apoyo_legal_judicial.png`}},
- {title:'Trámites Vehiculares',image:{uri:`${ASSET_BASE}/05_tramites_vehiculares.png`}},
- {title:'Apostilla de Documentos',image:{uri:`${ASSET_BASE}/06_apostilla_documentos.png`}},
- {title:'Mensajería Ejecutiva',image:{uri:`${ASSET_BASE}/07_mensajeria_ejecutiva.png`}},
- {title:'Servicios Adicionales',image:{uri:`${ASSET_BASE}/08_servicios_adicionales.png`}},
+ {title:'Mensajería y Envíos',image:require('../01_mensajeria_envios.png')},
+ {title:'Trámites Generales',image:require('../02_tramites_generales.png')},
+ {title:'Cambio de Dinero para tu Negocio',image:require('../03_cambio_dinero_negocio.png')},
+ {title:'Apoyo Legal y Judicial',image:require('../04_apoyo_legal_judicial.png')},
+ {title:'Trámites Vehiculares',image:require('../05_tramites_vehiculares.png')},
+ {title:'Apostilla de Documentos',image:require('../06_apostilla_documentos.png')},
+ {title:'Mensajería Ejecutiva',image:require('../07_mensajeria_ejecutiva.png')},
+ {title:'Servicios Adicionales',image:require('../08_servicios_adicionales.png')},
 ];
 
 export default function ClientServiceCatalog(){
