@@ -7,14 +7,13 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js src/uiWiring.test.js server/server.test.js server/server-v4.test.js server/server-v5.test.js server/courierOtp.test.js server/admin-create-request.test.js server/admin-web.test.js server/admin-clients.test.js server/sales-assistant.test.js",
+    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js src/uiWiring.test.js src/integrationWiring.test.js server/server.test.js server/server-v4.test.js server/server-v5.test.js server/courierOtp.test.js server/admin-create-request.test.js server/admin-web.test.js server/admin-clients.test.js server/sales-assistant.test.js",
     "export:android": "expo export --platform android --output-dir dist",
     "verify": "npm test && npm run export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
     "@neondatabase/serverless": "^1.0.2",
-    "@noble/hashes": "1.8.0",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-picker/picker": "^2.11.0",
     "expo": "~53.0.0",
