@@ -8,7 +8,7 @@ const {pathToFileURL} = require('node:url');
 const root = path.join(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('PBKDF2 Web Crypto mantiene compatibilidad con contraseñas existentes', async () => {
+test('PBKDF2 Web Crypto mantiene compatibilidad dentro del límite de Cloudflare', async () => {
   const passwordModule = await import(pathToFileURL(path.join(root, 'cloudflare-password.mjs')).href);
   const password = 'ClaveSegura2026';
   const salt = '00112233445566778899aabbccddeeff';
@@ -16,8 +16,13 @@ test('PBKDF2 Web Crypto mantiene compatibilidad con contraseñas existentes', as
   const expected = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha512').toString('hex');
   const actual = await passwordModule.derivePasswordHashHex(password, salt, iterations);
   assert.equal(actual, expected);
+  assert.equal(passwordModule.DEFAULT_PASSWORD_ITERATIONS, 100000);
   assert.equal(passwordModule.secureHexEqual(actual, expected), true);
   assert.equal(passwordModule.secureHexEqual(actual, `${expected.slice(0, -2)}00`), false);
+  await assert.rejects(
+    () => passwordModule.derivePasswordHashHex(password, salt, 100001),
+    /no es válida para Cloudflare/,
+  );
 });
 
 test('las apps autentican sin bloquear el hilo nativo y admiten usuario o correo', () => {
@@ -31,12 +36,29 @@ test('las apps autentican sin bloquear el hilo nativo y admiten usuario o correo
   assert.match(courier, /Usuario o correo/);
 });
 
-test('Cloudflare atiende login, registro y clientes admin con Web Crypto', () => {
+test('Cloudflare migra cuentas legacy sin ejecutar PBKDF2 de 180000 dentro del Worker', () => {
   const entry = read('cloudflare-entry-auth.js');
   const auth = read('cloudflare-auth-proof.js');
-  assert.match(entry, /authPasswordLogin/);
+  const login = read('cloudflare-login-v2.js');
+  const password = read('cloudflare-password.mjs');
+
+  assert.match(entry, /authPasswordLoginV2/);
+  assert.match(entry, /authChallengeV2/);
   assert.match(entry, /authPasswordRegister/);
   assert.match(entry, /adminClientAccounts/);
+  assert.doesNotMatch(entry, /authPasswordLogin\b/);
+  assert.doesNotMatch(entry, /authChallenge\b/);
+
+  assert.match(login, /LEGACY_PASSWORD_ITERATIONS\s*=\s*180000/);
+  assert.match(login, /WORKER_PASSWORD_ITERATIONS\s*=\s*100000/);
+  assert.match(login, /legacyauth\.compute\.c-12\.us-east-1\.aws\.neon\.tech/);
+  assert.match(login, /x-goy-signature/);
+  assert.match(login, /verifyLegacyPassword/);
+  assert.match(login, /user\.passwordIterations=WORKER_PASSWORD_ITERATIONS/);
+  assert.match(login, /derivePasswordHashHex\(password,newSalt,WORKER_PASSWORD_ITERATIONS\)/);
+  assert.match(password, /DEFAULT_PASSWORD_ITERATIONS\s*=\s*100000/);
+  assert.doesNotMatch(login, /derivePasswordHashHex\([\s\S]{0,120}LEGACY_PASSWORD_ITERATIONS/);
+
   assert.match(auth, /derivePasswordHashHex/);
   assert.match(auth, /pendingApproval:true/);
   assert.match(auth, /username/);
@@ -71,6 +93,7 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const generic = read('.github/workflows/build-apk.yml');
   const admin = read('.github/workflows/admin-web-check.yml');
   const roles = read('.github/workflows/build-role-apks.yml');
+  const cloudflare = read('.github/workflows/cloudflare-check.yml');
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
@@ -80,4 +103,6 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
   assert.match(ndkInstaller, /source\.properties/);
+  assert.match(cloudflare, /cloudflare-login-v2\.js/);
+  assert.match(cloudflare, /cloudflare-password\.mjs/);
 });
