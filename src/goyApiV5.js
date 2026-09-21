@@ -1,10 +1,6 @@
 import {Linking} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import {pbkdf2} from '@noble/hashes/pbkdf2.js';
-import {sha256, sha512} from '@noble/hashes/sha2.js';
-import {hmac} from '@noble/hashes/hmac.js';
-import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
 
 export const API_BASE = String(
   process.env.EXPO_PUBLIC_GOY_API_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/api',
@@ -88,52 +84,25 @@ async function notifyGoyWhatsapp(token, created, payload={}) {
   }
 }
 
-async function derivePasswordHash(password, salt, iterations) {
-  const count = Number(iterations);
-  if (!Number.isInteger(count) || count < 1 || count > 1000000) {
-    throw new Error('La configuración de seguridad del acceso no es válida.');
-  }
-  // Dejamos que React Native pinte el estado "Procesando" antes del cálculo.
-  await new Promise(resolve => setTimeout(resolve, 40));
-  // La variante síncrona evita el elevado coste de miles de pausas async en Hermes.
-  return pbkdf2(
-    sha512,
-    utf8ToBytes(String(password || '')),
-    utf8ToBytes(String(salt || '')),
-    {c:count, dkLen:64},
-  );
-}
-
-async function registerWithProof(role, payload) {
-  const start = await request('/auth/register-params', {
+async function registerAccount(role, payload) {
+  return request(`/auth/${role}/register`, {
     method:'POST',
-    body:{role, email:payload.email},
-  });
-  const derived = await derivePasswordHash(payload.password, start.salt, start.iterations);
-  return request('/auth/register-proof', {
-    method:'POST',
-    body:{...payload, challenge:start.challenge, passwordHash:bytesToHex(derived)},
+    body:payload,
   });
 }
 
 export async function registerClient(payload) {
-  return registerWithProof('client', payload);
+  return registerAccount('client', payload);
 }
 
 export async function registerCourier(payload) {
-  return registerWithProof('courier', payload);
+  return registerAccount('courier', payload);
 }
 
-export async function login(role, email, password) {
-  const start = await request('/auth/challenge', {
+export async function login(role, identifier, password) {
+  return request('/auth/login', {
     method:'POST',
-    body:{role, email},
-  });
-  const derived = await derivePasswordHash(password, start.salt, start.iterations);
-  const proof = bytesToHex(hmac(sha256, derived, utf8ToBytes(String(start.challenge))));
-  return request('/auth/login-proof', {
-    method:'POST',
-    body:{challenge:start.challenge, proof},
+    body:{role, identifier, password},
   });
 }
 
