@@ -2,7 +2,7 @@ import React,{useEffect,useState}from'react';
 import{Alert,Image,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,TextInput,View}from'react-native';
 import AsyncStorage from'@react-native-async-storage/async-storage';
 import{StatusBar}from'expo-status-bar';
-import CourierAppV17 from'./CourierAppV17';
+import CourierAppV18 from'./CourierAppV18';
 import{login,pickCourierPhoto,registerCourier}from'./goyApiV5';
 const KEY='goy_courier_session_v13';
 const MIGRATION='goy_courier_cloudflare_migration_v1';
@@ -37,6 +37,6 @@ export default function CourierAppV16(){
   useEffect(()=>{let alive=true;(async()=>{try{const migrated=await AsyncStorage.getItem(MIGRATION);if(!migrated){await AsyncStorage.removeItem(KEY);await AsyncStorage.setItem(MIGRATION,'1');}const raw=await AsyncStorage.getItem(KEY);if(alive)setToken(raw?JSON.parse(raw)?.token||null:null);}catch{if(alive)setToken(null)}finally{if(alive)setLoading(false)}})();return()=>{alive=false}},[]);
   if(loading)return <SafeAreaView style={s.loading}><Image source={require('../assets/goy-logo.jpg')} style={s.logo}/><Text style={s.loadingText}>GOY XPRESS</Text></SafeAreaView>;
   if(!token)return <Auth onOk={setToken}/>;
-  return <CourierAppV17 sessionToken={token} onLoggedOut={()=>setToken(null)}/>
+  return <CourierAppV18 sessionToken={token} onLoggedOut={()=>setToken(null)}/>
 }
 const s=StyleSheet.create({safe:{flex:1,backgroundColor:C.navy},page:{minHeight:'100%',backgroundColor:C.navy,padding:18,paddingTop:35,alignItems:'center'},loading:{flex:1,backgroundColor:C.navy,alignItems:'center',justifyContent:'center'},loadingText:{color:C.white,fontSize:24,fontWeight:'900',marginTop:10},logo:{width:92,height:92,borderRadius:24},kicker:{color:'#8CE6FF',fontSize:10,fontWeight:'900',marginTop:12},title:{color:C.white,fontSize:31,fontWeight:'900',marginTop:4},panel:{width:'100%',backgroundColor:C.navy2,borderRadius:24,padding:16,borderWidth:1,borderColor:C.line,marginTop:20},segment:{flexDirection:'row',backgroundColor:'#061923',padding:4,borderRadius:14},seg:{flex:1,padding:10,alignItems:'center',borderRadius:11},segOn:{backgroundColor:'#17465A'},segText:{color:C.white,fontWeight:'900'},field:{marginTop:11},label:{color:'#DDF3FA',fontWeight:'800',fontSize:12,marginBottom:6},input:{backgroundColor:'#F8FCFD',borderRadius:13,padding:12,color:'#132B36',minHeight:48},btn:{backgroundColor:C.green,borderRadius:13,minHeight:47,alignItems:'center',justifyContent:'center',paddingHorizontal:13,marginTop:10},btnText:{color:C.white,fontWeight:'900'},outline:{backgroundColor:'transparent',borderWidth:1,borderColor:'#7EC8DE'},outlineText:{color:'#A9E7F7'},photoRow:{flexDirection:'row',gap:12,alignItems:'center',marginTop:10},avatar:{width:72,height:72,borderRadius:36},avatarEmpty:{width:72,height:72,borderRadius:36,backgroundColor:'#17465A',alignItems:'center',justifyContent:'center'},avatarText:{color:C.white,fontWeight:'900',fontSize:20}});
