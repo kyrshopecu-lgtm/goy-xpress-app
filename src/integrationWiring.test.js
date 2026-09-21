@@ -64,8 +64,10 @@ test('panel conserva WhatsApp de invitación y muestra aprobación real del clie
 
 test('workflows generan las versiones corregidas sin caché npm inválida', () => {
   const generic = read('.github/workflows/build-apk.yml');
+  const admin = read('.github/workflows/admin-web-check.yml');
   const roles = read('.github/workflows/build-role-apks.yml');
   assert.doesNotMatch(generic, /cache:\s*npm/);
+  assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(roles, /CLIENTE-PARCHE-v1\.3\.4\.apk/);
   assert.match(roles, /MENSAJERO-PARCHE-v1\.4\.8\.apk/);
 });
