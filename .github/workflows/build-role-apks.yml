@@ -12,11 +12,14 @@ on:
       - 'admin-web/**'
       - 'register.html'
       - 'package.json'
+      - 'metro.config.js'
       - 'app.client.json'
       - 'app.courier.json'
       - 'index.client.js'
       - 'index.courier.js'
       - 'scripts/smoke-android.sh'
+      - 'scripts/install-android-ndk.sh'
+      - 'scripts/prefix-numeric-assets.js'
       - '.github/workflows/build-role-apks.yml'
   push:
     branches:
@@ -40,13 +43,13 @@ jobs:
           - variant: cliente
             config: app.client.json
             entry: index.client.js
-            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.3.3.apk
-            apk_arm64: GOY-XPRESS-CLIENTE-v1.3.3-ARM64.apk
+            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.3.4.apk
+            apk_arm64: GOY-XPRESS-CLIENTE-v1.3.4-ARM64.apk
           - variant: mensajero
             config: app.courier.json
             entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.7.apk
-            apk_arm64: GOY-XPRESS-MENSAJERO-v1.4.7-ARM64.apk
+            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.8.apk
+            apk_arm64: GOY-XPRESS-MENSAJERO-v1.4.8-ARM64.apk
 
     steps:
       - name: Descargar proyecto
@@ -84,6 +87,9 @@ jobs:
 
       - name: Crear proyecto Android limpio
         run: CI=1 npx expo prebuild --platform android --clean
+
+      - name: Instalar y validar NDK Android
+        run: bash scripts/install-android-ndk.sh 27.1.12297006
 
       - name: Compilar APK release
         working-directory: android

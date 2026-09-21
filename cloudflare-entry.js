@@ -83,9 +83,9 @@ function clientSummary(user) {
     mapUrl: user.mapUrl || '',
     location: user.location || null,
     logo: user.logo || '',
-    approved: true,
+    approved: Boolean(user.approved),
     active: user.active !== false,
-    status: user.active === false ? 'Inactivo' : 'Activo',
+    status: user.active === false ? 'Inactivo' : user.approved ? 'Activo' : 'Pendiente de aprobación',
   };
 }
 
@@ -144,7 +144,7 @@ async function adminData(request, env, optionsOnly = false) {
 
     if (optionsOnly) {
       return json({
-        clients: clients.filter(item => item.active !== false),
+        clients: clients.filter(item => item.approved && item.active !== false),
         couriers: couriers.filter(item => item.approved && item.active !== false),
       });
     }

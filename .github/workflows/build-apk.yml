@@ -29,7 +29,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Configurar Java
         uses: actions/setup-java@v5
@@ -50,6 +49,9 @@ jobs:
 
       - name: Crear proyecto Android limpio
         run: CI=1 npx expo prebuild --platform android --clean
+
+      - name: Instalar y validar NDK Android
+        run: bash scripts/install-android-ndk.sh 27.1.12297006
 
       - name: Compilar APK release
         working-directory: android
