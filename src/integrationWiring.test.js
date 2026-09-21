@@ -45,8 +45,13 @@ test('Cloudflare atiende login, registro y clientes admin con Web Crypto', () =>
 test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite', () => {
   const catalog = read('src/ClientServiceCatalog.js');
   const courier = read('src/CourierAppV17.js');
+  const metro = read('metro.config.js');
+  const assetPlugin = require('../scripts/prefix-numeric-assets');
   assert.equal((catalog.match(/require\('\.\.\/0\d_/g) || []).length, 8);
   assert.doesNotMatch(catalog, /workers\.dev\/assets/);
+  assert.match(metro, /prefix-numeric-assets/);
+  assert.equal(assetPlugin({name:'01_mensajeria_envios'}).name, 'goy_01_mensajeria_envios');
+  assert.equal(assetPlugin({name:'goy-logo'}).name, 'goy-logo');
   assert.match(courier, /AbortController/);
   assert.match(courier, /timeoutMs=30000/);
 });
