@@ -1,0 +1,11 @@
+GOY XPRESS ADMIN UI V2
+Validación previa a producción:
+[ ] Login administrador
+[ ] Carga de datos
+[ ] Navegación Resumen/Clientes/Solicitudes/Mensajeros/Cobros/Invitaciones/Reportes
+[ ] Crear nueva orden
+[ ] Cambiar estado de solicitud
+[ ] Asignar mensajero
+[ ] Crear invitación
+[ ] Exportar reporte
+[ ] Vista móvil
