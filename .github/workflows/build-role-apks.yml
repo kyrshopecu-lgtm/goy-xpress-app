@@ -12,11 +12,13 @@ on:
       - 'admin-web/**'
       - 'register.html'
       - 'package.json'
+      - 'metro.config.js'
       - 'app.client.json'
       - 'app.courier.json'
       - 'index.client.js'
       - 'index.courier.js'
       - 'scripts/smoke-android.sh'
+      - 'scripts/prefix-numeric-assets.js'
       - '.github/workflows/build-role-apks.yml'
   push:
     branches:
