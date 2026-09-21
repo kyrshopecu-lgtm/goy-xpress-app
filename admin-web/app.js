@@ -167,7 +167,7 @@
   });
   $('clientSearch').addEventListener('input',e=>renderClients(e.target.value));
   $('orderFilter').addEventListener('change',e=>renderOrders(e.target.value));
-  $('inviteForm').addEventListener('submit',async e=>{e.preventDefault();try{const label=$('inviteName').value.trim()||'Invitación GOY XPRESS';const invite=await api('/admin/invites',{method:'POST',body:JSON.stringify({label})});const base=String(config.registrationBaseUrl||'').replace(/\/$/,'');$('inviteLink').value=`${base}/${encodeURIComponent(invite.token)}`;$('inviteResult').classList.remove('hidden');}catch(err){alert(err.message||'No se pudo crear la invitación');}});
+  $('inviteForm').addEventListener('submit',async e=>{e.preventDefault();try{const label=$('inviteName').value.trim()||'Invitación GOY XPRESS';const whatsapp=$('invitePhone').value.trim();const invite=await api('/admin/invites',{method:'POST',body:JSON.stringify({label,whatsapp})});const base=String(config.registrationBaseUrl||'').replace(/\/$/,'');$('inviteLink').value=`${base}/${encodeURIComponent(invite.token)}`;$('inviteResult').classList.remove('hidden');}catch(err){alert(err.message||'No se pudo crear la invitación');}});
   $('copyInvite').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('inviteLink').value);$('copyInvite').textContent='Copiado';setTimeout(()=>$('copyInvite').textContent='Copiar',1300);}catch{$('inviteLink').select();}});
   $('downloadCsv').addEventListener('click',downloadCsv);
   if(token())enterApp();
