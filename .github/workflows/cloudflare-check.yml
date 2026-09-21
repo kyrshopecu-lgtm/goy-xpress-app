@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'cloudflare-worker-v2.js'
+      - 'cloudflare-entry.js'
+      - 'cloudflare-entry-auth.js'
+      - 'cloudflare-auth-proof.js'
+      - 'cloudflare-password.mjs'
       - 'wrangler.jsonc'
       - 'server/**'
       - 'api/**'
