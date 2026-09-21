@@ -1,7 +1,7 @@
 import {Linking} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import {pbkdf2Async} from '@noble/hashes/pbkdf2.js';
+import {pbkdf2} from '@noble/hashes/pbkdf2.js';
 import {sha256, sha512} from '@noble/hashes/sha2.js';
 import {hmac} from '@noble/hashes/hmac.js';
 import {bytesToHex, utf8ToBytes} from '@noble/hashes/utils.js';
@@ -14,16 +14,29 @@ const GOY_WHATSAPP = String(
   process.env.EXPO_PUBLIC_GOY_WHATSAPP_NUMBER || '593997729964',
 ).replace(/\D/g, '');
 
-async function request(path, {method='GET', token, body, headers={}} = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      ...(body !== undefined ? {'Content-Type':'application/json'} : {}),
-      ...(token ? {Authorization:`Bearer ${token}`} : {}),
-      ...headers,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+async function request(path, {method='GET', token, body, headers={}, timeoutMs=25000} = {}) {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined ? {'Content-Type':'application/json'} : {}),
+        ...(token ? {Authorization:`Bearer ${token}`} : {}),
+        ...headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller?.signal,
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('La conexión está tardando demasiado. Verifica tu internet e intenta nuevamente.');
+    }
+    throw new Error('No se pudo conectar con GOY XPRESS. Verifica tu internet e intenta nuevamente.');
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(data.error || 'No se pudo completar la operación.');
@@ -80,7 +93,10 @@ async function derivePasswordHash(password, salt, iterations) {
   if (!Number.isInteger(count) || count < 1 || count > 1000000) {
     throw new Error('La configuración de seguridad del acceso no es válida.');
   }
-  return pbkdf2Async(
+  // Dejamos que React Native pinte el estado "Procesando" antes del cálculo.
+  await new Promise(resolve => setTimeout(resolve, 40));
+  // La variante síncrona evita el elevado coste de miles de pausas async en Hermes.
+  return pbkdf2(
     sha512,
     utf8ToBytes(String(password || '')),
     utf8ToBytes(String(salt || '')),
