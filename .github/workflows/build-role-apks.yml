@@ -40,13 +40,13 @@ jobs:
           - variant: cliente
             config: app.client.json
             entry: index.client.js
-            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.3.2.apk
-            apk_arm64: GOY-XPRESS-CLIENTE-v1.3.2-ARM64.apk
+            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.3.3.apk
+            apk_arm64: GOY-XPRESS-CLIENTE-v1.3.3-ARM64.apk
           - variant: mensajero
             config: app.courier.json
             entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.6.apk
-            apk_arm64: GOY-XPRESS-MENSAJERO-v1.4.6-ARM64.apk
+            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.4.7.apk
+            apk_arm64: GOY-XPRESS-MENSAJERO-v1.4.7-ARM64.apk
 
     steps:
       - name: Descargar proyecto
