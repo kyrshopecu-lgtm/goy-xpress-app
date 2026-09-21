@@ -7,6 +7,7 @@ on:
       - 'cloudflare-entry.js'
       - 'cloudflare-entry-auth.js'
       - 'cloudflare-auth-proof.js'
+      - 'cloudflare-login-v2.js'
       - 'cloudflare-password.mjs'
       - 'wrangler.jsonc'
       - 'server/**'
