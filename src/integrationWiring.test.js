@@ -71,8 +71,13 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const generic = read('.github/workflows/build-apk.yml');
   const admin = read('.github/workflows/admin-web-check.yml');
   const roles = read('.github/workflows/build-role-apks.yml');
+  const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(roles, /CLIENTE-PARCHE-v1\.3\.4\.apk/);
   assert.match(roles, /MENSAJERO-PARCHE-v1\.4\.8\.apk/);
+  assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
+  assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
+  assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
+  assert.match(ndkInstaller, /source\.properties/);
 });
