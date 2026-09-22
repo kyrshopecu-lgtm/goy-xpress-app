@@ -34,6 +34,7 @@ test('las apps autentican sin bloquear el hilo nativo y admiten usuario o correo
   assert.doesNotMatch(api, /@noble\/hashes|pbkdf2|login-proof|register-proof/);
   assert.match(client, /Usuario o correo/);
   assert.match(courier, /Usuario o correo/);
+  assert.match(courier, /CourierAppV18/);
 });
 
 test('Cloudflare migra cuentas legacy sin ejecutar PBKDF2 de 180000 dentro del Worker', () => {
@@ -66,7 +67,7 @@ test('Cloudflare migra cuentas legacy sin ejecutar PBKDF2 de 180000 dentro del W
 
 test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite', () => {
   const catalog = read('src/ClientServiceCatalog.js');
-  const courier = read('src/CourierAppV17.js');
+  const courier = read('src/CourierAppV18.js');
   const metro = read('metro.config.js');
   const assetPlugin = require('../scripts/prefix-numeric-assets');
   assert.equal((catalog.match(/require\('\.\.\/0\d_/g) || []).length, 8);
@@ -76,6 +77,26 @@ test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite'
   assert.equal(assetPlugin({name:'goy-logo'}).name, 'goy-logo');
   assert.match(courier, /AbortController/);
   assert.match(courier, /timeoutMs=30000/);
+});
+
+test('Mensajero 1.4.9 separa retiro y entrega, amplía fotos y elimina acceso a administración', () => {
+  const courier = read('src/CourierAppV18.js');
+  const config = JSON.parse(read('app.courier.json')).expo;
+  assert.equal(config.version, '1.4.9');
+  assert.equal(config.android.versionCode, 14);
+  assert.equal(config.android.package, 'com.goyxpress.mensajero');
+  assert.match(courier, /PUNTO DE RETIRO/);
+  assert.match(courier, /Abrir retiro en Maps/);
+  assert.match(courier, /Abrir entrega en Maps/);
+  assert.match(courier, /Lugar del trámite/);
+  assert.match(courier, /destinationMapUrl/);
+  assert.doesNotMatch(courier, /destinationAddress\|\|'Quito'/);
+  assert.match(courier, /height:310/);
+  assert.match(courier, /<Modal/);
+  assert.match(courier, /resizeMode="contain"/);
+  assert.match(courier, /allowsEditing:false/);
+  assert.doesNotMatch(courier, /Abrir administración/);
+  assert.doesNotMatch(courier, /const ADMIN=/);
 });
 
 test('panel conserva WhatsApp de invitación y muestra aprobación real del cliente', () => {
@@ -98,7 +119,8 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(roles, /CLIENTE-PARCHE-v1\.3\.4\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.4\.8\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.4\.9\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.4\.9-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
