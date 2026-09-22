@@ -4,14 +4,15 @@
   const esc=v=>String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
   const money=v=>`$${Number(v||0).toFixed(2)}`;
   const serviceName=o=>o?.serviceLabel||({shipment:o?.deliveryMode==='express'?'Envío Express':'Entrega programada',procedure:'Trámite ejecutivo',deposit:'Depósito',diverse:'Servicio diverso',office_pickup:'Retiro oficina',partner:'Plan inicial'}[o?.kind])||o?.service||o?.kind||'Servicio';
+  const procedureType=o=>String(o?.kind||'')==='procedure'?(o?.procedureType||o?.procedureDetail||o?.details||'Trámite ejecutivo'):'—';
   let all=[],cycles=[],activeCycle='';
 
   async function api(path){const r=await fetch(`${apiBase}${path}`,{headers:{Authorization:`Bearer ${token()}`}});const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||'No se pudieron cargar los reportes.');return b;}
   const uniq=arr=>[...new Set(arr.filter(Boolean).map(String))].sort((a,b)=>a.localeCompare(b,'es'));
   const safe=v=>String(v||'general').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()||'general';
   function selectedRows(){const type=document.getElementById('goyReportType')?.value||'general',value=document.getElementById('goyReportValue')?.value||'';return all.filter(o=>{if(type==='client')return String(o.customer||o.businessName||o.client||'')===value;if(type==='courier')return String(o.courier||'Sin asignar')===value;if(type==='service')return serviceName(o)===value;return true;});}
-  function headers(){return ['Período','Solicitud','Cliente','Servicio','Dirección','Mensajero','Estado','Tarifa','Min espera extra','Recargo espera','Depositado','Cartera liberada'];}
-  function row(o){return [o.cycleKey||activeCycle,o.code||o.id||'-',o.customer||o.businessName||o.client||'-',serviceName(o),o.destinationAddress||o.pickupAddress||o.address||'-',o.courier||'Sin asignar',o.status||'Pendiente',Number(o.serviceCost??o.value??0),Number(o.wait?.extraMinutes||0),Number(o.wait?.extraCost||0),Number(o.wallet?.depositedAmount||0),o.wallet?.released?'Sí':'No'];}
+  function headers(){return ['Período','Solicitud','Cliente','Servicio','Tipo de trámite','Dirección','Mensajero','Estado','Tarifa','Min espera extra','Recargo espera','Depositado','Cartera liberada'];}
+  function row(o){return [o.cycleKey||activeCycle,o.code||o.id||'-',o.customer||o.businessName||o.client||'-',serviceName(o),procedureType(o),o.destinationAddress||o.procedureAddress||o.pickupAddress||o.address||'-',o.courier||'Sin asignar',o.status||'Pendiente',Number(o.serviceCost??o.value??0),Number(o.wait?.extraMinutes||0),Number(o.wait?.extraCost||0),Number(o.wallet?.depositedAmount||0),o.wallet?.released?'Sí':'No'];}
   function fileBase(){const type=document.getElementById('goyReportType')?.value||'general',value=document.getElementById('goyReportValue')?.value||'';return `goy-xpress-${activeCycle||'reporte'}-${type==='general'?'general':safe(value)}`;}
   function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   function downloadCsv(){const rows=selectedRows();const csv=[headers(),...rows.map(row)].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`${fileBase()}.csv`);}
