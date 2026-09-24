@@ -38,7 +38,8 @@
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "allowBackup": false
     },
     "ios": {
       "bundleIdentifier": "com.goyxpress.mensajero",
