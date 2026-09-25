@@ -49,6 +49,6 @@ test('administración carga y valida el visor de evidencias fotográficas', () =
   assert.match(evidence, /pickupPhoto/);
   assert.match(evidence, /deliveryPhoto/);
   assert.match(evidence, /depositPhoto/);
-  assert.match(evidence, /\/admin\/data/);
+  assert.match(evidence, /\/admin\/requests\/.*\/evidence/);
   new vm.Script(evidence, {filename:'order-evidence.js'});
 });
