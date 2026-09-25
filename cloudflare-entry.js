@@ -135,10 +135,81 @@ function addEvent(item, type, payload = {}) {
   item.events.unshift({id:crypto.randomUUID(), type, ...payload, at:new Date().toISOString()});
 }
 
+async function readAdminStateLight(env) {
+  if (!env.DATABASE_URL) throw new Error('DATABASE_URL no configurado');
+  const sql = neon(String(env.DATABASE_URL));
+  const rows = await sql`
+    SELECT
+      COALESCE(
+        (
+          SELECT jsonb_agg(user_item - 'logo' - 'photo')
+          FROM jsonb_array_elements(COALESCE(data->'users','[]'::jsonb)) AS user_item
+        ),
+        '[]'::jsonb
+      ) AS users,
+      COALESCE(
+        (
+          SELECT jsonb_agg(
+            ((request_item - 'evidence' - 'courierPhoto' - 'clientLogo') #- '{wallet,depositPhoto}')
+          )
+          FROM jsonb_array_elements(COALESCE(data->'requests','[]'::jsonb)) AS request_item
+        ),
+        '[]'::jsonb
+      ) AS requests,
+      COALESCE(data->'payments','[]'::jsonb) AS payments,
+      COALESCE(data->'invites','[]'::jsonb) AS invites,
+      COALESCE(data->'templates','[]'::jsonb) AS templates,
+      COALESCE(data->'walletEntries','[]'::jsonb) AS wallet_entries,
+      COALESCE(data->'monthlyArchives','[]'::jsonb) AS monthly_archives
+    FROM goy_state
+    WHERE id = 1
+    LIMIT 1
+  `;
+  const row = rows[0] || {};
+  return {
+    users: Array.isArray(row.users) ? row.users : [],
+    requests: Array.isArray(row.requests) ? row.requests : [],
+    payments: Array.isArray(row.payments) ? row.payments : [],
+    invites: Array.isArray(row.invites) ? row.invites : [],
+    templates: Array.isArray(row.templates) ? row.templates : [],
+    walletEntries: Array.isArray(row.wallet_entries) ? row.wallet_entries : [],
+    monthlyArchives: Array.isArray(row.monthly_archives) ? row.monthly_archives : [],
+  };
+}
+
+async function adminEvidence(request, env, code) {
+  if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
+  try {
+    if (!env.DATABASE_URL) throw new Error('DATABASE_URL no configurado');
+    const sql = neon(String(env.DATABASE_URL));
+    const rows = await sql`
+      SELECT request_item AS request
+      FROM goy_state,
+           jsonb_array_elements(COALESCE(data->'requests','[]'::jsonb)) AS request_item
+      WHERE id = 1
+        AND (
+          request_item->>'code' = ${code}
+          OR request_item->>'id' = ${code}
+        )
+      LIMIT 1
+    `;
+    const item = rows[0]?.request;
+    if (!item) return json({error:'Solicitud no encontrada.'}, 404);
+    return json({
+      code: item.code || item.id || code,
+      evidence: item.evidence || {},
+      wallet: item.wallet ? {depositPhoto:item.wallet.depositPhoto || ''} : {},
+    });
+  } catch (error) {
+    console.error('GOY XPRESS native admin evidence', error);
+    return json({error:'No se pudieron cargar las evidencias de esta solicitud.'}, 503);
+  }
+}
+
 async function adminData(request, env, optionsOnly = false) {
   if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
   try {
-    const state = await readState(env);
+    const state = await readAdminStateLight(env);
     const clients = state.users.filter(user => user.role === 'client').map(clientSummary);
     const couriers = state.users.filter(user => user.role === 'courier').map(user => courierSummary(state, user));
 
@@ -169,7 +240,7 @@ async function adminData(request, env, optionsOnly = false) {
     });
   } catch (error) {
     console.error('GOY XPRESS native admin data', error);
-    return json({error:error.message || 'No se pudo cargar la información administrativa.'}, 503);
+    return json({error:'No se pudo cargar la información administrativa. Intenta nuevamente en unos segundos.'}, 503);
   }
 }
 
@@ -262,6 +333,10 @@ export default {
     }
     if (path === '/api/admin/order-options' && request.method === 'GET') {
       return adminData(request, env, true);
+    }
+    const evidenceMatch = path.match(/^\/api\/admin\/requests\/([^/]+)\/evidence$/);
+    if (evidenceMatch && request.method === 'GET') {
+      return adminEvidence(request, env, decodeURIComponent(evidenceMatch[1]));
     }
     const requestMatch = path.match(/^\/api\/admin\/requests\/([^/]+)$/);
     if (requestMatch && request.method === 'PATCH') {
