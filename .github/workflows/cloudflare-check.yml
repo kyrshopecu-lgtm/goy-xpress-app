@@ -1,11 +1,29 @@
 name: Cloudflare Worker check
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cloudflare-worker-v2.js'
+      - 'cloudflare-entry.js'
+      - 'cloudflare-entry-auth.js'
+      - 'cloudflare-admin-client-create.js'
+      - 'cloudflare-auth-proof.js'
+      - 'cloudflare-login-v2.js'
+      - 'cloudflare-password.mjs'
+      - 'wrangler.jsonc'
+      - 'server/**'
+      - 'api/**'
+      - 'public-web/**'
+      - 'package.json'
+      - '.github/workflows/cloudflare-check.yml'
   pull_request:
     paths:
       - 'cloudflare-worker-v2.js'
       - 'cloudflare-entry.js'
       - 'cloudflare-entry-auth.js'
+      - 'cloudflare-admin-client-create.js'
       - 'cloudflare-auth-proof.js'
       - 'cloudflare-login-v2.js'
       - 'cloudflare-password.mjs'
