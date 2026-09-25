@@ -16,7 +16,7 @@ window.GOY_ADMIN_CONFIG = {
     if(!isGoyApi||init.signal)return nativeFetch(input,init);
 
     const isAdminData=/\/api\/admin\/data(?:\?|$)/.test(target);
-    const attempts=isAdminData?3:1;
+    const attempts=isAdminData?4:1;
     let lastError=null;
 
     for(let attempt=1;attempt<=attempts;attempt++){
@@ -25,12 +25,11 @@ window.GOY_ADMIN_CONFIG = {
       try{
         const response=await nativeFetch(input,{...init,cache:'no-store',signal:controller.signal});
         if(isAdminData && attempt<attempts && (response.status===429||response.status>=500)){
-          await sleep(300*attempt);
+          await sleep(700*attempt);
           continue;
         }
         if(isAdminData && !response.ok && !String(response.headers.get('content-type')||'').includes('application/json')){
-          const detail=await response.clone().text().catch(()=> '');
-          return new Response(JSON.stringify({error:`No se pudo cargar la información administrativa (HTTP ${response.status})${detail?`: ${detail.slice(0,180)}`:''}`}),{
+          return new Response(JSON.stringify({error:`El servidor administrativo no respondió correctamente (HTTP ${response.status}). Intenta nuevamente en unos segundos.`}),{
             status:response.status,
             headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}
           });
@@ -38,7 +37,7 @@ window.GOY_ADMIN_CONFIG = {
         return response;
       }catch(error){
         lastError=error;
-        if(attempt<attempts){await sleep(300*attempt);continue;}
+        if(attempt<attempts){await sleep(700*attempt);continue;}
         if(error?.name==='AbortError')throw new Error('El servidor tardó demasiado en responder. Revisa tu conexión e intenta nuevamente.');
         throw error;
       }finally{clearTimeout(timer);}
