@@ -65,6 +65,7 @@ window.addEventListener('load',()=>{
   load('data-goy-sound','/admin/goy-sound.js');
   load('data-account-approvals','/admin/account-approvals.js');
   load('data-client-accounts','/admin/client-accounts.js');
+  load('data-client-create-fix','/admin/client-create-fix.js');
   load('data-admin-management','/admin/admin-management.js');
   load('data-custom-service-orders','/admin/custom-service-orders.js');
   load('data-courier-profile','/admin/courier-profile.js');
