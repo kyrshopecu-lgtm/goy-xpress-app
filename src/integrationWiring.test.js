@@ -79,6 +79,21 @@ test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite'
   assert.match(courier, /timeoutMs=30000/);
 });
 
+test('Cliente 1.3.5 registra teléfono del destinatario y ubicación exacta de Maps', () => {
+  const client = read('src/ClientAppV12.js');
+  const api = read('src/goyApiV5.js');
+  const config = JSON.parse(read('app.client.json')).expo;
+  assert.equal(config.version, '1.3.5');
+  assert.equal(config.android.versionCode, 9);
+  assert.match(client, /recipientPhone/);
+  assert.match(client, /destinationMapUrl/);
+  assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
+  assert.match(client, /Elegir punto en Google Maps/);
+  assert.match(client, /Dirección escrita de entrega/);
+  assert.match(api, /WhatsApp destinatario/);
+  assert.match(api, /Ubicación Maps/);
+});
+
 test('Mensajero 1.4.9 separa retiro y entrega, amplía fotos y elimina acceso a administración', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
