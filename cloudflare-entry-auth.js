@@ -1,5 +1,6 @@
 import base from './cloudflare-entry.js';
 import { authChallengeV2, authPasswordLoginV2 } from './cloudflare-login-v2.js';
+import { createAdminClient } from './cloudflare-admin-client-create.js';
 import {
   adminClientAccounts,
   authLoginProof,
@@ -181,8 +182,11 @@ async function dispatch(request, env, ctx) {
   if (path === '/api/auth/courier/register' && (request.method === 'POST' || request.method === 'OPTIONS')) {
     return authPasswordRegister(request, env, 'courier');
   }
+  if (path === '/api/admin/clients' && request.method === 'POST') {
+    return createAdminClient(request, env);
+  }
   const clientMatch = path.match(/^\/api\/admin\/clients(?:\/([^/]+))?$/);
-  if (clientMatch && ['POST','PATCH','DELETE','OPTIONS'].includes(request.method)) {
+  if (clientMatch && ['PATCH','DELETE','OPTIONS'].includes(request.method)) {
     return adminClientAccounts(request, env, clientMatch[1] || '');
   }
 
