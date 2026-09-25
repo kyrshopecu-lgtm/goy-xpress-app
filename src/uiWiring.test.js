@@ -71,3 +71,18 @@ test('OTP Mensajero está en servidor y API v5 mantiene Google Routes', () => {
   assert.match(admin, /\/admin\/couriers\//);
   assert.match(admin, /courierId/);
 });
+
+test('Mensajero v1.4.9 separa ubicaciones, amplía fotos y no expone Administración', () => {
+  const code = source('CourierAppV17.js');
+  assertInteractiveElementsAreWired(code, 'Mensajero 1.4.9');
+  assert.match(code, /label="Retiro"/);
+  assert.match(code, /label="Entrega"/);
+  assert.match(code, /procedureAddress/);
+  assert.match(code, /mapSearchUrl/);
+  assert.match(code, /Ruta completa retiro → entrega/);
+  assert.match(code, /height:280/);
+  assert.match(code, /<Modal/);
+  assert.match(code, /AMPLIAR/);
+  assert.match(code, /aspect:\[4,3\]/);
+  assert.doesNotMatch(code, /Abrir administración|const ADMIN=/i);
+});
