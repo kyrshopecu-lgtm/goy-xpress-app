@@ -94,7 +94,8 @@ test('Cliente 1.3.9 agrega sonido, vibración y mantiene interfaz profesional', 
   assert.match(client, /OrderEvidenceModal/);
   assert.match(client, /Descargar imagen/);
   assert.match(client, /saveToLibraryAsync/);
-  assert.match(client, /Avisar al destinatario por WhatsApp/);
+  assert.match(client, /notifyRecipientOrder/);
+  assert.match(client, /💬 WhatsApp/);
   assert.match(client, /Tu orden/);
   assert.match(client, /SectionBlock/);
   assert.match(client, /OrderProgress/);
