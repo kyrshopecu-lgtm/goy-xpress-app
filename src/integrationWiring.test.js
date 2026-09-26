@@ -79,12 +79,12 @@ test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite'
   assert.match(courier, /timeoutMs=30000/);
 });
 
-test('Cliente 1.3.8 organiza entregas, fotos y WhatsApp con interfaz profesional', () => {
+test('Cliente 1.3.9 agrega sonido, vibración y mantiene interfaz profesional', () => {
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.3.8');
-  assert.equal(config.android.versionCode, 12);
+  assert.equal(config.version, '1.3.9');
+  assert.equal(config.android.versionCode, 13);
   assert.match(client, /recipientPhone/);
   assert.match(client, /destinationMapUrl/);
   assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
@@ -100,15 +100,17 @@ test('Cliente 1.3.8 organiza entregas, fotos y WhatsApp con interfaz profesional
   assert.match(client, /OrderProgress/);
   assert.match(client, /Tu actividad/);
   assert.match(client, /Generar orden de entrega/);
+  assert.match(client, /playGoyEventSound/);
+  assert.match(client, /Entrega finalizada/);
   assert.match(api, /WhatsApp destinatario/);
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.4.9 separa retiro y entrega, amplía fotos y elimina acceso a administración', () => {
+test('Mensajero 1.5.0 alerta asignación y entrega finalizada con sonido y vibración', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.4.9');
-  assert.equal(config.android.versionCode, 14);
+  assert.equal(config.version, '1.5.0');
+  assert.equal(config.android.versionCode, 15);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -122,6 +124,24 @@ test('Mensajero 1.4.9 separa retiro y entrega, amplía fotos y elimina acceso a 
   assert.match(courier, /allowsEditing:false/);
   assert.doesNotMatch(courier, /Abrir administración/);
   assert.doesNotMatch(courier, /const ADMIN=/);
+  assert.match(courier, /SEEN_ASSIGNMENTS/);
+  assert.match(courier, /playGoyEventSound/);
+});
+
+test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', () => {
+  const sound = read('src/goyBrandSound.js');
+  const admin = read('public-web/admin/goy-sound.js');
+  const entry = read('cloudflare-entry.js');
+  const pkg = JSON.parse(read('package.json'));
+  assert.equal(fs.existsSync(path.join(root, 'assets', 'goy-xpress-event.mp3')), true);
+  assert.equal(fs.existsSync(path.join(root, 'public-web', 'assets', 'goy-xpress-event.mp3')), true);
+  assert.equal(pkg.dependencies['expo-av'], '~15.1.7');
+  assert.match(sound, /Vibration\.vibrate/);
+  assert.match(sound, /goy-xpress-event\.mp3/);
+  assert.match(admin, /\/api\/admin\/event-state/);
+  assert.match(admin, /adminCreated/);
+  assert.match(admin, /Entrega finalizada/);
+  assert.match(entry, /adminEventState/);
 });
 
 test('panel conserva WhatsApp de invitación y muestra aprobación real del cliente', () => {
@@ -143,9 +163,9 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.3\.8\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.4\.9\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.4\.9-ARM64\.apk/);
+  assert.match(roles, /CLIENTE-PARCHE-v1\.3\.9\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.0\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.0-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
