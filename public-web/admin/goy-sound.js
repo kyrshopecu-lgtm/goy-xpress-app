@@ -47,7 +47,7 @@
   }
 
   async function pollEvents() {
-    if (polling || document.visibilityState === 'hidden') return;
+    if (polling) return;
     const token = sessionStorage.getItem('goyAdminToken') || '';
     if (!token) { baseline = null; return; }
     polling = true;
