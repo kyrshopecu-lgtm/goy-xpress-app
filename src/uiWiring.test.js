@@ -32,18 +32,17 @@ test('Cliente v1.2: botones cableados, cuenta previa, logo y Maps automático', 
   assert.doesNotMatch(code, /label=["'](?:Distancia|Kilómetros|Km manual)/i);
 });
 
-test('Cliente v1.3 muestra evidencias de retiro, entrega y depósito', () => {
+test('Cliente v1.3 muestra evidencias por orden y permite descargarlas', () => {
   const wrapper = source('ClientAppV13.js');
-  const evidence = source('ClientEvidenceOverlay.js');
-  assert.match(wrapper, /ClientEvidenceOverlay/);
-  assert.match(wrapper, /token=\{session\}/);
-  assert.match(evidence, /getClientRequests/);
-  assert.match(evidence, /pickupPhoto/);
-  assert.match(evidence, /deliveryPhoto/);
-  assert.match(evidence, /depositPhoto/);
-  assert.match(evidence, /Fotos de mis servicios/);
-  assert.match(evidence, /onPress=\{\(\)=>load\(\)\}/);
-  assert.match(evidence, /setInterval\(\(\)=>load\(true\),12000\)/);
+  const client = source('ClientAppV12.js');
+  assert.doesNotMatch(wrapper, /ClientEvidenceOverlay/);
+  assert.match(client, /evidencePhotos/);
+  assert.match(client, /pickupPhoto/);
+  assert.match(client, /deliveryPhoto/);
+  assert.match(client, /depositPhoto/);
+  assert.match(client, /Fotos de esta orden/);
+  assert.match(client, /downloadEvidencePhoto/);
+  assert.match(client, /saveToLibraryAsync/);
 });
 
 test('Mensajero v1.3: OTP, foto, botones cableados y trabajos asignados', () => {
