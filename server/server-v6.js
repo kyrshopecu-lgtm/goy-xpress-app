@@ -67,7 +67,7 @@ function validatePassword(v){const p=String(v||'');if(p.length<8)return 'La cont
 function hashPassword(password,salt=crypto.randomBytes(16).toString('hex')){return {salt,hash:crypto.pbkdf2Sync(String(password),salt,180000,64,'sha512').toString('hex')};}
 function verifyPassword(password,user){if(!user?.passwordSalt||!user?.passwordHash)return false;return safeEqual(hashPassword(password,user.passwordSalt).hash,user.passwordHash);}
 function validImage(v){if(!v)return true;const t=String(v);return t.length<=1800000&&/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t);}
-function publicUser(user){if(!user)return null;const {passwordHash,passwordSalt,...safe}=user;return safe;}
+function publicUser(user){if(!user)return null;const {passwordHash,passwordSalt,pushTokens,...safe}=user;return safe;}
 function signToken(payload,secret){const body=Buffer.from(JSON.stringify(payload)).toString('base64url');const sig=crypto.createHmac('sha256',secret).update(body).digest('base64url');return `${body}.${sig}`;}
 function verifyToken(token,secret){if(!token||!secret)return null;const [body,sig]=String(token).split('.');if(!body||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(sig,expected))return null;try{const p=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));if(!p.exp||Date.now()>p.exp)return null;return p;}catch{return null;}}
 function bearer(req){const a=String(req.headers.authorization||'');return a.startsWith('Bearer ')?a.slice(7):'';}
