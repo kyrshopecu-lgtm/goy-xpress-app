@@ -72,7 +72,7 @@ async function writeState(env,state){
 }
 
 function publicUser(user){
-  const {passwordHash,passwordSalt,passwordIterations,...safe}=user||{};
+  const {passwordHash,passwordSalt,passwordIterations,pushTokens,...safe}=user||{};
   return safe;
 }
 
