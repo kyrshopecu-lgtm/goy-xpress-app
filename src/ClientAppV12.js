@@ -1,7 +1,7 @@
 import React,{useEffect,useRef,useState}from'react';
 import{Alert,Animated,Image,Linking,Modal,Pressable,SafeAreaView,ScrollView,StyleSheet,Switch,Text,TextInput,View}from'react-native';
 import AsyncStorage from'@react-native-async-storage/async-storage';
-import * as FileSystem from'expo-file-system/legacy';
+import * as FileSystem from'expo-file-system';
 import * as MediaLibrary from'expo-media-library';
 import{StatusBar}from'expo-status-bar';
 import{createClientRequest,estimateGoogleRoute,getClientRequests,getMe,login,pickClientLogo,registerClient,respondToQuote,updateMe}from'./goyApiV5';
