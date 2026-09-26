@@ -177,6 +177,36 @@ async function readAdminStateLight(env) {
   };
 }
 
+async function adminEventState(request, env) {
+  if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
+  try {
+    if (!env.DATABASE_URL) throw new Error('DATABASE_URL no configurado');
+    const sql = neon(String(env.DATABASE_URL));
+    const rows = await sql`
+      SELECT COALESCE(
+        jsonb_agg(
+          jsonb_build_object(
+            'code', request_item->>'code',
+            'id', request_item->>'id',
+            'status', request_item->>'status',
+            'createdAt', request_item->>'createdAt',
+            'updatedAt', request_item->>'updatedAt',
+            'adminCreated', COALESCE(request_item->>'adminCreated','false') = 'true'
+          )
+        ),
+        '[]'::jsonb
+      ) AS events
+      FROM goy_state,
+           jsonb_array_elements(COALESCE(data->'requests','[]'::jsonb)) AS request_item
+      WHERE id = 1
+    `;
+    return json({events:Array.isArray(rows[0]?.events)?rows[0].events:[]});
+  } catch (error) {
+    console.error('GOY XPRESS admin event state', error);
+    return json({error:'No se pudo consultar el estado de eventos.'}, 503);
+  }
+}
+
 async function adminEvidence(request, env, code) {
   if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
   try {
@@ -333,6 +363,9 @@ export default {
     }
     if (path === '/api/admin/order-options' && request.method === 'GET') {
       return adminData(request, env, true);
+    }
+    if (path === '/api/admin/event-state' && request.method === 'GET') {
+      return adminEventState(request, env);
     }
     const evidenceMatch = path.match(/^\/api\/admin\/requests\/([^/]+)\/evidence$/);
     if (evidenceMatch && request.method === 'GET') {
