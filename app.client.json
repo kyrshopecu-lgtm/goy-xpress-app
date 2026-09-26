@@ -2,7 +2,7 @@
   "expo": {
     "name": "GOY XPRESS Cliente",
     "slug": "goy-xpress-cliente",
-    "version": "1.3.9",
+    "version": "1.4.0",
     "scheme": "goyxpresscliente",
     "orientation": "portrait",
     "icon": "./assets/goy-logo.jpg",
@@ -25,11 +25,21 @@
           "photosPermission": "GOY XPRESS Cliente necesita acceso a tus fotos únicamente para guardar las evidencias de tus órdenes.",
           "savePhotosPermission": "GOY XPRESS Cliente necesita permiso para guardar las evidencias de tus órdenes en el dispositivo."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0D2F41",
+          "sounds": [
+            "./assets/goy-xpress-event.mp3"
+          ],
+          "defaultChannel": "goy-orders"
+        }
       ]
     ],
     "android": {
       "package": "com.goyxpress.cliente",
-      "versionCode": 13,
+      "versionCode": 14,
       "adaptiveIcon": {
         "foregroundImage": "./assets/goy-logo.jpg",
         "backgroundColor": "#0D2F41"
@@ -42,12 +52,13 @@
       ],
       "allowBackup": false,
       "permissions": [
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "ios": {
       "bundleIdentifier": "com.goyxpress.cliente",
-      "buildNumber": "13"
+      "buildNumber": "14"
     }
   }
 }
