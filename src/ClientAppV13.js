@@ -4,6 +4,7 @@ import AsyncStorage from'@react-native-async-storage/async-storage';
 import{StatusBar}from'expo-status-bar';
 import ClientAppV12 from'./ClientAppV12';
 import{login,pickClientLogo,registerClient}from'./goyApiV5';
+import{registerGoyPushNotifications}from'./goyPushNotifications';
 
 const KEY='goy_client_session_v12';
 const MIGRATION='goy_client_cloudflare_migration_v1';
@@ -53,6 +54,7 @@ export default function ClientAppV13(){
     })();
     return()=>{mounted=false;AsyncStorage.removeItem=original};
   },[]);
+  useEffect(()=>{if(session)registerGoyPushNotifications(session,'client').catch(()=>{})},[session]);
   if(checking)return <SafeAreaView style={s.loading}><StatusBar style="light" backgroundColor={C.navy}/><Logo size={84}/><Text style={s.loadingText}>GOY XPRESS</Text></SafeAreaView>;
   if(!session)return <Auth onAuthenticated={setSession}/>;
   return <ClientAppV12/>;
