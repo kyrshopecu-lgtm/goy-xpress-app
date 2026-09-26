@@ -83,6 +83,18 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
   assert.equal(clientReg.body.user.role, 'client');
   assert.ok(clientReg.body.token);
 
+  const pushRegistration = await call(base, '/api/device/push-token', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{token:'ExpoPushToken[test-client-token]',platform:'android',role:'client'},
+  });
+  assert.equal(pushRegistration.status, 200);
+  assert.equal(pushRegistration.body.registered, true);
+
+  const meAfterPush = await call(base, '/api/me', {token:clientReg.body.token});
+  assert.equal(meAfterPush.status, 200);
+  assert.equal(Object.prototype.hasOwnProperty.call(meAfterPush.body.user, 'pushTokens'), false);
+
   const courierReg = await call(base, '/api/auth/courier/register', {
     method:'POST',
     body:{
