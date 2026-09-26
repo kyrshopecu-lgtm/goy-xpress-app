@@ -40,7 +40,7 @@ test('Cliente v1.3 muestra evidencias por orden y permite descargarlas', () => {
   assert.match(client, /pickupPhoto/);
   assert.match(client, /deliveryPhoto/);
   assert.match(client, /depositPhoto/);
-  assert.match(client, /Fotos de esta orden/);
+  assert.match(client, /Fotos \\(/);
   assert.match(client, /downloadEvidencePhoto/);
   assert.match(client, /saveToLibraryAsync/);
 });
