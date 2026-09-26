@@ -90,7 +90,7 @@ test('Cliente 1.3.9 agrega sonido, vibración y mantiene interfaz profesional', 
   assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
   assert.doesNotMatch(client, /Elegir punto en Google Maps/);
   assert.match(client, /Dirección escrita de entrega/);
-  assert.match(client, /Fotos de esta orden/);
+  assert.match(client, /Fotos \\(/);
   assert.match(client, /OrderEvidenceModal/);
   assert.match(client, /Descargar imagen/);
   assert.match(client, /saveToLibraryAsync/);
