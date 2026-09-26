@@ -79,12 +79,12 @@ test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite'
   assert.match(courier, /timeoutMs=30000/);
 });
 
-test('Cliente 1.3.7 permite pegar ubicación, descargar fotos y avisar por WhatsApp', () => {
+test('Cliente 1.3.8 organiza entregas, fotos y WhatsApp con interfaz profesional', () => {
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.3.7');
-  assert.equal(config.android.versionCode, 11);
+  assert.equal(config.version, '1.3.8');
+  assert.equal(config.android.versionCode, 12);
   assert.match(client, /recipientPhone/);
   assert.match(client, /destinationMapUrl/);
   assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
@@ -96,6 +96,10 @@ test('Cliente 1.3.7 permite pegar ubicación, descargar fotos y avisar por Whats
   assert.match(client, /saveToLibraryAsync/);
   assert.match(client, /Avisar al destinatario por WhatsApp/);
   assert.match(client, /Tu orden/);
+  assert.match(client, /SectionBlock/);
+  assert.match(client, /OrderProgress/);
+  assert.match(client, /Tu actividad/);
+  assert.match(client, /Generar orden de entrega/);
   assert.match(api, /WhatsApp destinatario/);
   assert.match(api, /Ubicación Maps/);
 });
@@ -139,7 +143,7 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.3\.7\.apk/);
+  assert.match(roles, /CLIENTE-PARCHE-v1\.3\.8\.apk/);
   assert.match(roles, /MENSAJERO-PARCHE-v1\.4\.9\.apk/);
   assert.match(roles, /MENSAJERO-v1\.4\.9-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
