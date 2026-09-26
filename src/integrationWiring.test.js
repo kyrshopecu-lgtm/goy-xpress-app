@@ -135,7 +135,7 @@ test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', 
   const admin = read('public-web/admin/goy-sound.js');
   const entry = read('cloudflare-entry.js');
   const pkg = JSON.parse(read('package.json'));
-  assert.equal(fs.existsSync(path.join(root, 'assets', 'goy-xpress-event.mp3')), true);
+  assert.equal(fs.existsSync(path.join(root, 'assets', 'goy_xpress_event.mp3')), true);
   assert.equal(fs.existsSync(path.join(root, 'public-web', 'assets', 'goy-xpress-event.mp3')), true);
   assert.equal(pkg.dependencies['expo-av'], '~15.1.7');
   assert.equal(pkg.dependencies['expo-notifications'], '~0.31.4');
@@ -145,7 +145,7 @@ test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', 
   assert.match(push, /device\/push-token/);
   assert.match(push, /goy-orders/);
   assert.match(sound, /Vibration\.vibrate/);
-  assert.match(sound, /goy-xpress-event\.mp3/);
+  assert.match(sound, /goy_xpress_event\.mp3/);
   assert.match(admin, /\/api\/admin\/event-state/);
   assert.match(admin, /adminCreated/);
   assert.match(admin, /Entrega finalizada/);
