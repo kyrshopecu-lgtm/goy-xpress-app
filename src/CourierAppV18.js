@@ -4,8 +4,9 @@ import AsyncStorage from'@react-native-async-storage/async-storage';
 import * as ImagePicker from'expo-image-picker';
 import{StatusBar}from'expo-status-bar';
 import{API_BASE,getCourierJob,getCourierJobs,getMe,sendCurrentLocation,setWaitDecision,startLocationTracking,updateCourierWait}from'./goyApiV5';
+import{playGoyEventSound}from'./goyBrandSound';
 
-const SESSION='goy_courier_session_v13';
+const SESSION='goy_courier_session_v13',SEEN_ASSIGNMENTS='goy_courier_seen_assignments_v1';
 const SUPPORT='593997729964';
 const C={navy:'#071C2A',navy2:'#0B2F40',cyan:'#00A9E8',green:'#38A844',amber:'#F5B940',red:'#C64A4A',bg:'#F3F7F9',white:'#fff',ink:'#132B36',muted:'#687D88',line:'#DCE8ED',soft:'#EDF9FD',softGreen:'#EFFAF2'};
 const digits=v=>String(v||'').replace(/\D/g,'');
@@ -61,7 +62,7 @@ async function photo(){
   if(out.length>1750000)throw new Error('La fotografía quedó demasiado pesada. Intenta nuevamente acercándote un poco al documento o paquete.');
   return out;
 }
-async function evidence(token,code,action,amount=0){const p=await photo();if(!p)return null;return api(`/requests/${encodeURIComponent(code)}/${action}`,{method:'POST',token,body:action==='deposit-evidence'?{photo:p,amount}:{photo:p}})}
+async function evidence(token,code,action,amount=0){const p=await photo();if(!p)return null;const updated=await api(`/requests/${encodeURIComponent(code)}/${action}`,{method:'POST',token,body:action==='deposit-evidence'?{photo:p,amount}:{photo:p}});if(action==='delivery')playGoyEventSound();return updated}
 async function extraPhoto(token,code,type){const p=await photo();if(!p)return null;const d=await api('/courier-additional-evidence',{method:'POST',token,body:{code,type,photo:p}});return d.request||null}
 async function clientInfo(token,code){const d=await api(`/courier-client-info?code=${encodeURIComponent(code)}`,{token});return d.client||{}}
 
@@ -119,7 +120,7 @@ function Detail({token,job,onBack,onUpdated}){const[req,setReq]=useState(job),[b
 
 export default function CourierAppV18({sessionToken='',onLoggedOut}){
   const[token,setToken]=useState(sessionToken),[profile,setProfile]=useState(null),[jobs,setJobs]=useState([]),[selected,setSelected]=useState(null),[loading,setLoading]=useState(true);
-  const load=async currentToken=>{if(!currentToken)return;const[me,list]=await Promise.all([getMe(currentToken),getCourierJobs(currentToken).catch(error=>{if(error.pendingApproval)return[];throw error})]);setProfile(me);setJobs(list)};
+  const load=async currentToken=>{if(!currentToken)return;const[me,list]=await Promise.all([getMe(currentToken),getCourierJobs(currentToken).catch(error=>{if(error.pendingApproval)return[];throw error})]);setProfile(me);const activeCodes=(list||[]).filter(item=>!['Entrega finalizada','Cancelado'].includes(String(item.status||''))).map(item=>String(item.code||item.id||'')).filter(Boolean);try{const raw=await AsyncStorage.getItem(SEEN_ASSIGNMENTS),seen=new Set(raw?JSON.parse(raw):[]),fresh=activeCodes.filter(code=>!seen.has(code));if(fresh.length)playGoyEventSound();activeCodes.forEach(code=>seen.add(code));await AsyncStorage.setItem(SEEN_ASSIGNMENTS,JSON.stringify([...seen].slice(-300)))}catch{}setJobs(list)};
   useEffect(()=>{let alive=true;(async()=>{try{const raw=sessionToken?'':await AsyncStorage.getItem(SESSION);const currentToken=sessionToken||(raw?JSON.parse(raw)?.token:'');if(!alive)return;setToken(currentToken||'');if(currentToken)await load(currentToken)}catch(error){if(alive)Alert.alert('GOY XPRESS',error.message)}finally{if(alive)setLoading(false)}})();return()=>{alive=false}},[sessionToken]);
   useEffect(()=>{if(!token||!profile?.approved)return;const id=setInterval(()=>load(token).catch(()=>{}),15000);return()=>clearInterval(id)},[token,profile?.approved]);
   const update=value=>{setJobs(items=>items.map(item=>item.code===value.code?value:item));setSelected(value)};
