@@ -134,7 +134,7 @@ async function writeState(env,state){
   await sql`UPDATE goy_state SET data=${JSON.stringify(state)}::jsonb, updated_at=NOW() WHERE id=1`;
 }
 function publicUser(user){
-  const {passwordHash,passwordSalt,passwordIterations,...safe}=user||{};
+  const {passwordHash,passwordSalt,passwordIterations,pushTokens,...safe}=user||{};
   return safe;
 }
 function userDisplayName(user){return String(user?.businessName||user?.name||user?.email||'Usuario').trim();}
