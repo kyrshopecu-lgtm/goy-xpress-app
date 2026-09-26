@@ -1,26 +1,16 @@
 (() => {
-  const SOUND_URL = '/api/goy-notification-sound?v=1';
+  const SOUND_URL = '/assets/goy-xpress-event.mp3?v=2';
+  const POLL_MS = 10000;
   let audio = null;
   let unlocked = false;
-
-  function fallbackSpeech() {
-    try {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance('GOY, goy, goy');
-      utterance.lang = 'es-EC';
-      utterance.rate = 1.35;
-      utterance.pitch = 1.08;
-      utterance.volume = 0.95;
-      window.speechSynthesis.speak(utterance);
-    } catch {}
-  }
+  let baseline = null;
+  let polling = false;
 
   function getAudio() {
     if (!audio) {
       audio = new Audio(SOUND_URL);
       audio.preload = 'auto';
-      audio.volume = 0.9;
+      audio.volume = 1;
       audio.load();
     }
     return audio;
@@ -45,32 +35,57 @@
     try {
       player.pause();
       player.currentTime = 0;
-      player.volume = 0.9;
+      player.volume = 1;
       await player.play();
     } catch (error) {
-      console.warn('GOY generated notification unavailable; using browser voice fallback.', error);
-      fallbackSpeech();
+      console.warn('GOY XPRESS: el navegador bloqueó el sonido hasta que el usuario interactúe con la página.', error);
     }
   }
 
-  document.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
-  document.addEventListener('keydown', unlockAudio, { once: true });
+  function eventKey(item) {
+    return String(item?.code || item?.id || '').trim();
+  }
 
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (...args) => {
-    const response = await originalFetch(...args);
+  async function pollEvents() {
+    if (polling || document.visibilityState === 'hidden') return;
+    const token = sessionStorage.getItem('goyAdminToken') || '';
+    if (!token) { baseline = null; return; }
+    polling = true;
     try {
-      const input = args[0];
-      const options = args[1] || {};
-      const url = typeof input === 'string' ? input : String(input?.url || '');
-      const method = String(options.method || input?.method || 'GET').toUpperCase();
-      if (response.ok && method === 'POST' && url.includes('/api/admin-create-request')) {
-        playGoySound();
-      }
-    } catch {}
-    return response;
-  };
+      const response = await fetch('/api/admin/event-state', {
+        headers:{Authorization:`Bearer ${token}`},
+        cache:'no-store',
+      });
+      if (!response.ok) return;
+      const body = await response.json().catch(() => ({}));
+      const events = Array.isArray(body.events) ? body.events : [];
+      const next = new Map(events.map(item => [eventKey(item), item]).filter(([key]) => key));
 
-  window.GOY_SOUND = { play: playGoySound, preload: getAudio };
+      if (baseline) {
+        let shouldPlay = false;
+        for (const [key, item] of next) {
+          const previous = baseline.get(key);
+          if (!previous && item.adminCreated !== true) shouldPlay = true;
+          if (previous && String(previous.status || '') !== 'Entrega finalizada' && String(item.status || '') === 'Entrega finalizada') shouldPlay = true;
+        }
+        if (shouldPlay) playGoySound();
+      }
+      baseline = next;
+    } catch (error) {
+      console.warn('GOY XPRESS admin event monitor', error?.message || error);
+    } finally {
+      polling = false;
+    }
+  }
+
+  document.addEventListener('pointerdown', unlockAudio, {once:true, passive:true});
+  document.addEventListener('keydown', unlockAudio, {once:true});
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pollEvents();
+  });
+
+  window.GOY_SOUND = {play:playGoySound, preload:getAudio, poll:pollEvents};
   getAudio();
+  setTimeout(pollEvents, 1500);
+  setInterval(pollEvents, POLL_MS);
 })();
