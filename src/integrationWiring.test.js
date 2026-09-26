@@ -79,12 +79,12 @@ test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite'
   assert.match(courier, /timeoutMs=30000/);
 });
 
-test('Cliente 1.3.9 agrega sonido, vibración y mantiene interfaz profesional', () => {
+test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesional', () => {
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.3.9');
-  assert.equal(config.android.versionCode, 13);
+  assert.equal(config.version, '1.4.0');
+  assert.equal(config.android.versionCode, 14);
   assert.match(client, /recipientPhone/);
   assert.match(client, /destinationMapUrl/);
   assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
@@ -107,11 +107,11 @@ test('Cliente 1.3.9 agrega sonido, vibración y mantiene interfaz profesional', 
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.0 alerta asignación y entrega finalizada con sonido y vibración', () => {
+test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.0');
-  assert.equal(config.android.versionCode, 15);
+  assert.equal(config.version, '1.5.1');
+  assert.equal(config.android.versionCode, 16);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -127,6 +127,7 @@ test('Mensajero 1.5.0 alerta asignación y entrega finalizada con sonido y vibra
   assert.doesNotMatch(courier, /const ADMIN=/);
   assert.match(courier, /SEEN_ASSIGNMENTS/);
   assert.match(courier, /playGoyEventSound/);
+  assert.match(JSON.stringify(config.plugins), /expo-notifications/);
 });
 
 test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', () => {
@@ -137,6 +138,12 @@ test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', 
   assert.equal(fs.existsSync(path.join(root, 'assets', 'goy-xpress-event.mp3')), true);
   assert.equal(fs.existsSync(path.join(root, 'public-web', 'assets', 'goy-xpress-event.mp3')), true);
   assert.equal(pkg.dependencies['expo-av'], '~15.1.7');
+  assert.equal(pkg.dependencies['expo-notifications'], '~0.31.4');
+  assert.equal(pkg.dependencies['expo-device'], '~7.1.4');
+  const push = read('src/goyPushNotifications.js');
+  assert.match(push, /getExpoPushTokenAsync/);
+  assert.match(push, /device\/push-token/);
+  assert.match(push, /goy-orders/);
   assert.match(sound, /Vibration\.vibrate/);
   assert.match(sound, /goy-xpress-event\.mp3/);
   assert.match(admin, /\/api\/admin\/event-state/);
@@ -164,9 +171,9 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.3\.9\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.0\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.0-ARM64\.apk/);
+  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.0\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.1\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.1-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
