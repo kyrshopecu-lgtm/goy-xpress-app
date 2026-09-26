@@ -63,7 +63,7 @@ async function writeState(env, state) {
 }
 
 function publicUser(user) {
-  const {passwordHash, passwordSalt, ...safe} = user || {};
+  const {passwordHash, passwordSalt, pushTokens, ...safe} = user || {};
   return safe;
 }
 
@@ -133,6 +133,62 @@ function normalizeStatus(value) {
 function addEvent(item, type, payload = {}) {
   item.events = Array.isArray(item.events) ? item.events : [];
   item.events.unshift({id:crypto.randomUUID(), type, ...payload, at:new Date().toISOString()});
+}
+
+function expoPushTokens(user) {
+  const list = Array.isArray(user?.pushTokens) ? user.pushTokens : [];
+  return [...new Set(list.map(item => typeof item === 'string' ? item : item?.token).map(String).map(value => value.trim()).filter(value => /^(?:Expo|Exponent)PushToken\[[A-Za-z0-9._=-]+\]$/.test(value)))];
+}
+
+async function sendExpoPush(user, {title, body, type, code}) {
+  const tokens = expoPushTokens(user);
+  if (!tokens.length) return {sent:0};
+  const messages = tokens.map(to => ({
+    to,
+    title,
+    body,
+    data:{type, code},
+    priority:'high',
+    sound:'goy-xpress-event.mp3',
+    channelId:'goy-orders',
+  }));
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        Accept:'application/json',
+        'Accept-Encoding':'gzip, deflate',
+      },
+      body:JSON.stringify(messages.length === 1 ? messages[0] : messages),
+    });
+    if (!response.ok) {
+      console.warn('GOY XPRESS push service', response.status, (await response.text().catch(() => '')).slice(0, 300));
+      return {sent:0};
+    }
+    return {sent:tokens.length};
+  } catch (error) {
+    console.warn('GOY XPRESS push unavailable', error?.message || error);
+    return {sent:0};
+  }
+}
+
+async function notifyClientDelivery(env, code) {
+  try {
+    const state = await readState(env);
+    const request = state.requests.find(item => String(item.code || item.id) === String(code));
+    if (!request?.clientId) return;
+    const client = state.users.find(user => String(user.id) === String(request.clientId) && user.role === 'client');
+    if (!client) return;
+    await sendExpoPush(client, {
+      title:'Entrega realizada',
+      body:`Tu orden ${request.code || request.id || code} fue entregada correctamente por GOY XPRESS.`,
+      type:'client_delivery_complete',
+      code:request.code || request.id || code,
+    });
+  } catch (error) {
+    console.warn('GOY XPRESS client delivery push', error?.message || error);
+  }
 }
 
 async function readAdminStateLight(env) {
@@ -274,7 +330,7 @@ async function adminData(request, env, optionsOnly = false) {
   }
 }
 
-async function adminUpdateRequest(request, env, code) {
+async function adminUpdateRequest(request, env, code, ctx) {
   if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
   try {
     const body = await request.json().catch(() => ({}));
@@ -284,6 +340,7 @@ async function adminUpdateRequest(request, env, code) {
 
     const current = state.requests[index];
     const patch = {};
+    let assignedCourier = null;
 
     if (body.status) patch.status = normalizeStatus(body.status);
 
@@ -295,6 +352,7 @@ async function adminUpdateRequest(request, env, code) {
         user.approved
       );
       if (!courier) return json({error:'Selecciona un mensajero registrado, activo y aprobado.'}, 400);
+      assignedCourier = courier;
       patch.courierId = courier.id;
       patch.courier = String(courier.businessName || courier.name || courier.email || 'Mensajero').trim();
       patch.courierPhoto = courier.photo || '';
@@ -331,6 +389,17 @@ async function adminUpdateRequest(request, env, code) {
     addEvent(updated, 'admin_update', {fields:Object.keys(patch)});
     state.requests[index] = updated;
     await writeState(env, state);
+
+    if (assignedCourier) {
+      const task = sendExpoPush(assignedCourier, {
+        title:'Nueva entrega asignada',
+        body:`Tienes una nueva operación GOY XPRESS: ${updated.code || updated.id || code}.`,
+        type:'courier_assignment',
+        code:updated.code || updated.id || code,
+      });
+      if (ctx?.waitUntil) ctx.waitUntil(task);
+      else await task;
+    }
 
     return json({request:sanitizeRequest(updated)}, 200);
   } catch (error) {
@@ -373,7 +442,18 @@ export default {
     }
     const requestMatch = path.match(/^\/api\/admin\/requests\/([^/]+)$/);
     if (requestMatch && request.method === 'PATCH') {
-      return adminUpdateRequest(request, env, decodeURIComponent(requestMatch[1]));
+      return adminUpdateRequest(request, env, decodeURIComponent(requestMatch[1]), ctx);
+    }
+
+    const deliveryMatch = path.match(/^\/api\/requests\/([^/]+)\/delivery$/);
+    if (deliveryMatch && request.method === 'POST') {
+      const response = await worker.fetch(request, env, ctx);
+      if (response.ok) {
+        const task = notifyClientDelivery(env, decodeURIComponent(deliveryMatch[1]));
+        if (ctx?.waitUntil) ctx.waitUntil(task);
+        else await task;
+      }
+      return response;
     }
 
     if (path === '/admin' || path === '/admin/') {
