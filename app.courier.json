@@ -31,7 +31,7 @@
         {
           "color": "#0D2F41",
           "sounds": [
-            "./assets/goy-xpress-event.mp3"
+            "./assets/goy_xpress_event.mp3"
           ],
           "defaultChannel": "goy-orders"
         }
