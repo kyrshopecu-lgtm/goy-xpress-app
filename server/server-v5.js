@@ -193,7 +193,7 @@ function validImageDataUrl(value) {
 
 function publicUser(user) {
   if (!user) return null;
-  const {passwordHash, passwordSalt, ...safe} = user;
+  const {passwordHash, passwordSalt, pushTokens, ...safe} = user;
   return safe;
 }
 
@@ -589,6 +589,19 @@ function createHandler(options = {}) {
       if(pathname==='/me'&&req.method==='GET'){const data=await store.read();const user=requireUser(req,res,data,config);if(!user)return;return json(res,200,{user:publicUser(user)},config.allowedOrigin);}
       if(pathname==='/me'&&req.method==='PATCH'){
         const body=await readBody(req),data=await store.read(),user=requireUser(req,res,data,config);if(!user)return;const allowed=['name','phone'];if(user.role==='client')allowed.push('businessName','documentId','address','logo');if(user.role==='courier')allowed.push('photo');for(const key of allowed){if(!Object.prototype.hasOwnProperty.call(body,key))continue;if((key==='logo'||key==='photo')&&!validImageDataUrl(body[key]))return json(res,400,{error:'La imagen no es válida o es demasiado grande.'},config.allowedOrigin);user[key]=String(body[key]||'').trim();}if(cleanPhone(user.phone).length<9)return json(res,400,{error:'WhatsApp inválido.'},config.allowedOrigin);user.phone=cleanPhone(user.phone);user.updatedAt=new Date().toISOString();syncUserMirror(data,user);for(const request of data.requests){if(request.clientId===user.id){request.customer=userDisplayName(user);request.phone=user.phone;request.clientLogo=user.logo||'';}if(request.courierId===user.id){request.courier=userDisplayName(user);request.courierPhoto=user.photo||'';}}await store.write(data);return json(res,200,{user:publicUser(user)},config.allowedOrigin);
+      }
+      if(req.method==='POST'&&pathname==='/device/push-token'){
+        const body=await readBody(req),data=await store.read(),user=requireUser(req,res,data,config);if(!user)return;
+        const token=String(body.token||'').trim(),platform=String(body.platform||'').trim().toLowerCase(),role=String(body.role||'').trim().toLowerCase();
+        if(role&&role!==user.role)return json(res,403,{error:'El tipo de cuenta no coincide con la sesión.'},config.allowedOrigin);
+        if(!/^(?:Expo|Exponent)PushToken\[[A-Za-z0-9._=-]+\]$/.test(token))return json(res,400,{error:'Token de notificación no válido.'},config.allowedOrigin);
+        if(platform&&!['android','ios'].includes(platform))return json(res,400,{error:'Plataforma de notificación no válida.'},config.allowedOrigin);
+        const now=new Date().toISOString(),existing=Array.isArray(user.pushTokens)?user.pushTokens.filter(item=>item&&typeof item==='object'&&item.token):[];
+        const next=existing.filter(item=>String(item.token)!==token);
+        next.unshift({token,platform:platform||'unknown',updatedAt:now});
+        user.pushTokens=next.slice(0,5);user.updatedAt=now;
+        await store.write(data);
+        return json(res,200,{ok:true,registered:true},config.allowedOrigin);
       }
       if(req.method==='POST'&&pathname==='/maps/route'){const body=await readBody(req),data=await store.read(),user=requireUser(req,res,data,config,'client');if(!user)return;const route=await computeGoogleRoute(body.origin,body.destination,config,mapsFetch);const mode=body.mode==='express'?'express':'scheduled';const pricing=calculateDeliveryPrice(mode,route.distanceKm);return json(res,200,{route,pricing:{eligible:Boolean(pricing?.eligible),total:Number(pricing?.total||0),mode}},config.allowedOrigin);}
       if(req.method==='GET'&&pathname==='/client/requests'){const data=await store.read(),user=requireUser(req,res,data,config,'client');if(!user)return;return json(res,200,{requests:data.requests.filter(r=>r.clientId===user.id).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(sanitizeRequest)},config.allowedOrigin);}
