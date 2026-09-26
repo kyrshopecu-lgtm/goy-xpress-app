@@ -4,6 +4,7 @@ import AsyncStorage from'@react-native-async-storage/async-storage';
 import{StatusBar}from'expo-status-bar';
 import CourierAppV18 from'./CourierAppV18';
 import{login,pickCourierPhoto,registerCourier}from'./goyApiV5';
+import{registerGoyPushNotifications}from'./goyPushNotifications';
 const KEY='goy_courier_session_v13';
 const MIGRATION='goy_courier_cloudflare_migration_v1';
 const C={navy:'#071C2A',navy2:'#0B2F40',green:'#38A844',white:'#fff',cyan:'#00A9E8',muted:'#BFD8E2',line:'#2A5365'};
@@ -35,6 +36,7 @@ function Auth({onOk}){
 export default function CourierAppV16(){
   const[token,setToken]=useState(null),[loading,setLoading]=useState(true);
   useEffect(()=>{let alive=true;(async()=>{try{const migrated=await AsyncStorage.getItem(MIGRATION);if(!migrated){await AsyncStorage.removeItem(KEY);await AsyncStorage.setItem(MIGRATION,'1');}const raw=await AsyncStorage.getItem(KEY);if(alive)setToken(raw?JSON.parse(raw)?.token||null:null);}catch{if(alive)setToken(null)}finally{if(alive)setLoading(false)}})();return()=>{alive=false}},[]);
+  useEffect(()=>{if(token)registerGoyPushNotifications(token,'courier').catch(()=>{})},[token]);
   if(loading)return <SafeAreaView style={s.loading}><Image source={require('../assets/goy-logo.jpg')} style={s.logo}/><Text style={s.loadingText}>GOY XPRESS</Text></SafeAreaView>;
   if(!token)return <Auth onOk={setToken}/>;
   return <CourierAppV18 sessionToken={token} onLoggedOut={()=>setToken(null)}/>
