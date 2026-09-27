@@ -250,3 +250,16 @@ test('GOY SALES AI analiza seleccionados en lote sin aprobarlos', () => {
   assert.match(js, /Ningún prospecto fue aprobado ni contactado/);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI muestra bandeja supervisada de listos para contactar', () => {
+  const html=read('public-web/admin/index.html'),js=read('public-web/admin/prospects.js');
+  assert.match(html, /id="readyContactBox"/);
+  assert.match(html, /Listos para contactar/);
+  assert.match(js, /p\.status==='Aprobado para contacto'/);
+  assert.match(js, /!p\.doNotContact/);
+  assert.match(js, /p\.approvedMessage/);
+  assert.match(js, /Sin contacto público registrado/);
+  assert.doesNotMatch(js, /readyContact[\s\S]{0,800}method:'POST'[\s\S]{0,100}send/i);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+});
