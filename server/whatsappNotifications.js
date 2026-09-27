@@ -17,6 +17,7 @@ function config() {
     adminTemplate: String(process.env.GOY_WA_ADMIN_ORDER_TEMPLATE || 'goy_nueva_orden_admin'),
     courierTemplate: String(process.env.GOY_WA_COURIER_ORDER_TEMPLATE || 'goy_nueva_orden_mensajero'),
     clientDeliveredTemplate: String(process.env.GOY_WA_CLIENT_DELIVERED_TEMPLATE || 'goy_entrega_finalizada_cliente'),
+    prospectTemplate: String(process.env.GOY_WA_PROSPECT_TEMPLATE || ''),
   };
 }
 
@@ -95,6 +96,12 @@ async function notifyClientDelivered({request, client}) {
   ]);
 }
 
+async function sendProspectFirstContact({phone,business,message}) {
+  const cfg=config();
+  if(!cfg.prospectTemplate)return {ok:false,skipped:true,reason:'PROSPECT_TEMPLATE_MISSING'};
+  return sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg);
+}
+
 async function safeNotify(label, fn) {
   try { return await fn(); }
   catch (error) {
@@ -110,5 +117,6 @@ module.exports = {
   notifyAdminNewOrder,
   notifyCourierAssigned,
   notifyClientDelivered,
+  sendProspectFirstContact,
   safeNotify,
 };
