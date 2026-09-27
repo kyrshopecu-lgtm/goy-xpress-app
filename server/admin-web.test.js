@@ -116,3 +116,20 @@ test('GOY SALES AI conserva análisis de necesidades y crecimiento comercial', (
   assert.match(prospects, /Ideas de campañas/);
   new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI conecta análisis automático protegido y revisable', () => {
+  const prospects = read('public-web/admin/prospects.js');
+  const management = read('server/admin-management.js');
+  assert.match(prospects, /Analizar con GOY SALES AI/);
+  assert.match(prospects, /\/admin\/prospects\/.*\/analyze/);
+  assert.match(prospects, /Revísalo y edítalo antes de aprobar el contacto/);
+  assert.match(management, /prospectAnalyzeMatch/);
+  assert.match(management, /OPENAI_API_KEY/);
+  assert.match(management, /El análisis con IA no está configurado/);
+  assert.match(management, /No autorizado/);
+  assert.match(management, /response_format:\{type:'json_object'\}/);
+  assert.match(management, /No inventes datos ni uses información sensible/);
+  assert.match(management, /item\.analysisUpdatedAt/);
+  new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
+});
