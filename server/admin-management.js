@@ -23,9 +23,10 @@ function wrap(next,overrides={}){
   const accountMatch=p.match(/^\/admin\/(clients|couriers)\/([^/]+)$/);
   const serviceMatch=p.match(/^\/admin\/services\/([^/]+)$/);
   const prospectMatch=p.match(/^\/admin\/prospects\/([^/]+)$/);
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
-  const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
+  const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
    const payload=verifyToken(bearer(req),config.tokenSecret);if(!payload||payload.role!=='admin')return json(res,401,{error:'No autorizado'},config.allowedOrigin);
    const data=await readState(config);
@@ -44,6 +45,18 @@ function wrap(next,overrides={}){
     if(business.length<2)return json(res,400,{error:'Ingresa el nombre del negocio o prospecto.'},config.allowedOrigin);
     const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
     data.prospects.unshift(item);await writeState(config,data);return json(res,201,{prospect:item},config.allowedOrigin);
+   }
+   if(prospectAnalyzeMatch){
+    const id=decodeURIComponent(prospectAnalyzeMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
+    if(!config.openaiApiKey)return json(res,503,{error:'El análisis con IA no está configurado.'},config.allowedOrigin);
+    const evidence={business:item.business,city:item.city,category:item.category,source:item.source,sourceUrl:item.sourceUrl,fitReason:item.fitReason,contactChannel:item.channel};
+    const prompt='Analiza este prospecto comercial para GOY XPRESS en Quito. Usa únicamente los datos proporcionados como evidencia. Distingue hechos observados de hipótesis/recomendaciones. Devuelve JSON válido sin markdown con las claves observedNeeds, growthOpportunities, suggestedServices, campaignIdeas, fitReason, score y draftMessage. observedNeeds debe expresar señales observables y, cuando falte evidencia, decir que requiere validación. growthOpportunities debe proponer oportunidades concretas. suggestedServices puede incluir servicios actuales de GOY XPRESS o ideas de nuevos servicios útiles para ese negocio. campaignIdeas debe proponer campañas concretas con concepto, público y canal. score debe ser entero 0-100 según afinidad con GOY XPRESS. draftMessage debe ser breve, personalizado, identificarse como asistente virtual de GOY XPRESS y no afirmar necesidades no confirmadas. Datos: '+JSON.stringify(evidence);
+    const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.openaiApiKey},body:JSON.stringify({model:'gpt-4o-mini',temperature:0.3,response_format:{type:'json_object'},messages:[{role:'system',content:'Eres GOY SALES AI, analista comercial responsable. No inventes datos ni uses información sensible.'},{role:'user',content:prompt}]})});
+    if(!response.ok)return json(res,502,{error:'No se pudo completar el análisis con IA.'},config.allowedOrigin);
+    const ai=await response.json(),raw=ai?.choices?.[0]?.message?.content||'{}';let analysis;try{analysis=JSON.parse(raw);}catch{return json(res,502,{error:'La IA devolvió un análisis no válido.'},config.allowedOrigin);}
+    for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);
+    if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));
+    item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis});
    }
    if(prospectMatch){
     const id=decodeURIComponent(prospectMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
