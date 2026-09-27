@@ -127,6 +127,8 @@ test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada',
   assert.doesNotMatch(courier, /const ADMIN=/);
   assert.match(courier, /SEEN_ASSIGNMENTS/);
   assert.match(courier, /playGoyEventSound/);
+  assert.match(courier, /registerGoyPushNotifications/);
+  assert.match(courier, /registerGoyPushNotifications\(token,'courier'\)/);
   assert.match(JSON.stringify(config.plugins), /expo-notifications/);
 });
 
