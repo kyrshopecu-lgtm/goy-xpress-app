@@ -53,6 +53,9 @@ jobs:
           node --check api/admin-create-request.js
           node --check admin-web/config.js
           node --check admin-web/client-accounts.js
+          node --check admin-web/client-create-fix.js
+          node --check public-web/admin/config.js
+          node --check public-web/admin/client-create-fix.js
           node --check admin-web/modern-admin.js
           node --check admin-web/admin-management.js
           node --check admin-web/courier-profile.js
