@@ -169,3 +169,16 @@ test('GOY SALES AI descubre candidatos públicos antes de importarlos', () => {
   assert.match(worker, /PROSPECT_DISCOVERY_TOKEN/);
   new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI protege el presupuesto de descubrimiento', () => {
+  const management = read('server/admin-management.js');
+  const prospects = read('public-web/admin/prospects.js');
+  assert.match(management, /Math\.min\(60/);
+  assert.match(management, /daily>=177/);
+  assert.match(management, /monthly>=4800/);
+  assert.match(management, /pausado los domingos/);
+  assert.match(management, /prospectDiscoveryUsage/);
+  assert.match(management, /America\/Guayaquil/);
+  assert.match(prospects, /max="60"/);
+});
