@@ -101,3 +101,18 @@ test('panel publicado incluye GOY SALES AI con revisión humana y selección mú
   assert.match(management, /no contactar/);
   new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI conserva análisis de necesidades y crecimiento comercial', () => {
+  const prospects = read('public-web/admin/prospects.js');
+  const management = read('server/admin-management.js');
+  for (const field of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas']) {
+    assert.match(prospects, new RegExp(field));
+    assert.match(management, new RegExp(field));
+  }
+  assert.match(prospects, /Señales \/ necesidades observadas/);
+  assert.match(prospects, /Oportunidades de crecimiento/);
+  assert.match(prospects, /Nuevos servicios sugeridos/);
+  assert.match(prospects, /Ideas de campañas/);
+  new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
+});
