@@ -2,6 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const {ensureStateTable, readVersionedState, writeVersionedState} = require('./versioned-state');
 const {
   calculateCourierWait,
   calculateDepositPrice,
@@ -73,14 +74,7 @@ function createPersistentStore(config) {
       sqlClient = neon(config.databaseUrl);
     }
     if (!dbReady) {
-      await sqlClient`CREATE TABLE IF NOT EXISTS goy_state (
-        id INTEGER PRIMARY KEY,
-        data JSONB NOT NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )`;
-      await sqlClient`INSERT INTO goy_state (id, data)
-        VALUES (1, ${JSON.stringify(emptyData())}::jsonb)
-        ON CONFLICT (id) DO NOTHING`;
+      await ensureStateTable(sqlClient, emptyData());
       dbReady = true;
     }
     return sqlClient;
@@ -90,8 +84,7 @@ function createPersistentStore(config) {
     async read() {
       const sql = await getSql();
       if (sql) {
-        const rows = await sql`SELECT data FROM goy_state WHERE id = 1 LIMIT 1`;
-        return normalizeData(rows[0]?.data || {});
+        return readVersionedState(sql, normalizeData);
       }
       try {
         if (!fs.existsSync(config.dataFile)) return emptyData();
@@ -105,9 +98,7 @@ function createPersistentStore(config) {
       const normalized = normalizeData(data);
       const sql = await getSql();
       if (sql) {
-        await sql`UPDATE goy_state
-          SET data = ${JSON.stringify(normalized)}::jsonb, updated_at = NOW()
-          WHERE id = 1`;
+        await writeVersionedState(sql, data, normalizeData);
         return;
       }
       const dir = path.dirname(config.dataFile);
