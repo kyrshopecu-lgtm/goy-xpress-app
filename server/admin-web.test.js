@@ -52,3 +52,22 @@ test('administración carga y valida el visor de evidencias fotográficas', () =
   assert.match(evidence, /\/admin\/requests\/.*\/evidence/);
   new vm.Script(evidence, {filename:'order-evidence.js'});
 });
+
+test('panel publicado conserva creación segura de clientes', () => {
+  const sourceConfig = read('admin-web/config.js');
+  const publicConfig = read('public-web/admin/config.js');
+  const secureCreate = read('public-web/admin/client-create-fix.js');
+  const clientAccounts = read('public-web/admin/client-accounts.js');
+
+  for (const config of [sourceConfig, publicConfig]) {
+    assert.match(config, /client-accounts\.js/);
+    assert.match(config, /client-create-fix\.js/);
+  }
+  assert.match(clientAccounts, /id=['"]createClientForm['"]/);
+  assert.match(secureCreate, /PBKDF2/);
+  assert.match(secureCreate, /passwordHash/);
+  assert.match(secureCreate, /passwordSalt/);
+  assert.match(secureCreate, /passwordIterations/);
+  assert.match(secureCreate, /\/admin\/clients/);
+  new vm.Script(secureCreate, {filename:'public-web/admin/client-create-fix.js'});
+});
