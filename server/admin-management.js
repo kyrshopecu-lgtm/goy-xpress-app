@@ -20,7 +20,8 @@ async function discoverProspects(config,criteria){
  const key=String(config.googleMapsApiKey||'').trim();
  if(key){
   const results=[];let pageToken='',requestsUsed=0;
-  while(results.length<criteria.limit&&requestsUsed<9){
+  const requestBudget=Math.max(0,Number(criteria.requestBudget||0));
+  while(results.length<criteria.limit&&requestsUsed<requestBudget){
    const body={textQuery:[criteria.category,criteria.city].filter(Boolean).join(' ')||'negocios Ecuador',pageSize:20,languageCode:'es'};
    if(pageToken)body.pageToken=pageToken;
    const response=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.googleMapsUri,places.primaryType,nextPageToken'},body:JSON.stringify(body)});
@@ -72,7 +73,9 @@ function wrap(next,overrides={}){
     const dayKey=`${ecuador.getFullYear()}-${String(ecuador.getMonth()+1).padStart(2,'0')}-${String(ecuador.getDate()).padStart(2,'0')}`,monthKey=dayKey.slice(0,7),usage=data.prospectDiscoveryUsage||{},daily=Number(usage[dayKey]||0),monthly=Object.entries(usage).filter(([k])=>k.startsWith(monthKey+'-')).reduce((sum,[,v])=>sum+Number(v||0),0);
     if(daily>=177)return json(res,429,{error:'Se alcanzó el límite diario de 177 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
     if(monthly>=4800)return json(res,429,{error:'Se alcanzó el límite mensual de 4.800 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
-    const discovery=await discoverProspects(config,{city,category,limit,publicOnly:true}),used=Math.max(1,Number(discovery.requestsUsed||1));
+    const requestBudget=Math.min(177-daily,4800-monthly);
+    if(requestBudget<=0)return json(res,429,{error:'No quedan llamadas disponibles dentro del cupo configurado.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
+    const discovery=await discoverProspects(config,{city,category,limit,publicOnly:true,requestBudget}),used=Math.max(1,Number(discovery.requestsUsed||1));
     if(daily+used>177||monthly+used>4800)return json(res,429,{error:'La búsqueda requiere más llamadas que el cupo restante.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
     data.prospectDiscoveryUsage[dayKey]=daily+used;await writeState(config,data);
     return json(res,200,{prospects:discovery.prospects,count:discovery.prospects.length,criteria:{city,category,limit},usage:{daily:daily+used,monthly:monthly+used,requestsUsed:used,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
