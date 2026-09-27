@@ -71,3 +71,15 @@ test('panel publicado conserva creación segura de clientes', () => {
   assert.match(secureCreate, /\/admin\/clients/);
   new vm.Script(secureCreate, {filename:'public-web/admin/client-create-fix.js'});
 });
+
+
+test('panel publicado permite servicio personalizado vinculado al cliente sin actualizar APK', () => {
+  const modern = read('public-web/admin/modern-admin.js');
+  assert.match(modern, /<option value="custom">Servicio personalizado<\/option>/);
+  assert.match(modern, /customService:true/);
+  assert.match(modern, /customServiceLabel/);
+  assert.match(modern, /customServiceCost/);
+  assert.match(modern, /clientId:String\(fd\.get\('clientId'\)/);
+  assert.match(modern, /\/admin-create-request/);
+  new vm.Script(modern, {filename:'public-web/admin/modern-admin.js'});
+});
