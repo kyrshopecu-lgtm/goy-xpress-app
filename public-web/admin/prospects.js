@@ -25,7 +25,16 @@
     const box=$('readyContactList'),count=$('readyContactCount');if(!box)return;
     const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     if(count)count.textContent=String(ready.length);
-    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Mensaje final</th><th>Prioridad</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.approvedMessage)}</td><td>${esc(p.score||0)}/100</td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Mensaje final</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.approvedMessage)}</td><td>${esc(p.score||0)}/100</td><td><button class="primary compact ready-whatsapp-send" type="button" data-id="${esc(p.id)}">Enviar por WhatsApp</button></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+  }
+
+  async function sendReadyWhatsApp(id){
+    const p=prospects.find(x=>x.id===id);if(!p)return;
+    const recipient=p.contact||'sin número registrado',message=String(p.approvedMessage||'').trim();
+    if(!window.confirm(`Confirmar primer contacto por WhatsApp\n\nNegocio: ${p.business}\nDestinatario: ${recipient}\n\nMensaje aprobado:\n${message}\n\n¿Enviar ahora?`))return;
+    $('prospectMessage').textContent=`Enviando a ${p.business}…`;
+    try{await api(`/admin/prospects/${encodeURIComponent(id)}/send-whatsapp`,{method:'POST',body:'{}'});$('prospectMessage').textContent=`WhatsApp confirmado para ${p.business}. El envío quedó registrado en el historial.`;await load();}
+    catch(e){$('prospectMessage').textContent=`No se envió a ${p.business}: ${e.message}`;}
   }
 
   function render(){
@@ -112,6 +121,7 @@
     [...document.querySelectorAll('.prospect-check')].slice(0,20).forEach(x=>x.checked=true);
     updateSelection();
     renderReady();
+    document.querySelectorAll('.ready-whatsapp-send').forEach(btn=>btn.addEventListener('click',()=>sendReadyWhatsApp(btn.dataset.id)));
   }
   async function analyzeSelected(){
     const ids=selectedIds();if(!ids.length){$('prospectMessage').textContent='Selecciona al menos un prospecto para analizar.';return;}
