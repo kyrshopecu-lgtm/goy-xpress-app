@@ -5,6 +5,7 @@ import * as ImagePicker from'expo-image-picker';
 import{StatusBar}from'expo-status-bar';
 import{API_BASE,getCourierJob,getCourierJobs,getMe,sendCurrentLocation,setWaitDecision,startLocationTracking,updateCourierWait}from'./goyApiV5';
 import{playGoyEventSound}from'./goyBrandSound';
+import{registerGoyPushNotifications}from'./goyPushNotifications';
 
 const SESSION='goy_courier_session_v13',SEEN_ASSIGNMENTS='goy_courier_seen_assignments_v1';
 const SUPPORT='593997729964';
@@ -122,6 +123,7 @@ export default function CourierAppV18({sessionToken='',onLoggedOut}){
   const[token,setToken]=useState(sessionToken),[profile,setProfile]=useState(null),[jobs,setJobs]=useState([]),[selected,setSelected]=useState(null),[loading,setLoading]=useState(true);
   const load=async currentToken=>{if(!currentToken)return;const[me,list]=await Promise.all([getMe(currentToken),getCourierJobs(currentToken).catch(error=>{if(error.pendingApproval)return[];throw error})]);setProfile(me);const activeCodes=(list||[]).filter(item=>!['Entrega finalizada','Cancelado'].includes(String(item.status||''))).map(item=>String(item.code||item.id||'')).filter(Boolean);try{const raw=await AsyncStorage.getItem(SEEN_ASSIGNMENTS),seen=new Set(raw?JSON.parse(raw):[]),fresh=activeCodes.filter(code=>!seen.has(code));if(fresh.length)playGoyEventSound();activeCodes.forEach(code=>seen.add(code));await AsyncStorage.setItem(SEEN_ASSIGNMENTS,JSON.stringify([...seen].slice(-300)))}catch{}setJobs(list)};
   useEffect(()=>{let alive=true;(async()=>{try{const raw=sessionToken?'':await AsyncStorage.getItem(SESSION);const currentToken=sessionToken||(raw?JSON.parse(raw)?.token:'');if(!alive)return;setToken(currentToken||'');if(currentToken)await load(currentToken)}catch(error){if(alive)Alert.alert('GOY XPRESS',error.message)}finally{if(alive)setLoading(false)}})();return()=>{alive=false}},[sessionToken]);
+  useEffect(()=>{if(token)registerGoyPushNotifications(token,'courier').catch(()=>{})},[token]);
   useEffect(()=>{if(!token||!profile?.approved)return;const id=setInterval(()=>load(token).catch(()=>{}),15000);return()=>clearInterval(id)},[token,profile?.approved]);
   const update=value=>{setJobs(items=>items.map(item=>item.code===value.code?value:item));setSelected(value)};
   const logout=async()=>{await AsyncStorage.removeItem(SESSION);setToken('');setProfile(null);setJobs([]);setSelected(null);onLoggedOut?.()};
