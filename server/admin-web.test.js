@@ -216,3 +216,13 @@ test('GOY SALES AI diversifica Google Places y elimina duplicados', () => {
   assert.match(management, /place\.id\|\|place\.websiteUri/);
   assert.match(management, /requestsUsed<requestBudget/);
 });
+
+
+test('GOY SALES AI calcula afinidad preliminar sin inventar necesidades', () => {
+  const management = read('server/admin-management.js');
+  assert.match(management, /function preliminaryFitScore/);
+  assert.match(management, /tecnolog\|accesor\|ropa\|juguete\|coleccion\|tienda\|emprend\|repuesto/);
+  assert.match(management, /website\)score\+=10/);
+  assert.match(management, /preliminaryFitScore\(\{category:query/);
+  assert.doesNotMatch(management, /preliminaryFitScore[\s\S]{0,500}needs/i);
+});
