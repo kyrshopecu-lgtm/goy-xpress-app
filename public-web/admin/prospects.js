@@ -71,6 +71,13 @@
     o.querySelector('#prospectForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const payload=Object.fromEntries(fd.entries());payload.score=Number(payload.score||0);try{await api('/admin/prospects',{method:'POST',body:JSON.stringify(payload)});o.remove();await load();}catch(err){$('prospectFormMessage').textContent=err.message;}};
   }
 
+  function openImport(){
+    const example='[{"business":"Tienda Ejemplo","city":"Cuenca","category":"Tecnología","source":"Instagram","sourceUrl":"https://example.com/perfil","channel":"WhatsApp","contact":"+593..."}]';
+    const o=modal(`<div class="modal-head"><div><span class="eyebrow">GOY SALES AI</span><h3>Importar prospectos</h3><p>Hasta 500 registros por lote. Los nuevos quedarán pendientes de revisión.</p></div><button class="modal-close">×</button></div><div class="admin-order-form"><label>Prospectos en formato JSON<textarea id="prospectImportJson" rows="12" placeholder='${esc(example)}'></textarea></label><label class="check-line"><input id="analyzeImported" type="checkbox"> Analizar automáticamente los prospectos importados</label><p class="map-hint">Analizar no aprueba ni envía contactos. Solo prepara el diagnóstico y el borrador para revisión humana.</p><div id="prospectImportMessage" class="form-message"></div><div class="modal-actions"><button class="ghost modal-cancel">Cancelar</button><button class="primary action-primary" id="runProspectImport">Importar lote</button></div></div>`);
+    o.querySelector('.modal-close').onclick=()=>o.remove();o.querySelector('.modal-cancel').onclick=()=>o.remove();
+    o.querySelector('#runProspectImport').onclick=async()=>{const button=o.querySelector('#runProspectImport'),message=o.querySelector('#prospectImportMessage');let items;try{items=JSON.parse(o.querySelector('#prospectImportJson').value||'[]');if(!Array.isArray(items))throw new Error('El JSON debe contener una lista de prospectos.');}catch(e){message.textContent=e.message;return;}button.disabled=true;button.textContent='Importando…';try{const result=await api('/admin/prospects/import',{method:'POST',body:JSON.stringify({prospects:items})});message.textContent=`Importados: ${result.imported}. Duplicados: ${result.duplicates}. Inválidos: ${result.invalid}.`;if(o.querySelector('#analyzeImported').checked&&result.prospects?.length){button.textContent='Analizando…';let analyzed=0,failed=0;for(const p of result.prospects){try{await api(`/admin/prospects/${encodeURIComponent(p.id)}/analyze`,{method:'POST'});analyzed++;}catch{failed++;}}message.textContent+=` Analizados: ${analyzed}. Sin analizar: ${failed}.`;}await load();}catch(e){message.textContent=e.message;}finally{button.disabled=false;button.textContent='Importar lote';}};
+  }
+
   function openReview(id){
     const p=prospects.find(x=>x.id===id);if(!p)return;
     const proposed=p.approvedMessage||p.draftMessage||'';
@@ -86,6 +93,7 @@
     approve.onclick=async()=>{const message=o.querySelector('#prospectApprovedMessage').value.trim();if(!message){$('prospectReviewMessage').textContent='Escribe o revisa el mensaje antes de aprobar.';return;}try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:message,observedNeeds:o.querySelector('#prospectObservedNeeds').value.trim(),growthOpportunities:o.querySelector('#prospectGrowthOpportunities').value.trim(),suggestedServices:o.querySelector('#prospectSuggestedServices').value.trim(),campaignIdeas:o.querySelector('#prospectCampaignIdeas').value.trim(),status:'Aprobado para contacto',doNotContact:false})});o.remove();await load();}catch(e){$('prospectReviewMessage').textContent=e.message;}};
   }
 
+  $('importProspectsBtn')?.addEventListener('click',openImport);
   $('newProspectBtn')?.addEventListener('click',openNew);
   $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
   $('approveSelectedProspects')?.addEventListener('click',approveSelected);
