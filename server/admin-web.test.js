@@ -205,3 +205,14 @@ test('GOY SALES AI muestra el consumo real del descubrimiento', () => {
   assert.match(prospects, /usage\.monthlyLimit\?\?4800/);
   new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI diversifica Google Places y elimina duplicados', () => {
+  const management = read('server/admin-management.js');
+  assert.match(management, /defaultCategories=\['tecnología','accesorios','ropa','juguetes y coleccionables','emprendimientos','tiendas online','repuestos','servicios profesionales'\]/);
+  assert.match(management, /for\(const query of queries\)/);
+  assert.match(management, /seen=new Set\(\)/);
+  assert.match(management, /seen\.has\(identity\)/);
+  assert.match(management, /place\.id\|\|place\.websiteUri/);
+  assert.match(management, /requestsUsed<requestBudget/);
+});
