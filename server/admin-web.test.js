@@ -182,3 +182,15 @@ test('GOY SALES AI protege el presupuesto de descubrimiento', () => {
   assert.match(management, /America\/Guayaquil/);
   assert.match(prospects, /max="177"/);
 });
+
+
+test('GOY SALES AI usa Google Places sin exceder la cuota restante', () => {
+  const management = read('server/admin-management.js');
+  assert.match(management, /places\.googleapis\.com\/v1\/places:searchText/);
+  assert.match(management, /GOOGLE_MAPS_API_KEY/);
+  assert.match(management, /X-Goog-FieldMask/);
+  assert.match(management, /requestBudget=Math\.min\(177-daily,4800-monthly\)/);
+  assert.match(management, /requestsUsed<requestBudget/);
+  assert.match(management, /requestsUsed:used/);
+  assert.match(management, /source:'Google Places'/);
+});
