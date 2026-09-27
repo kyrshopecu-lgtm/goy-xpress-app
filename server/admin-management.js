@@ -19,19 +19,30 @@ function publicService(item){return {id:item.id,name:item.name,price:Number(item
 async function discoverProspects(config,criteria){
  const key=String(config.googleMapsApiKey||'').trim();
  if(key){
-  const results=[];let pageToken='',requestsUsed=0;
+  const results=[],seen=new Set();let requestsUsed=0;
   const requestBudget=Math.max(0,Number(criteria.requestBudget||0));
-  while(results.length<criteria.limit&&requestsUsed<requestBudget){
-   const body={textQuery:[criteria.category,criteria.city].filter(Boolean).join(' ')||'negocios Ecuador',pageSize:20,languageCode:'es'};
-   if(pageToken)body.pageToken=pageToken;
-   const response=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.googleMapsUri,places.primaryType,nextPageToken'},body:JSON.stringify(body)});
-   requestsUsed++;
-   if(!response.ok){const e=new Error('Google Places no respondió correctamente.');e.status=502;e.requestsUsed=requestsUsed;throw e;}
-   const payload=await response.json();
-   for(const place of payload.places||[])results.push({business:place.displayName?.text||'',city:criteria.city||'',category:criteria.category||place.primaryType||'',source:'Google Places',sourceUrl:place.websiteUri||place.googleMapsUri||'',channel:place.websiteUri?'Sitio web':'Google Maps',contact:'',fitReason:'Negocio público encontrado por categoría y ciudad.',score:0});
-   pageToken=String(payload.nextPageToken||'');if(!pageToken)break;
+  const defaultCategories=['tecnología','accesorios','ropa','juguetes y coleccionables','emprendimientos','tiendas online','repuestos','servicios profesionales'];
+  const queries=String(criteria.category||'').trim()?[String(criteria.category).trim()]:defaultCategories;
+  for(const query of queries){
+   let pageToken='';
+   while(results.length<criteria.limit&&requestsUsed<requestBudget){
+    const body={textQuery:[query,criteria.city].filter(Boolean).join(' ')||'negocios Ecuador',pageSize:20,languageCode:'es'};
+    if(pageToken)body.pageToken=pageToken;
+    const response=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.googleMapsUri,places.primaryType,nextPageToken'},body:JSON.stringify(body)});
+    requestsUsed++;
+    if(!response.ok){const err=new Error('Google Places no respondió correctamente.');err.status=502;err.requestsUsed=requestsUsed;throw err;}
+    const payload=await response.json();
+    for(const place of payload.places||[]){
+     const identity=String(place.id||place.websiteUri||place.googleMapsUri||place.displayName?.text||'').trim().toLowerCase();
+     if(!identity||seen.has(identity))continue;seen.add(identity);
+     results.push({business:place.displayName?.text||'',city:criteria.city||'',category:query||place.primaryType||'',source:'Google Places',sourceUrl:place.websiteUri||place.googleMapsUri||'',channel:place.websiteUri?'Sitio web':'Google Maps',contact:'',fitReason:'Negocio público encontrado por categoría y ciudad.',score:0});
+     if(results.length>=criteria.limit)break;
+    }
+    pageToken=String(payload.nextPageToken||'');if(!pageToken)break;
+   }
+   if(results.length>=criteria.limit||requestsUsed>=requestBudget)break;
   }
-  return {prospects:results.slice(0,criteria.limit).filter(x=>x.business.length>=2),requestsUsed};
+  return {prospects:results.filter(x=>x.business.length>=2),requestsUsed};
  }
  const endpoint=String(config.prospectDiscoveryUrl||'').trim(),token=String(config.prospectDiscoveryToken||'').trim();
  if(!endpoint){const e=new Error('Proveedor de descubrimiento de prospectos no configurado.');e.status=503;throw e;}
