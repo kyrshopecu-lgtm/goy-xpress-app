@@ -9,7 +9,7 @@ function bearer(req){const a=String(req.headers?.authorization||'');return a.sta
 function pathnameOf(req){const u=new URL(req.url,`http://${req.headers?.host||'localhost'}`);let p=u.pathname.replace(/\/$/,'')||'/';if(p==='/api')p='/';else if(p.startsWith('/api/'))p=p.slice(4);return p;}
 function json(res,status,body,origin='*'){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization, X-Request-Secret');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');res.end(JSON.stringify(body));}
 async function readBody(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>1000000)throw new Error('Payload demasiado grande');}return raw?JSON.parse(raw):{};}
-function cleanData(value){const data=value&&typeof value==='object'?value:{};for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','prospects'])if(!Array.isArray(data[key]))data[key]=[];return data;}
+function cleanData(value){const data=value&&typeof value==='object'?value:{};for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','prospects'])if(!Array.isArray(data[key]))data[key]=[];if(!data.prospectDiscoveryUsage||typeof data.prospectDiscoveryUsage!=='object')data.prospectDiscoveryUsage={};return data;}
 let sqlClient;
 async function readState(config){if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await ensureStateTable(sqlClient,cleanData({}));return readVersionedState(sqlClient,cleanData);}try{if(!fs.existsSync(config.dataFile))return cleanData({});return cleanData(JSON.parse(fs.readFileSync(config.dataFile,'utf8')));}catch{return cleanData({});}}
 async function writeState(config,data){const normalized=cleanData(data);if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await writeVersionedState(sqlClient,data,cleanData);return;}const dir=path.dirname(config.dataFile);if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});const tmp=`${config.dataFile}.tmp`;fs.writeFileSync(tmp,JSON.stringify(normalized,null,2));fs.renameSync(tmp,config.dataFile);}
@@ -51,8 +51,14 @@ function wrap(next,overrides={}){
    }
    if(prospectDiscover&&req.method==='POST'){
     const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(60,Number(body.limit||50)));
-    const found=await discoverProspects(config,{city,category,limit,publicOnly:true,dailyRequestBudget:177,monthlyRequestBudget:4800});
-    return json(res,200,{prospects:found,count:found.length,criteria:{city,category,limit}},config.allowedOrigin);
+    const now=new Date(),ecuador=new Date(now.toLocaleString('en-US',{timeZone:'America/Guayaquil'})),day=ecuador.getDay();
+    if(day===0)return json(res,429,{error:'El buscador está pausado los domingos para proteger el cupo mensual.'},config.allowedOrigin);
+    const dayKey=`${ecuador.getFullYear()}-${String(ecuador.getMonth()+1).padStart(2,'0')}-${String(ecuador.getDate()).padStart(2,'0')}`,monthKey=dayKey.slice(0,7),usage=data.prospectDiscoveryUsage||{},daily=Number(usage[dayKey]||0),monthly=Object.entries(usage).filter(([k])=>k.startsWith(monthKey+'-')).reduce((sum,[,v])=>sum+Number(v||0),0);
+    if(daily>=177)return json(res,429,{error:'Se alcanzó el límite diario de 177 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
+    if(monthly>=4800)return json(res,429,{error:'Se alcanzó el límite mensual de 4.800 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
+    const found=await discoverProspects(config,{city,category,limit,publicOnly:true});
+    data.prospectDiscoveryUsage[dayKey]=daily+1;await writeState(config,data);
+    return json(res,200,{prospects:found,count:found.length,criteria:{city,category,limit},usage:{daily:daily+1,monthly:monthly+1,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
    }
    if(prospectImport&&req.method==='POST'){
     const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[];
