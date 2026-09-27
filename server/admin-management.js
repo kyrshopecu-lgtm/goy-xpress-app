@@ -23,8 +23,9 @@ function wrap(next,overrides={}){
   const accountMatch=p.match(/^\/admin\/(clients|couriers)\/([^/]+)$/);
   const serviceMatch=p.match(/^\/admin\/services\/([^/]+)$/);
   const prospectMatch=p.match(/^\/admin\/prospects\/([^/]+)$/);
+  const prospectImport=p==='/admin/prospects/import';
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -38,6 +39,15 @@ function wrap(next,overrides={}){
     data.users=data.users.filter(u=>u.id!==id);
     if(role==='client')data.clients=data.clients.filter(x=>x.userId!==id&&x.id!==id);else data.couriers=data.couriers.filter(x=>x.userId!==id&&x.id!==id);
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
+   }
+   if(prospectImport&&req.method==='POST'){
+    const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[];
+    if(!incoming.length)return json(res,400,{error:'Incluye al menos un prospecto para importar.'},config.allowedOrigin);
+    if(incoming.length>500)return json(res,400,{error:'Máximo 500 prospectos por importación.'},config.allowedOrigin);
+    const keyOf=x=>{const url=String(x.sourceUrl||'').trim().toLowerCase().replace(/\/$/,'');const contact=String(x.contact||'').trim().toLowerCase().replace(/[\s()+-]/g,'');const business=String(x.business||x.name||'').trim().toLowerCase(),city=String(x.city||'').trim().toLowerCase();return url?'url:'+url:contact?'contact:'+contact:'business:'+business+'|'+city;};
+    const known=new Set(data.prospects.map(keyOf)),added=[],duplicates=[],invalid=[];const now=new Date().toISOString();
+    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
+    if(added.length)await writeState(config,data);return json(res,200,{imported:added.length,duplicates:duplicates.length,invalid:invalid.length,prospects:added,duplicateItems:duplicates,invalidItems:invalid},config.allowedOrigin);
    }
    if(p==='/admin/prospects'&&req.method==='GET')return json(res,200,{prospects:data.prospects},config.allowedOrigin);
    if(p==='/admin/prospects'&&req.method==='POST'){

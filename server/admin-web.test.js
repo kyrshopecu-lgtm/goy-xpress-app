@@ -133,3 +133,20 @@ test('GOY SALES AI conecta análisis automático protegido y revisable', () => {
   assert.match(management, /item\.analysisUpdatedAt/);
   new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI permite importar lotes deduplicados sin autorizar contacto', () => {
+  const html = read('public-web/admin/index.html');
+  const prospects = read('public-web/admin/prospects.js');
+  const management = read('server/admin-management.js');
+  assert.match(html, /importProspectsBtn/);
+  assert.match(prospects, /Importar prospectos/);
+  assert.match(prospects, /\/admin\/prospects\/import/);
+  assert.match(prospects, /Analizar automáticamente los prospectos importados/);
+  assert.match(prospects, /Analizar no aprueba ni envía contactos/);
+  assert.match(management, /Máximo 500 prospectos por importación/);
+  assert.match(management, /duplicates/);
+  assert.match(management, /invalidItems/);
+  assert.match(management, /status:'Pendiente de revisión'/);
+  new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
+});
