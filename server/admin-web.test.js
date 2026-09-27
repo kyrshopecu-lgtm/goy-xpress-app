@@ -194,3 +194,14 @@ test('GOY SALES AI usa Google Places sin exceder la cuota restante', () => {
   assert.match(management, /requestsUsed:used/);
   assert.match(management, /source:'Google Places'/);
 });
+
+
+test('GOY SALES AI muestra el consumo real del descubrimiento', () => {
+  const prospects = read('public-web/admin/prospects.js');
+  assert.match(prospects, /Hoy: \$\{usage\.daily/);
+  assert.match(prospects, /Mes: \$\{usage\.monthly/);
+  assert.match(prospects, /Esta búsqueda: \$\{usage\.requestsUsed/);
+  assert.match(prospects, /usage\.dailyLimit\?\?177/);
+  assert.match(prospects, /usage\.monthlyLimit\?\?4800/);
+  new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
+});
