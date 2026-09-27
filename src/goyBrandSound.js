@@ -1,7 +1,7 @@
 import {Vibration} from 'react-native';
 import {Audio} from 'expo-av';
 
-const SOUND=require('../assets/goy-xpress-event.mp3');
+const SOUND=require('../assets/goy_xpress_event.mp3');
 const DEFAULT_PATTERN=[0,180,90,180,90,260];
 
 export async function playGoyEventSound({vibrate=true,pattern=DEFAULT_PATTERN}={}){

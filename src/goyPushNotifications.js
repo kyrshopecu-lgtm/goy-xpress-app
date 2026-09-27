@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import {API_BASE} from './goyApiV5';
 
 const CHANNEL_ID='goy-orders';
-const SOUND_FILE='goy-xpress-event.mp3';
+const SOUND_FILE='goy_xpress_event.mp3';
 const VIBRATION_PATTERN=[0,180,90,180,90,260];
 
 Notifications.setNotificationHandler({
