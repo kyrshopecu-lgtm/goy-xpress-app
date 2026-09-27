@@ -150,3 +150,22 @@ test('GOY SALES AI permite importar lotes deduplicados sin autorizar contacto', 
   assert.match(management, /status:'Pendiente de revisión'/);
   new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI descubre candidatos públicos antes de importarlos', () => {
+  const html = read('public-web/admin/index.html');
+  const prospects = read('public-web/admin/prospects.js');
+  const management = read('server/admin-management.js');
+  const worker = read('cloudflare-worker-v2.js');
+  assert.match(html, /discoverProspectsBtn/);
+  assert.match(prospects, /Buscar prospectos públicos/);
+  assert.match(prospects, /\/admin\/prospects\/discover/);
+  assert.match(prospects, /Importar seleccionados/);
+  assert.match(prospects, /Todos quedaron pendientes de revisión/);
+  assert.match(management, /Proveedor de descubrimiento de prospectos no configurado/);
+  assert.match(management, /Math\.min\(300/);
+  assert.match(management, /publicOnly:true/);
+  assert.match(worker, /PROSPECT_DISCOVERY_URL/);
+  assert.match(worker, /PROSPECT_DISCOVERY_TOKEN/);
+  new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
+});
