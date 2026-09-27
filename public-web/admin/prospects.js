@@ -23,8 +23,8 @@
   }
   function render(){
     const body=$('prospectsBody');if(!body)return;
-    const filter=$('prospectFilter')?.value||'all';
-    const rows=prospects.filter(p=>filter==='all'||p.status===filter);
+    const filter=$('prospectFilter')?.value||'all',priority=$('prospectPriorityFilter')?.value||'all',city=String($('prospectCityFilter')?.value||'').trim().toLowerCase(),category=String($('prospectCategoryFilter')?.value||'').trim().toLowerCase();
+    const rows=prospects.filter(p=>(filter==='all'||p.status===filter)&&(priority!=='high'||Number(p.score||0)>=70)&&(priority!=='website'||/^https?:\/\//i.test(String(p.sourceUrl||'')))&&(!city||String(p.city||'').toLowerCase().includes(city))&&(!category||String(p.category||'').toLowerCase().includes(category))).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     body.innerHTML=rows.length?rows.map(p=>`<tr>
       <td><input type="checkbox" class="prospect-check" value="${esc(p.id)}" aria-label="Seleccionar ${esc(p.business)}"></td>
       <td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td>
@@ -105,6 +105,9 @@
   $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
   $('approveSelectedProspects')?.addEventListener('click',approveSelected);
   $('prospectFilter')?.addEventListener('change',render);
+  $('prospectPriorityFilter')?.addEventListener('change',render);
+  $('prospectCityFilter')?.addEventListener('input',render);
+  $('prospectCategoryFilter')?.addEventListener('input',render);
   document.querySelector('[data-view="prospects"]')?.addEventListener('click',()=>setTimeout(load,0));
   window.addEventListener('goy-admin-authenticated',load);
   setTimeout(load,800);

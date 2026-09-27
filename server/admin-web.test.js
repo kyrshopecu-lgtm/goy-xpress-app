@@ -226,3 +226,15 @@ test('GOY SALES AI calcula afinidad preliminar sin inventar necesidades', () => 
   assert.match(management, /preliminaryFitScore\(\{category:query/);
   assert.doesNotMatch(management, /preliminaryFitScore[\s\S]{0,500}needs/i);
 });
+
+
+test('GOY SALES AI ordena y filtra prospectos por prioridad', () => {
+  const html=read('public-web/admin/index.html'),js=read('public-web/admin/prospects.js');
+  assert.match(html, /id="prospectPriorityFilter"/);
+  assert.match(html, /Alta prioridad \(70\+\)/);
+  assert.match(html, /id="prospectCityFilter"/);
+  assert.match(html, /id="prospectCategoryFilter"/);
+  assert.match(js, /Number\(p\.score\|\|0\)>=70/);
+  assert.match(js, /sort\(\(a,b\)=>Number\(b\.score\|\|0\)-Number\(a\.score\|\|0\)\)/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+});
