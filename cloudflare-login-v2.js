@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import {ensureStateTable, readVersionedState, writeVersionedState} from './cloudflare-versioned-state.js';
 import { derivePasswordHashHex, secureHexEqual } from './cloudflare-password.mjs';
 
 const JSON_HEADERS = {
@@ -54,21 +55,23 @@ async function hmacSha256Hex(secret,message){
   return bytesToHex(new Uint8Array(signature));
 }
 
-async function readState(env){
-  if(!env.DATABASE_URL) throw new Error('DATABASE_URL no configurado');
-  const sql=neon(String(env.DATABASE_URL));
-  const rows=await sql`SELECT data FROM goy_state WHERE id=1 LIMIT 1`;
-  const state=rows[0]?.data||{};
-  for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives']){
-    if(!Array.isArray(state[key])) state[key]=[];
+function normalizeState(state){
+  const normalized=state&&typeof state==='object'?state:{};
+  for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices']){
+    if(!Array.isArray(normalized[key]))normalized[key]=[];
   }
-  return state;
+  return normalized;
 }
-
-async function writeState(env,state){
-  if(!env.DATABASE_URL) throw new Error('DATABASE_URL no configurado');
+async function readState(env){
+  if(!env.DATABASE_URL)throw new Error('DATABASE_URL no configurado');
   const sql=neon(String(env.DATABASE_URL));
-  await sql`UPDATE goy_state SET data=${JSON.stringify(state)}::jsonb, updated_at=NOW() WHERE id=1`;
+  await ensureStateTable(sql,normalizeState({}));
+  return readVersionedState(sql,normalizeState);
+}
+async function writeState(env,state){
+  if(!env.DATABASE_URL)throw new Error('DATABASE_URL no configurado');
+  const sql=neon(String(env.DATABASE_URL));
+  await writeVersionedState(sql,state,normalizeState);
 }
 
 function publicUser(user){
