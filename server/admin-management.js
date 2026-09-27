@@ -16,6 +16,14 @@ async function writeState(config,data){const normalized=cleanData(data);if(confi
 function activeStatus(value){return !['Entrega finalizada','Cancelado','Entregado','Finalizado'].includes(String(value||''));}
 function cleanMoney(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;}
 function publicService(item){return {id:item.id,name:item.name,price:Number(item.price||0),description:item.description||'',active:item.active!==false,createdAt:item.createdAt,updatedAt:item.updatedAt};}
+function preliminaryFitScore({category='',city='',website=false}={}){
+ const text=String(category).toLowerCase();let score=35;
+ if(/tecnolog|accesor|ropa|juguete|coleccion|tienda|emprend|repuesto/.test(text))score+=25;
+ if(String(city).trim())score+=10;
+ if(website)score+=10;
+ return Math.max(0,Math.min(100,score));
+}
+
 async function discoverProspects(config,criteria){
  const key=String(config.googleMapsApiKey||'').trim();
  if(key){
@@ -35,7 +43,7 @@ async function discoverProspects(config,criteria){
     for(const place of payload.places||[]){
      const identity=String(place.id||place.websiteUri||place.googleMapsUri||place.displayName?.text||'').trim().toLowerCase();
      if(!identity||seen.has(identity))continue;seen.add(identity);
-     results.push({business:place.displayName?.text||'',city:criteria.city||'',category:query||place.primaryType||'',source:'Google Places',sourceUrl:place.websiteUri||place.googleMapsUri||'',channel:place.websiteUri?'Sitio web':'Google Maps',contact:'',fitReason:'Negocio público encontrado por categoría y ciudad.',score:0});
+     results.push({business:place.displayName?.text||'',city:criteria.city||'',category:query||place.primaryType||'',source:'Google Places',sourceUrl:place.websiteUri||place.googleMapsUri||'',channel:place.websiteUri?'Sitio web':'Google Maps',contact:'',fitReason:'Negocio público encontrado por categoría y ciudad.',score:preliminaryFitScore({category:query||place.primaryType||'',city:criteria.city||'',website:Boolean(place.websiteUri)})});
      if(results.length>=criteria.limit)break;
     }
     pageToken=String(payload.nextPageToken||'');if(!pageToken)break;
