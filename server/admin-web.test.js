@@ -83,3 +83,21 @@ test('panel publicado permite servicio personalizado vinculado al cliente sin ac
   assert.match(modern, /\/admin-create-request/);
   new vm.Script(modern, {filename:'public-web/admin/modern-admin.js'});
 });
+
+
+test('panel publicado incluye GOY SALES AI con revisión humana y selección múltiple', () => {
+  const html = read('public-web/admin/index.html');
+  const prospects = read('public-web/admin/prospects.js');
+  const management = read('server/admin-management.js');
+  assert.match(html, /data-view="prospects"/);
+  assert.match(html, /GOY SALES AI/);
+  assert.match(html, /approveSelectedProspects/);
+  assert.match(html, /prospects\.js/);
+  assert.match(prospects, /Aprobar para contacto/);
+  assert.match(prospects, /Ningún mensaje fue enviado/);
+  assert.match(prospects, /doNotContact/);
+  assert.match(management, /Pendiente de revisión/);
+  assert.match(management, /Aprobado para contacto/);
+  assert.match(management, /no contactar/);
+  new vm.Script(prospects, {filename:'public-web/admin/prospects.js'});
+});
