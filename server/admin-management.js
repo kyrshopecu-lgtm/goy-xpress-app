@@ -16,6 +16,14 @@ async function writeState(config,data){const normalized=cleanData(data);if(confi
 function activeStatus(value){return !['Entrega finalizada','Cancelado','Entregado','Finalizado'].includes(String(value||''));}
 function cleanMoney(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;}
 function publicService(item){return {id:item.id,name:item.name,price:Number(item.price||0),description:item.description||'',active:item.active!==false,createdAt:item.createdAt,updatedAt:item.updatedAt};}
+async function discoverProspects(config,criteria){
+ const endpoint=String(config.prospectDiscoveryUrl||'').trim(),token=String(config.prospectDiscoveryToken||'').trim();
+ if(!endpoint){const e=new Error('Proveedor de descubrimiento de prospectos no configurado.');e.status=503;throw e;}
+ const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},body:JSON.stringify(criteria)});
+ if(!response.ok){const e=new Error('El proveedor de prospectos no respondió correctamente.');e.status=502;throw e;}
+ const body=await response.json(),items=Array.isArray(body)?body:Array.isArray(body.prospects)?body.prospects:[];
+ return items.slice(0,criteria.limit).map(x=>({business:String(x.business||x.name||'').trim(),city:String(x.city||criteria.city||'').trim(),category:String(x.category||criteria.category||'').trim(),source:String(x.source||'web pública').trim(),sourceUrl:String(x.sourceUrl||x.url||'').trim(),channel:String(x.channel||'').trim(),contact:String(x.contact||'').trim(),fitReason:String(x.fitReason||'').trim(),score:Math.max(0,Math.min(100,Number(x.score||0)))})).filter(x=>x.business.length>=2);
+}
 
 function wrap(next,overrides={}){
  return async function handler(req,res){
@@ -24,10 +32,11 @@ function wrap(next,overrides={}){
   const serviceMatch=p.match(/^\/admin\/services\/([^/]+)$/);
   const prospectMatch=p.match(/^\/admin\/prospects\/([^/]+)$/);
   const prospectImport=p==='/admin/prospects/import';
+  const prospectDiscover=p==='/admin/prospects/discover';
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
-  const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
+  const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
    const payload=verifyToken(bearer(req),config.tokenSecret);if(!payload||payload.role!=='admin')return json(res,401,{error:'No autorizado'},config.allowedOrigin);
    const data=await readState(config);
@@ -39,6 +48,11 @@ function wrap(next,overrides={}){
     data.users=data.users.filter(u=>u.id!==id);
     if(role==='client')data.clients=data.clients.filter(x=>x.userId!==id&&x.id!==id);else data.couriers=data.couriers.filter(x=>x.userId!==id&&x.id!==id);
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
+   }
+   if(prospectDiscover&&req.method==='POST'){
+    const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(300,Number(body.limit||50)));
+    const found=await discoverProspects(config,{city,category,limit,publicOnly:true});
+    return json(res,200,{prospects:found,count:found.length,criteria:{city,category,limit}},config.allowedOrigin);
    }
    if(prospectImport&&req.method==='POST'){
     const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[];
