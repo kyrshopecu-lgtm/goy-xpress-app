@@ -163,7 +163,7 @@ test('GOY SALES AI descubre candidatos públicos antes de importarlos', () => {
   assert.match(prospects, /Importar seleccionados/);
   assert.match(prospects, /Todos quedaron pendientes de revisión/);
   assert.match(management, /Proveedor de descubrimiento de prospectos no configurado/);
-  assert.match(management, /Math\.min\(300/);
+  assert.match(management, /Math\.min\(177/);
   assert.match(management, /publicOnly:true/);
   assert.match(worker, /PROSPECT_DISCOVERY_URL/);
   assert.match(worker, /PROSPECT_DISCOVERY_TOKEN/);
@@ -174,7 +174,7 @@ test('GOY SALES AI descubre candidatos públicos antes de importarlos', () => {
 test('GOY SALES AI protege el presupuesto de descubrimiento', () => {
   const management = read('server/admin-management.js');
   const prospects = read('public-web/admin/prospects.js');
-  assert.match(management, /Math\.min\(60/);
+  assert.match(management, /Math\.min\(177/);
   assert.match(management, /daily>=177/);
   assert.match(management, /monthly>=4800/);
   assert.match(management, /pausado los domingos/);
