@@ -238,3 +238,15 @@ test('GOY SALES AI ordena y filtra prospectos por prioridad', () => {
   assert.match(js, /sort\(\(a,b\)=>Number\(b\.score\|\|0\)-Number\(a\.score\|\|0\)\)/);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI analiza seleccionados en lote sin aprobarlos', () => {
+  const html=read('public-web/admin/index.html'),js=read('public-web/admin/prospects.js');
+  assert.match(html, /id="selectTopProspects"/);
+  assert.match(html, /Seleccionar top 20/);
+  assert.match(html, /id="analyzeSelectedProspects"/);
+  assert.match(js, /slice\(0,20\)/);
+  assert.match(js, /\/analyze\x60,\{method:'POST'/);
+  assert.match(js, /Ningún prospecto fue aprobado ni contactado/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+});

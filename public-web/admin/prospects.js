@@ -99,10 +99,31 @@
     approve.onclick=async()=>{const message=o.querySelector('#prospectApprovedMessage').value.trim();if(!message){$('prospectReviewMessage').textContent='Escribe o revisa el mensaje antes de aprobar.';return;}try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:message,observedNeeds:o.querySelector('#prospectObservedNeeds').value.trim(),growthOpportunities:o.querySelector('#prospectGrowthOpportunities').value.trim(),suggestedServices:o.querySelector('#prospectSuggestedServices').value.trim(),campaignIdeas:o.querySelector('#prospectCampaignIdeas').value.trim(),status:'Aprobado para contacto',doNotContact:false})});o.remove();await load();}catch(e){$('prospectReviewMessage').textContent=e.message;}};
   }
 
+  function selectedIds(){return [...document.querySelectorAll('.prospect-check:checked')].map(x=>x.value);}
+  function selectTop20(){
+    document.querySelectorAll('.prospect-check').forEach(x=>x.checked=false);
+    [...document.querySelectorAll('.prospect-check')].slice(0,20).forEach(x=>x.checked=true);
+    updateSelection();
+  }
+  async function analyzeSelected(){
+    const ids=selectedIds();if(!ids.length){$('prospectMessage').textContent='Selecciona al menos un prospecto para analizar.';return;}
+    const button=$('analyzeSelectedProspects');if(button)button.disabled=true;
+    let ok=0,failed=0;
+    for(let i=0;i<ids.length;i++){
+      $('prospectMessage').textContent=`Analizando ${i+1}/${ids.length}… ${ok} completados, ${failed} con error.`;
+      try{await api(`/admin/prospects/${encodeURIComponent(ids[i])}/analyze`,{method:'POST',body:'{}'});ok++;}catch(_){failed++;}
+    }
+    if(button)button.disabled=false;
+    $('prospectMessage').textContent=`Análisis finalizado: ${ok} completados · ${failed} con error. Ningún prospecto fue aprobado ni contactado.`;
+    await load();
+  }
+
   $('discoverProspectsBtn')?.addEventListener('click',openDiscover);
   $('importProspectsBtn')?.addEventListener('click',openImport);
   $('newProspectBtn')?.addEventListener('click',openNew);
   $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
+  $('selectTopProspects')?.addEventListener('click',selectTop20);
+  $('analyzeSelectedProspects')?.addEventListener('click',analyzeSelected);
   $('approveSelectedProspects')?.addEventListener('click',approveSelected);
   $('prospectFilter')?.addEventListener('change',render);
   $('prospectPriorityFilter')?.addEventListener('change',render);
