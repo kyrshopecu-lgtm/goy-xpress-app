@@ -180,5 +180,5 @@ test('GOY SALES AI protege el presupuesto de descubrimiento', () => {
   assert.match(management, /pausado los domingos/);
   assert.match(management, /prospectDiscoveryUsage/);
   assert.match(management, /America\/Guayaquil/);
-  assert.match(prospects, /max="60"/);
+  assert.match(prospects, /max="177"/);
 });
