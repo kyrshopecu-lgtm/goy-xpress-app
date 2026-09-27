@@ -66,6 +66,15 @@
         </div>
         <div class="map-hint">El depósito en efectivo tiene un límite operativo de $1.000.</div>`;
     }
+    if (value === 'custom') {
+      return `
+        <div class="form-grid two">
+          <label>Nombre del servicio<input name="customServiceLabel" required maxlength="80" placeholder="Ej. Apostilla de documentos"></label>
+          <label>Tarifa acordada<input name="customServiceCost" type="number" min="0" step="0.01" required placeholder="0.00"></label>
+        </div>
+        <label>Detalle para el cliente<textarea name="customServiceDetail" rows="4" required maxlength="800" placeholder="Describe el servicio que aparecerá en la app del cliente"></textarea></label>
+        <div class="map-hint">Este servicio se vinculará al cliente seleccionado y aparecerá en su app sin actualizar el APK.</div>`;
+    }
     return `
       <label>Servicio solicitado<textarea name="diverseDetail" rows="4" required placeholder="Describe el servicio que deseas cotizar para este cliente"></textarea></label>
       <div class="map-hint warning">Se creará como “Pendiente de cotización”. El mensajero se asigna después de que el cliente acepte.</div>`;
@@ -126,6 +135,16 @@
         serviceLabel:'Depósito en efectivo',
       };
     }
+    if (service === 'custom') {
+      return {
+        ...common,
+        customService:true,
+        kind:'diverse',
+        diverseDetail:String(fd.get('customServiceDetail') || ''),
+        serviceLabel:String(fd.get('customServiceLabel') || '').trim(),
+        serviceCost:Number(fd.get('customServiceCost') || 0),
+      };
+    }
     return {
       ...common,
       courierId:'',
@@ -182,7 +201,7 @@
         <form id="adminOrderForm" class="admin-order-form">
           <div class="form-grid two">
             <label>Cliente<select name="clientId" required><option value="">Selecciona un cliente</option>${clients.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.businessName || c.name || c.email || 'Cliente')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
-            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="diverse">Servicio diverso / cotización</option></select></label>
+            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
           </div>
           <div id="adminServiceFields">${serviceFields('shipment-scheduled')}</div>
           <div class="form-grid two">
@@ -202,9 +221,9 @@
       overlay.querySelector('.modal-cancel').onclick = closeModal;
       serviceSelect.addEventListener('change', () => {
         $('adminServiceFields').innerHTML = serviceFields(serviceSelect.value);
-        const diverse = serviceSelect.value === 'diverse';
-        courierSelect.disabled = diverse;
-        if (diverse) courierSelect.value = '';
+        const quoteOnly = serviceSelect.value === 'diverse';
+        courierSelect.disabled = quoteOnly;
+        if (quoteOnly) courierSelect.value = '';
       });
 
       form.addEventListener('submit', async event => {
