@@ -68,6 +68,6 @@ test('panel publicado conserva creación segura de clientes', () => {
   assert.match(secureCreate, /passwordHash/);
   assert.match(secureCreate, /passwordSalt/);
   assert.match(secureCreate, /passwordIterations/);
-  assert.match(secureCreate, /\\/admin\\/clients/);
+  assert.match(secureCreate, /\/admin\/clients/);
   new vm.Script(secureCreate, {filename:'public-web/admin/client-create-fix.js'});
 });
