@@ -29,8 +29,20 @@
       <td><button class="ghost prospect-review" data-id="${esc(p.id)}">Revisar contacto</button></td>
     </tr>`).join(''):'<tr><td colspan="7">No hay prospectos en este estado.</td></tr>';
     document.querySelectorAll('.prospect-review').forEach(b=>b.onclick=()=>openReview(b.dataset.id));
+    document.querySelectorAll('.prospect-check').forEach(box=>box.onchange=updateSelection);updateSelection();
   }
 
+  function selectedIds(){return [...document.querySelectorAll('.prospect-check:checked')].map(x=>x.value);}
+  function updateSelection(){const count=selectedIds().length;if($('prospectSelectionCount'))$('prospectSelectionCount').textContent=`${count} seleccionado${count===1?'':'s'}`;}
+  async function approveSelected(){
+    const ids=selectedIds();if(!ids.length)return;
+    const selected=prospects.filter(p=>ids.includes(p.id));
+    const blocked=selected.filter(p=>p.doNotContact||!String(p.draftMessage||p.approvedMessage||'').trim());
+    if(blocked.length){$('prospectMessage').textContent=`${blocked.length} prospecto(s) requieren revisión individual porque no tienen mensaje o están marcados como no contactar.`;return;}
+    if(!confirm(`Aprobar ${selected.length} prospecto(s) para contacto? Esto no enviará mensajes todavía.`))return;
+    let ok=0;for(const p of selected){try{await api(`/admin/prospects/${encodeURIComponent(p.id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:p.approvedMessage||p.draftMessage,status:'Aprobado para contacto'})});ok++;}catch{}}
+    $('prospectMessage').textContent=`${ok} prospecto(s) aprobados para contacto. Ningún mensaje fue enviado.`;await load();
+  }
   async function load(){
     if(!token()||!$('prospectsBody'))return;
     try{const data=await api('/admin/prospects');prospects=data.prospects||[];render();}
@@ -68,6 +80,8 @@
   }
 
   $('newProspectBtn')?.addEventListener('click',openNew);
+  $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
+  $('approveSelectedProspects')?.addEventListener('click',approveSelected);
   $('prospectFilter')?.addEventListener('change',render);
   document.querySelector('[data-view="prospects"]')?.addEventListener('click',()=>setTimeout(load,0));
   window.addEventListener('goy-admin-authenticated',load);
