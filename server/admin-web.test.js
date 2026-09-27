@@ -60,8 +60,8 @@ test('panel publicado conserva creación segura de clientes', () => {
   const clientAccounts = read('public-web/admin/client-accounts.js');
 
   for (const config of [sourceConfig, publicConfig]) {
-    assert.match(config, /client-accounts\\.js/);
-    assert.match(config, /client-create-fix\\.js/);
+    assert.match(config, /client-accounts\.js/);
+    assert.match(config, /client-create-fix\.js/);
   }
   assert.match(clientAccounts, /id=['"]createClientForm['"]/);
   assert.match(secureCreate, /PBKDF2/);
