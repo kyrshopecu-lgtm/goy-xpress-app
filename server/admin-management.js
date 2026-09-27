@@ -50,7 +50,7 @@ function wrap(next,overrides={}){
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
    }
    if(prospectDiscover&&req.method==='POST'){
-    const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(60,Number(body.limit||50)));
+    const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(177,Number(body.limit||50)));
     const now=new Date(),ecuador=new Date(now.toLocaleString('en-US',{timeZone:'America/Guayaquil'})),day=ecuador.getDay();
     if(day===0)return json(res,429,{error:'El buscador está pausado los domingos para proteger el cupo mensual.'},config.allowedOrigin);
     const dayKey=`${ecuador.getFullYear()}-${String(ecuador.getMonth()+1).padStart(2,'0')}-${String(ecuador.getDate()).padStart(2,'0')}`,monthKey=dayKey.slice(0,7),usage=data.prospectDiscoveryUsage||{},daily=Number(usage[dayKey]||0),monthly=Object.entries(usage).filter(([k])=>k.startsWith(monthKey+'-')).reduce((sum,[,v])=>sum+Number(v||0),0);
