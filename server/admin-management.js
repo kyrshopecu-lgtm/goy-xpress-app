@@ -50,8 +50,8 @@ function wrap(next,overrides={}){
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
    }
    if(prospectDiscover&&req.method==='POST'){
-    const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(300,Number(body.limit||50)));
-    const found=await discoverProspects(config,{city,category,limit,publicOnly:true});
+    const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(60,Number(body.limit||50)));
+    const found=await discoverProspects(config,{city,category,limit,publicOnly:true,dailyRequestBudget:177,monthlyRequestBudget:4800});
     return json(res,200,{prospects:found,count:found.length,criteria:{city,category,limit}},config.allowedOrigin);
    }
    if(prospectImport&&req.method==='POST'){
