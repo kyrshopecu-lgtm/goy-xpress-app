@@ -21,6 +21,13 @@
     if(p.campaignIdeas)parts.push('Campaña: '+String(p.campaignIdeas).slice(0,120));
     return parts.length?'<br><small>'+parts.map(esc).join('<br>')+'</small>':'';
   }
+  function renderReady(){
+    const box=$('readyContactList'),count=$('readyContactCount');if(!box)return;
+    const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    if(count)count.textContent=String(ready.length);
+    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Mensaje final</th><th>Prioridad</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.approvedMessage)}</td><td>${esc(p.score||0)}/100</td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+  }
+
   function render(){
     const body=$('prospectsBody');if(!body)return;
     const filter=$('prospectFilter')?.value||'all',priority=$('prospectPriorityFilter')?.value||'all',city=String($('prospectCityFilter')?.value||'').trim().toLowerCase(),category=String($('prospectCategoryFilter')?.value||'').trim().toLowerCase();
@@ -104,6 +111,7 @@
     document.querySelectorAll('.prospect-check').forEach(x=>x.checked=false);
     [...document.querySelectorAll('.prospect-check')].slice(0,20).forEach(x=>x.checked=true);
     updateSelection();
+    renderReady();
   }
   async function analyzeSelected(){
     const ids=selectedIds();if(!ids.length){$('prospectMessage').textContent='Selecciona al menos un prospecto para analizar.';return;}
