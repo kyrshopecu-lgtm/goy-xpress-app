@@ -149,7 +149,7 @@ async function sendExpoPush(user, {title, body, type, code}) {
     body,
     data:{type, code},
     priority:'high',
-    sound:'goy-xpress-event.mp3',
+    sound:'goy_xpress_event.mp3',
     channelId:'goy-orders',
   }));
   try {
