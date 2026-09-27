@@ -15,6 +15,12 @@
   }
 
   function sourceLabel(p){return [p.source,p.city,p.category].filter(Boolean).join(' · ')||'Sin clasificar';}
+  function growthSummary(p){
+    const parts=[];
+    if(p.growthOpportunities)parts.push('Oportunidad: '+String(p.growthOpportunities).slice(0,120));
+    if(p.campaignIdeas)parts.push('Campaña: '+String(p.campaignIdeas).slice(0,120));
+    return parts.length?'<br><small>'+parts.map(esc).join('<br>')+'</small>':'';
+  }
   function render(){
     const body=$('prospectsBody');if(!body)return;
     const filter=$('prospectFilter')?.value||'all';
@@ -24,7 +30,7 @@
       <td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td>
       <td>${esc(sourceLabel(p))}${p.sourceUrl?`<br><small>Fuente registrada</small>`:''}</td>
       <td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'')}</small></td>
-      <td><strong>${Number(p.score||0)}/100</strong><br><small>${esc(p.fitReason||'Pendiente de análisis')}</small></td>
+      <td><strong>${Number(p.score||0)}/100</strong><br><small>${esc(p.fitReason||'Pendiente de análisis')}</small>${growthSummary(p)}</td>
       <td><span class="status-pill">${esc(p.status||'Pendiente de revisión')}</span>${p.doNotContact?'<br><small>⛔ No contactar</small>':''}</td>
       <td><button class="ghost prospect-review" data-id="${esc(p.id)}">Revisar contacto</button></td>
     </tr>`).join(''):'<tr><td colspan="7">No hay prospectos en este estado.</td></tr>';
