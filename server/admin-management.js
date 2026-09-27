@@ -17,12 +17,28 @@ function activeStatus(value){return !['Entrega finalizada','Cancelado','Entregad
 function cleanMoney(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;}
 function publicService(item){return {id:item.id,name:item.name,price:Number(item.price||0),description:item.description||'',active:item.active!==false,createdAt:item.createdAt,updatedAt:item.updatedAt};}
 async function discoverProspects(config,criteria){
+ const key=String(config.googleMapsApiKey||'').trim();
+ if(key){
+  const results=[];let pageToken='',requestsUsed=0;
+  while(results.length<criteria.limit&&requestsUsed<9){
+   const body={textQuery:[criteria.category,criteria.city].filter(Boolean).join(' ')||'negocios Ecuador',pageSize:20,languageCode:'es'};
+   if(pageToken)body.pageToken=pageToken;
+   const response=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.googleMapsUri,places.primaryType,nextPageToken'},body:JSON.stringify(body)});
+   requestsUsed++;
+   if(!response.ok){const e=new Error('Google Places no respondió correctamente.');e.status=502;e.requestsUsed=requestsUsed;throw e;}
+   const payload=await response.json();
+   for(const place of payload.places||[])results.push({business:place.displayName?.text||'',city:criteria.city||'',category:criteria.category||place.primaryType||'',source:'Google Places',sourceUrl:place.websiteUri||place.googleMapsUri||'',channel:place.websiteUri?'Sitio web':'Google Maps',contact:'',fitReason:'Negocio público encontrado por categoría y ciudad.',score:0});
+   pageToken=String(payload.nextPageToken||'');if(!pageToken)break;
+  }
+  return {prospects:results.slice(0,criteria.limit).filter(x=>x.business.length>=2),requestsUsed};
+ }
  const endpoint=String(config.prospectDiscoveryUrl||'').trim(),token=String(config.prospectDiscoveryToken||'').trim();
  if(!endpoint){const e=new Error('Proveedor de descubrimiento de prospectos no configurado.');e.status=503;throw e;}
  const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})},body:JSON.stringify(criteria)});
  if(!response.ok){const e=new Error('El proveedor de prospectos no respondió correctamente.');e.status=502;throw e;}
  const body=await response.json(),items=Array.isArray(body)?body:Array.isArray(body.prospects)?body.prospects:[];
- return items.slice(0,criteria.limit).map(x=>({business:String(x.business||x.name||'').trim(),city:String(x.city||criteria.city||'').trim(),category:String(x.category||criteria.category||'').trim(),source:String(x.source||'web pública').trim(),sourceUrl:String(x.sourceUrl||x.url||'').trim(),channel:String(x.channel||'').trim(),contact:String(x.contact||'').trim(),fitReason:String(x.fitReason||'').trim(),score:Math.max(0,Math.min(100,Number(x.score||0)))})).filter(x=>x.business.length>=2);
+ const prospects=items.slice(0,criteria.limit).map(x=>({business:String(x.business||x.name||'').trim(),city:String(x.city||criteria.city||'').trim(),category:String(x.category||criteria.category||'').trim(),source:String(x.source||'web pública').trim(),sourceUrl:String(x.sourceUrl||x.url||'').trim(),channel:String(x.channel||'').trim(),contact:String(x.contact||'').trim(),fitReason:String(x.fitReason||'').trim(),score:Math.max(0,Math.min(100,Number(x.score||0)))})).filter(x=>x.business.length>=2);
+ return {prospects,requestsUsed:1};
 }
 
 function wrap(next,overrides={}){
@@ -36,7 +52,7 @@ function wrap(next,overrides={}){
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
   const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
-  const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
+  const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
    const payload=verifyToken(bearer(req),config.tokenSecret);if(!payload||payload.role!=='admin')return json(res,401,{error:'No autorizado'},config.allowedOrigin);
    const data=await readState(config);
@@ -56,9 +72,10 @@ function wrap(next,overrides={}){
     const dayKey=`${ecuador.getFullYear()}-${String(ecuador.getMonth()+1).padStart(2,'0')}-${String(ecuador.getDate()).padStart(2,'0')}`,monthKey=dayKey.slice(0,7),usage=data.prospectDiscoveryUsage||{},daily=Number(usage[dayKey]||0),monthly=Object.entries(usage).filter(([k])=>k.startsWith(monthKey+'-')).reduce((sum,[,v])=>sum+Number(v||0),0);
     if(daily>=177)return json(res,429,{error:'Se alcanzó el límite diario de 177 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
     if(monthly>=4800)return json(res,429,{error:'Se alcanzó el límite mensual de 4.800 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
-    const found=await discoverProspects(config,{city,category,limit,publicOnly:true});
-    data.prospectDiscoveryUsage[dayKey]=daily+1;await writeState(config,data);
-    return json(res,200,{prospects:found,count:found.length,criteria:{city,category,limit},usage:{daily:daily+1,monthly:monthly+1,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
+    const discovery=await discoverProspects(config,{city,category,limit,publicOnly:true}),used=Math.max(1,Number(discovery.requestsUsed||1));
+    if(daily+used>177||monthly+used>4800)return json(res,429,{error:'La búsqueda requiere más llamadas que el cupo restante.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
+    data.prospectDiscoveryUsage[dayKey]=daily+used;await writeState(config,data);
+    return json(res,200,{prospects:discovery.prospects,count:discovery.prospects.length,criteria:{city,category,limit},usage:{daily:daily+used,monthly:monthly+used,requestsUsed:used,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
    }
    if(prospectImport&&req.method==='POST'){
     const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[];
