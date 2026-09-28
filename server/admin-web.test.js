@@ -313,3 +313,12 @@ test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () 
   const worker=read('cloudflare-worker-v2.js');
   for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
 });
+
+
+test('Producción Cloudflare usa despliegue autenticado sin credenciales embebidas', () => {
+  const workflow=read('.github/workflows/cloudflare-deploy.yml');
+  assert.match(workflow, /secrets\.CLOUDFLARE_API_TOKEN/);
+  assert.match(workflow, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
+  assert.match(workflow, /npx wrangler deploy/);
+  assert.doesNotMatch(workflow, /api[_-]?token:\s*['\"][^$]/i);
+});
