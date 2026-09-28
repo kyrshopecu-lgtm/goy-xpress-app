@@ -199,9 +199,19 @@ async function handler(req, res) {
       const current = data.requests[index];
       const patch = {};
       if (body.status) patch.status = normalizeStatus(body.status);
+      const diverseAwaitingConfirmation =
+        current.kind === 'diverse' &&
+        normalizeStatus(current.status) !== 'Aceptado' &&
+        String(current.quote?.status || '') !== 'Aceptado';
+      if (diverseAwaitingConfirmation && normalizeStatus(body.status) === 'Asignado') {
+        return json(res,409,{error:'El cliente debe confirmar la cotización del servicio diverso antes de asignar mensajero.'});
+      }
       if (Object.prototype.hasOwnProperty.call(body,'courier')) patch.courier = body.courier || null;
       if (body.kind) patch.kind = String(body.kind);
       if (body.serviceLabel) patch.serviceLabel = String(body.serviceLabel).trim();
+      for (const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone']) {
+        if (Object.prototype.hasOwnProperty.call(body,field)) patch[field] = String(body[field]||'').trim();
+      }
       if (body.serviceCost !== undefined) {
         const newCost = Math.max(0, Number(body.serviceCost || 0));
         patch.serviceCost = Math.round(newCost*100)/100;

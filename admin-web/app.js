@@ -80,12 +80,16 @@
       buttons.push(`<button class="primary" data-wait-decision="continue" data-wait-order="${id}">Continuar esperando</button>`);
       buttons.push(`<button data-wait-decision="next" data-wait-order="${id}">Siguiente entrega</button>`);
     }
-    if(o.status==='Pendiente') buttons.push(`<button data-order="${id}" data-status="Asignado">Asignar</button>`);
+    if((o.status==='Pendiente' && o.raw.kind!=='diverse') || o.status==='Aceptado') buttons.push(`<button data-order="${id}" data-status="Asignado">Asignar</button>`);
     if(o.status==='Asignado') buttons.push(`<button data-order="${id}" data-status="Recogido">Recogido</button>`);
     if(o.status==='Recogido') buttons.push(`<button data-order="${id}" data-status="En camino">En camino</button>`);
     if(o.status==='En camino') buttons.push(`<button data-order="${id}" data-status="Entrega finalizada">Finalizar</button>`);
-    if(!['Entrega finalizada','Cancelado'].includes(o.status)) buttons.push(`<button data-manage="${id}">Gestionar</button>`);
-    if(o.raw.kind==='diverse' && ['Pendiente','Cotizado'].includes(o.status)) buttons.push(`<button data-quote="${id}">Cotizar</button>`);
+    if(!['Entrega finalizada','Cancelado'].includes(o.status) && !(o.raw.kind==='diverse' && ['Pendiente','Cotizado'].includes(o.status))) buttons.push(`<button data-manage="${id}">Gestionar</button>`);
+    if(o.raw.kind==='diverse' && ['Pendiente','Cotizado'].includes(o.status)) buttons.push(`<button class="primary" data-quote="${id}">Revisar / WhatsApp</button>`);
+    if(o.raw.kind==='diverse' && o.status==='Cotizado') {
+      buttons.push(`<button data-quote-decision="accepted" data-quote-order="${id}">✓ Confirmó</button>`);
+      buttons.push(`<button data-quote-decision="rejected" data-quote-order="${id}">✕ No procede</button>`);
+    }
     if(o.gps?.last) buttons.push(`<button data-gps="${id}">GPS</button>`);
     if(o.wallet?.depositPhoto && !o.wallet?.released) buttons.push(`<button data-release="${id}">Liberar cartera</button>`);
     if(!['Entrega finalizada','Cancelado'].includes(o.status)) buttons.push(`<button data-order="${id}" data-status="Cancelado">Cancelar</button>`);

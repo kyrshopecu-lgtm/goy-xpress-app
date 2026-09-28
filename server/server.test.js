@@ -179,18 +179,33 @@ test('API v3.3 recorre flujo logístico completo con permisos y evidencias', asy
   assert.equal(diverse.status, 201);
   const diverseSecret = diverse.body.accessSecret;
 
+  const prematureAssign = await call('PATCH', '/api/admin/requests/DIV-TEST-0001', {
+    headers: {authorization: `Bearer ${token}`},
+    body: {status: 'Asignado'},
+  });
+  assert.equal(prematureAssign.status, 409);
+
   const quote = await call('PATCH', '/api/admin/requests/DIV-TEST-0001', {
     headers: {authorization: `Bearer ${token}`},
     body: {
       status: 'Cotizado',
+      serviceLabel: 'Gestión documental especial',
+      details: 'Gestión personalizada revisada por administración',
+      originAddress: 'Quito norte',
+      destinationAddress: 'Centro de Quito',
       serviceCost: 12.75,
       reason: 'Cotización personalizada',
-      quote: {status: 'Cotizado', amount: 12.75, note: 'Incluye gestión completa'},
+      quote: {status: 'Cotizado', amount: 12.75, note: 'Incluye gestión completa', confirmationChannel:'WhatsApp'},
     },
   });
   assert.equal(quote.status, 200);
   assert.equal(quote.body.serviceCost, 12.75);
+  assert.equal(quote.body.serviceLabel, 'Gestión documental especial');
+  assert.equal(quote.body.details, 'Gestión personalizada revisada por administración');
+  assert.equal(quote.body.originAddress, 'Quito norte');
+  assert.equal(quote.body.destinationAddress, 'Centro de Quito');
   assert.equal(quote.body.quote.status, 'Cotizado');
+  assert.equal(quote.body.quote.confirmationChannel, 'WhatsApp');
 
   const accepted = await call('POST', '/api/requests/DIV-TEST-0001/quote-response', {
     headers: requestHeaders(diverseSecret),
