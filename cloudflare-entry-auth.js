@@ -1,4 +1,5 @@
 import base from './cloudflare-entry.js';
+import {whatsappProspectWebhook} from './cloudflare-whatsapp-prospect-webhook.js';
 import { authChallengeV2, authPasswordLoginV2 } from './cloudflare-login-v2.js';
 import { createAdminClient } from './cloudflare-admin-client-create.js';
 import {
@@ -154,6 +155,10 @@ function hardenResponse(response, request, env) {
 
 async function dispatch(request, env, ctx) {
   const path = new URL(request.url).pathname;
+
+  if (path === '/api/webhooks/whatsapp/prospects' && ['GET','POST'].includes(request.method)) {
+    return whatsappProspectWebhook(request, env);
+  }
 
   const rateLimited = checkRateLimit(request, path);
   if (rateLimited) return rateLimited;
