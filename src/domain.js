@@ -192,7 +192,7 @@ function requestKindLabel(kind) {
 }
 
 function requestPrimaryAddress(request) {
-  return request?.destinationAddress || request?.address || request?.place || request?.institution || 'Dirección no registrada';
+  return request?.destinationAddress || request?.stops?.[0]?.address || request?.address || request?.place || request?.institution || 'Dirección no registrada';
 }
 
 module.exports = {PRICING, REQUEST_KIND, REQUEST_STATUS, calculateCollectTotal, calculateDeliveryPrice, calculateExecutivePrice, calculatePackagePrice, createCode, nonNegativeNumber, normalizeRequest, parseNumber, requestKindLabel, requestPrimaryAddress, roundMoney};
