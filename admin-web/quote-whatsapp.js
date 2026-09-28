@@ -199,7 +199,15 @@
 
   async function loadRequest(code) {
     const current = await api('/admin/data');
-    return (current.requests || []).find(item => item.code === code || item.id === code);
+    const request = (current.requests || []).find(item => item.code === code || item.id === code);
+    if (!request) return null;
+    const client = (current.clients || []).find(item =>
+      String(item.id || item.userId || '') === String(request.clientId || '')
+    );
+    return {
+      ...request,
+      customerPhone: request.customerPhone || request.phone || request.whatsapp || request.contactPhone || client?.whatsapp || client?.phone || '',
+    };
   }
 
   async function registerDecision(code, decision, button) {
