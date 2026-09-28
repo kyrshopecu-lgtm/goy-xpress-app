@@ -2,6 +2,7 @@ const {ensureStateTable,readVersionedState,writeVersionedState}=require('./versi
 const fs=require('fs');
 const path=require('path');
 const crypto=require('crypto');
+const {cleanPhone,sendProspectFirstContact}=require('./whatsappNotifications');
 
 function safeEqual(a,b){const x=Buffer.from(String(a));const y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y);}
 function verifyToken(token,secret){if(!token||!secret)return null;const [body,sig]=String(token).split('.');if(!body||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(sig,expected))return null;try{const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));if(!payload.exp||Date.now()>payload.exp)return null;return payload;}catch{return null;}}
@@ -70,7 +71,8 @@ function wrap(next,overrides={}){
   const prospectImport=p==='/admin/prospects/import';
   const prospectDiscover=p==='/admin/prospects/discover';
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const prospectSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-whatsapp$/);
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -114,6 +116,21 @@ function wrap(next,overrides={}){
     if(business.length<2)return json(res,400,{error:'Ingresa el nombre del negocio o prospecto.'},config.allowedOrigin);
     const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
     data.prospects.unshift(item);await writeState(config,data);return json(res,201,{prospect:item},config.allowedOrigin);
+   }
+   if(prospectSendMatch){
+    const id=decodeURIComponent(prospectSendMatch[1]),prospect=data.prospects.find(x=>x.id===id);
+    if(!prospect)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
+    if(prospect.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea contacto.'},config.allowedOrigin);
+    if(prospect.status!=='Aprobado para contacto')return json(res,409,{error:'El contacto debe estar aprobado antes de enviar.'},config.allowedOrigin);
+    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact);
+    if(!message)return json(res,409,{error:'No existe un mensaje final aprobado.'},config.allowedOrigin);
+    if(phone.length<11)return json(res,409,{error:'No existe un WhatsApp público válido registrado.'},config.allowedOrigin);
+    const sent=await sendProspectFirstContact({phone,business:prospect.business,message});
+    if(!sent.ok)return json(res,502,{error:sent.reason||sent.error||'WhatsApp no confirmó el envío.'},config.allowedOrigin);
+    const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
+    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,providerMessageId:sent.id||'',sentAt:now});
+    prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;
+    await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
    }
    if(prospectAnalyzeMatch){
     const id=decodeURIComponent(prospectAnalyzeMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);

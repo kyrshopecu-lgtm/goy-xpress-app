@@ -263,3 +263,20 @@ test('GOY SALES AI muestra bandeja supervisada de listos para contactar', () => 
   assert.doesNotMatch(js, /readyContact[\s\S]{0,800}method:'POST'[\s\S]{0,100}send/i);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI exige aprobación y confirmación para primer WhatsApp', () => {
+  const management=read('server/admin-management.js'),wa=read('server/whatsappNotifications.js'),js=read('public-web/admin/prospects.js');
+  assert.match(management, /send-whatsapp/);
+  assert.match(management, /prospect\.status!=='Aprobado para contacto'/);
+  assert.match(management, /prospect\.doNotContact/);
+  assert.match(management, /sendProspectFirstContact/);
+  assert.match(management, /providerMessageId/);
+  assert.match(management, /prospect\.status='Contactado'/);
+  assert.match(wa, /GOY_WA_PROSPECT_TEMPLATE/);
+  assert.match(js, /Enviar por WhatsApp/);
+  assert.match(js, /window\.confirm/);
+  assert.match(js, /Mensaje aprobado/);
+  assert.match(js, /\/send-whatsapp/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+});
