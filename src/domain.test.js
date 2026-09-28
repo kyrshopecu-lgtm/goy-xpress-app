@@ -6,6 +6,7 @@ const {
   calculateCollectTotal,
   calculateDeliveryPrice,
   calculateExecutivePrice,
+  calculatePackagePrice,
   createCode,
   normalizeRequest,
 } = require('./domain');
@@ -35,6 +36,32 @@ test('envío programado se limita al radio de 4 km', () => {
   assert.equal(calculateDeliveryPrice('scheduled', 4).eligible, true);
   assert.equal(calculateDeliveryPrice('scheduled', 4.1).eligible, false);
   assert.equal(calculateDeliveryPrice('scheduled', 4).total, 3.5);
+});
+
+test('paquetes cobran $3.50 hasta 4 km y $0.50 por km adicional', () => {
+  assert.equal(calculatePackagePrice({distanceKm:4,depthCm:30,widthCm:30,heightCm:30,weightKg:10}).total, 3.5);
+  assert.equal(calculatePackagePrice({distanceKm:4.1,depthCm:30,widthCm:30,heightCm:30,weightKg:10}).total, 4);
+});
+
+test('paquetes aplican recargos por tamaño y peso dentro del máximo', () => {
+  const medium = calculatePackagePrice({distanceKm:4,depthCm:35,widthCm:30,heightCm:30,weightKg:15});
+  assert.equal(medium.dimensionSurcharge, 0.5);
+  assert.equal(medium.weightSurcharge, 0.5);
+  assert.equal(medium.total, 4.5);
+  const heavy = calculatePackagePrice({distanceKm:4,depthCm:30,widthCm:30,heightCm:30,weightKg:22});
+  assert.equal(heavy.weightSurcharge, 1);
+  assert.equal(heavy.total, 4.5);
+});
+
+test('paquete fuera de 45x50x60 cm o 25 kg requiere servicio de auto', () => {
+  assert.equal(calculatePackagePrice({distanceKm:4,depthCm:46,widthCm:30,heightCm:30,weightKg:10}).autoRequired, true);
+  assert.equal(calculatePackagePrice({distanceKm:4,depthCm:45,widthCm:50,heightCm:60,weightKg:25}).eligible, true);
+  assert.equal(calculatePackagePrice({distanceKm:4,depthCm:30,widthCm:30,heightCm:30,weightKg:25.1}).autoRequired, true);
+});
+
+test('paquete delicado o con valor superior a $1000 no cumple la política', () => {
+  assert.match(calculatePackagePrice({distanceKm:4,depthCm:30,widthCm:30,heightCm:30,weightKg:10,delicate:true}).policyError,/delicados/i);
+  assert.match(calculatePackagePrice({distanceKm:4,depthCm:30,widthCm:30,heightCm:30,weightKg:10,productValue:1000.01}).policyError,/1\.000/i);
 });
 
 test('cobro contra entrega suma el envío solo cuando paga el destinatario', () => {
