@@ -3,7 +3,7 @@
   const token=()=>sessionStorage.getItem('goyAdminToken')||'';
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const initials=n=>String(n||'GOY').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
-  const serviceName=o=>o.serviceLabel||({shipment:o.deliveryMode==='express'?'Envío Express':'Entrega programada',procedure:'Trámite ejecutivo',deposit:'Depósito',diverse:'Servicio diverso'}[o.kind]||o.kind||'Servicio');
+  const serviceName=o=>o.serviceLabel||({package:'Retiro y/o entrega de paquetes',shipment:o.deliveryMode==='express'?'Envío Express':'Entrega programada',procedure:'Trámite ejecutivo',deposit:'Depósito',diverse:'Servicio diverso'}[o.kind]||o.kind||'Servicio');
   const fmt=d=>{try{return new Intl.DateTimeFormat('es-EC',{dateStyle:'medium',timeStyle:'short'}).format(new Date(d));}catch{return d||'-'}};
   async function api(path){const r=await fetch(`${apiBase}${path}`,{headers:{Authorization:`Bearer ${token()}`}});const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||'No se pudo cargar la información.');return b;}
 

@@ -69,6 +69,27 @@
     amount.input.step = '0.01';
     amount.input.min = '0.01';
     const note = field('Condiciones / observaciones para el cliente', 'note', 'textarea');
+    const stopEditors = [];
+    const stopsBox = document.createElement('div');
+    if (Array.isArray(request.stops) && request.stops.length) {
+      const title = document.createElement('h4');
+      title.textContent = 'Direcciones / paradas del servicio';
+      stopsBox.appendChild(title);
+      request.stops.forEach((stop,index)=>{
+        const box=document.createElement('div');
+        box.className='panel';
+        box.style.margin='10px 0';
+        const address=field(`Dirección ${index+1}`,'stopAddress');
+        const type=field('Tipo de servicio','stopType');
+        const description=field('Qué debe realizarse aquí','stopDescription','textarea');
+        address.input.value=stop.address||'';
+        type.input.value=stop.serviceType||'Otro';
+        description.input.value=stop.description||'';
+        box.append(address.wrap,type.wrap,description.wrap);
+        stopsBox.appendChild(box);
+        stopEditors.push({address:address.input,type:type.input,description:description.input});
+      });
+    }
 
     service.input.value = request.serviceLabel || 'Servicio diverso';
     details.input.value = request.details || request.diverseDetail || '';
@@ -105,7 +126,9 @@
     submit.textContent = 'Guardar y enviar WhatsApp';
     actions.append(cancel, submit);
 
-    form.append(grid1, details.wrap, grid2, note.wrap, info, message, actions);
+    form.append(grid1, details.wrap, grid2);
+    if (stopEditors.length) form.append(stopsBox);
+    form.append(note.wrap, info, message, actions);
     modal.append(head, form);
     overlay.appendChild(modal);
     overlay.addEventListener('click', event => { if (event.target === overlay) closeModal(); });
@@ -142,6 +165,12 @@
           diverseDetail: details.input.value.trim(),
           originAddress: origin.input.value.trim(),
           destinationAddress: destination.input.value.trim(),
+          ...(stopEditors.length ? {stops:stopEditors.map((editor,index)=>({
+            order:index+1,
+            address:editor.address.value.trim(),
+            serviceType:editor.type.value.trim()||'Otro',
+            description:editor.description.value.trim(),
+          })).filter(stop=>stop.address)} : {}),
           serviceCost: value,
           reason: 'Cotización de servicio diverso revisada por administración',
           quote: {
@@ -169,7 +198,8 @@
           `Detalle: ${patch.details}`,
           patch.originAddress ? `Origen / retiro: ${patch.originAddress}` : '',
           patch.destinationAddress ? `Destino / entrega: ${patch.destinationAddress}` : '',
-          `Valor: $${value.toFixed(2)}`,
+          ...(Array.isArray(patch.stops) ? patch.stops.map(stop=>`Parada ${stop.order}: ${stop.serviceType} · ${stop.address} · ${stop.description}`) : []),
+          `Valor: ${value.toFixed(2)}`,
           patch.quote.note ? `Condiciones: ${patch.quote.note}` : '',
           '',
           'Por favor confirma si deseas que GOY XPRESS proceda con este servicio.',

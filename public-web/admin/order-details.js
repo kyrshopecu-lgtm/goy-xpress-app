@@ -16,7 +16,7 @@
   document.head.appendChild(css);
 
   const rawValue = (o, keys) => { for (const k of keys) { const parts=k.split('.'); let v=o; for(const p of parts) v=v?.[p]; if(v!==undefined && v!==null && v!=='') return v; } return '-'; };
-  const serviceName = o => o.serviceLabel || ({procedure:'Trámite ejecutivo',shipment:o.deliveryMode==='express'?'Envío Express':'Envío programado',deposit:'Depósito',diverse:'Servicios diversos',office_pickup:'Retiro oficina',partner:'Plan inicial'}[o.kind]) || o.service || o.kind || 'Servicio';
+  const serviceName = o => o.serviceLabel || ({package:'Retiro y/o entrega de paquetes',procedure:'Trámite ejecutivo',shipment:o.deliveryMode==='express'?'Envío Express':'Envío programado',deposit:'Depósito',diverse:'Servicios diversos',office_pickup:'Retiro oficina',partner:'Plan inicial'}[o.kind]) || o.service || o.kind || 'Servicio';
   const statusName = s => ({pending:'Pendiente',quoted:'Cotizado',accepted:'Aceptado',assigned:'Asignado',pickedUp:'Recogido',onRoute:'En camino',finished:'Entrega finalizada',cancelled:'Cancelado','En ruta':'En camino',Entregado:'Entrega finalizada',Finalizado:'Entrega finalizada'}[s] || s || 'Pendiente');
 
   function item(label,value,wide=false){return `<div class="order-detail-item ${wide?'order-detail-wide':''}"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`;}
@@ -35,12 +35,15 @@
   async function openDetails(code){
     let o=findOrder(code) || await fetchOrder(code); if(!o){alert('No se pudo cargar el detalle de esta orden.');return;}
     const pickup=rawValue(o,['pickupAddress','originAddress','origin.address']);
-    const destination=rawValue(o,['destinationAddress','deliveryAddress','address','destination.address']);
+    const destination=rawValue(o,['destinationAddress','deliveryAddress','stops.0.address','address','destination.address']);
     const client=rawValue(o,['customer','businessName','client','customerName']);
     const phone=rawValue(o,['customerPhone','phone','whatsapp','contactPhone']);
     const courier=rawValue(o,['courier','courierName','assignedCourier.name']);
     const notes=rawValue(o,['notes','detail','description','instructions','adminNotes']);
     const created=rawValue(o,['createdAt','date','requestedAt']);
+    const stops=Array.isArray(o.stops)?o.stops:[];
+    const stopSummary=stops.map((stop,index)=>`${stop.order||index+1}. ${stop.serviceType||'Servicio'} · ${stop.address||'-'} · ${stop.description||''}`).join(' | ')||'-';
+    const packageSummary=(o.kind==='package'||o.vehicleRequired)?`${Number(o.depthCm||0)}×${Number(o.widthCm||0)}×${Number(o.heightCm||0)} cm · ${Number(o.weightKg||0)} kg · valor ${money(o.productValue||0)}`:'-';
     const wait=o.wait||{};
     const evidence=o.evidence||{};
     const photos=[evidence.pickupPhoto,evidence.deliveryPhoto,evidence.depositPhoto,...(evidence.additionalPhotos||[])].filter(Boolean);
@@ -51,7 +54,7 @@
         ${item('Cliente',client)}${item('Servicio',serviceName(o))}${item('Estado',statusName(o.status))}${item('Mensajero',courier)}
         ${item('Fecha / creación',created)}${item('Valor del servicio',money(o.serviceCost??o.value??0))}
         ${item('Retiro / origen',pickup,true)}${item('Entrega / destino',destination,true)}${item('Teléfono cliente',phone)}${item('Tracking',o.trackingCode||o.tracking||'-')}
-        ${item('Indicaciones / novedad',notes,true)}
+        ${item('Indicaciones / novedad',notes,true)}${stops.length?item('Paradas / tareas',stopSummary,true):''}${(o.kind==='package'||o.vehicleRequired)?item('Paquete',packageSummary,true):''}
       </div>
       <section class="order-detail-section"><h4>Tiempo de espera</h4><div class="order-detail-grid">${item('Tiempo gratuito',`${Number(wait.freeMinutes||0)} min`)}${item('Tiempo adicional',`${Number(wait.extraMinutes||0)} min`)}${item('Recargo',money(wait.extraCost||0))}${item('Tiempo transcurrido',`${Number(wait.elapsedMinutes||0)} min`)}</div></section>
       ${photos.length?`<section class="order-detail-section"><h4>Evidencias</h4><div class="order-detail-actions">${photos.map((p,i)=>`<a href="${esc(p)}" target="_blank" rel="noopener">Ver foto ${i+1}</a>`).join('')}</div></section>`:''}

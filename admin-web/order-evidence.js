@@ -11,6 +11,7 @@
   function photosOf(payload){
     const e=payload?.evidence||{};
     const list=[];
+    if(validImage(e.packagePhoto))list.push(['Foto inicial del paquete',e.packagePhoto]);
     if(validImage(e.pickupPhoto))list.push(['Retiro principal',e.pickupPhoto]);
     addMany(list,'Retiro adicional',e.pickupPhotos);
     addMany(list,'Servicio',e.servicePhotos);

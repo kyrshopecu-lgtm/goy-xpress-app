@@ -33,7 +33,7 @@
   function mapClient(c){return{name:c.name||c.businessName||'-',phone:c.whatsapp||c.phone||c.contactPhone||'-',id:c.documentId||c.id||'-',email:c.email||'-',status:c.status||'Activo'};}
   function serviceName(o){
     if(o.serviceLabel) return o.serviceLabel;
-    return {procedure:'Trámite ejecutivo',shipment:o.deliveryMode==='express'?'Envío Express':'Envío programado',deposit:'Depósito',diverse:'Servicios diversos',office_pickup:'Retiro oficina',partner:'Plan inicial'}[o.kind]||o.service||o.kind||'Servicio';
+    return {package:'Retiro y/o entrega de paquetes',procedure:'Trámite ejecutivo',shipment:o.deliveryMode==='express'?'Envío Express':'Envío programado',deposit:'Depósito',diverse:'Servicios diversos',office_pickup:'Retiro oficina',partner:'Plan inicial'}[o.kind]||o.service||o.kind||'Servicio';
   }
   function mapOrder(o){return{
     raw:o,id:o.code||o.id||'-',client:o.customer||o.businessName||o.client||'-',service:serviceName(o),address:o.destinationAddress||o.pickupAddress||o.address||'-',courier:o.courier||'Sin asignar',status:normalizedStatus(o.status),value:Number(o.serviceCost??o.value??0),cycleKey:o.cycleKey||'',wait:o.wait||{},quote:o.quote||{},wallet:o.wallet||{},gps:o.gps||{},evidence:o.evidence||{},tariffAdjustment:o.tariffAdjustment||null
