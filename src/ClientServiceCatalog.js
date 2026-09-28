@@ -3,6 +3,7 @@ import{Image,Modal,Pressable,ScrollView,StyleSheet,Text,View}from'react-native';
 
 const C={navy:'#071C2A',cyan:'#00A9E8',green:'#38A844',white:'#fff',ink:'#132B36',muted:'#687D88',line:'#DCE8ED',bg:'#F4F8FA'};
 const SERVICES=[
+ {title:'Retiro y entrega de paquetes',image:require('../01_mensajeria_envios.png')},
  {title:'Mensajería y Envíos',image:require('../01_mensajeria_envios.png')},
  {title:'Trámites Generales',image:require('../02_tramites_generales.png')},
  {title:'Cambio de Dinero para tu Negocio',image:require('../03_cambio_dinero_negocio.png')},
