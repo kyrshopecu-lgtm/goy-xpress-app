@@ -70,7 +70,8 @@ test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite'
   const courier = read('src/CourierAppV18.js');
   const metro = read('metro.config.js');
   const assetPlugin = require('../scripts/prefix-numeric-assets');
-  assert.equal((catalog.match(/require\('\.\.\/0\d_/g) || []).length, 8);
+  assert.equal((catalog.match(/require\('\.\.\/0\d_/g) || []).length, 9);
+  assert.match(catalog, /Retiro y entrega de paquetes/);
   assert.doesNotMatch(catalog, /workers\.dev\/assets/);
   assert.match(metro, /prefix-numeric-assets/);
   assert.equal(assetPlugin({name:'01_mensajeria_envios'}).name, 'goy_01_mensajeria_envios');
