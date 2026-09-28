@@ -94,6 +94,14 @@ export async function registerGoyPushNotifications(sessionToken,role){
   }
 }
 
+export function installGoyNotificationReceivedListener(onReceive){
+  const subscription=Notifications.addNotificationReceivedListener(notification=>{
+    const data=notification?.request?.content?.data||{};
+    onReceive?.(data);
+  });
+  return()=>subscription.remove();
+}
+
 export function installGoyNotificationResponseListener(onOpen){
   const subscription=Notifications.addNotificationResponseReceivedListener(response=>{
     const data=response?.notification?.request?.content?.data||{};
