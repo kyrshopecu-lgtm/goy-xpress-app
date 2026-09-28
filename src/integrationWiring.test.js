@@ -83,8 +83,8 @@ test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesio
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.4.0');
-  assert.equal(config.android.versionCode, 14);
+  assert.equal(config.version, '1.4.1');
+  assert.equal(config.android.versionCode, 15);
   assert.match(client, /recipientPhone/);
   assert.match(client, /destinationMapUrl/);
   assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
@@ -102,6 +102,9 @@ test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesio
   assert.match(client, /Tu actividad/);
   assert.match(client, /Generar orden de entrega/);
   assert.match(client, /playGoyEventSound/);
+  assert.match(client, /registerGoyPushNotifications\(token,'client'\)/);
+  assert.match(client, /installGoyNotificationReceivedListener/);
+  assert.match(client, /installGoyNotificationResponseListener/);
   assert.match(client, /Entrega finalizada/);
   assert.match(api, /WhatsApp destinatario/);
   assert.match(api, /Ubicación Maps/);
@@ -110,8 +113,8 @@ test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesio
 test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.1');
-  assert.equal(config.android.versionCode, 16);
+  assert.equal(config.version, '1.5.2');
+  assert.equal(config.android.versionCode, 17);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -129,6 +132,11 @@ test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada',
   assert.match(courier, /playGoyEventSound/);
   assert.match(courier, /registerGoyPushNotifications/);
   assert.match(courier, /registerGoyPushNotifications\(token,'courier'\)/);
+  assert.match(courier, /installGoyNotificationReceivedListener/);
+  assert.match(courier, /installGoyNotificationResponseListener/);
+  assert.match(courier, /VALOR A RECAUDAR/);
+  assert.match(courier, /Number\(req\.totalToCollect\|\|0\)>0/);
+  assert.doesNotMatch(courier, /VALOR DEL SERVICIO|TARIFA DEL SERVICIO|serviceCost/);
   assert.match(JSON.stringify(config.plugins), /expo-notifications/);
 });
 
