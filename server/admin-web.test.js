@@ -341,3 +341,16 @@ test('GOY SALES AI prepara seguimiento supervisado con Workers AI', () => {
  assert.match(management,/draft-followup/);assert.match(management,/followupDraft/);assert.match(management,/@cf\/zai-org\/glm-4\.7-flash/);
  assert.match(js,/Preparar respuesta con IA/);assert.match(js,/Conversación reciente/);assert.match(js,/Revísalo, edítalo y apruébalo antes de cualquier envío/);
 });
+
+test('Seguimiento WhatsApp queda separado del primer contacto y exige ventana activa', () => {
+ const management=read('server/admin-management.js'),notifications=read('server/whatsappNotifications.js'),js=read('public-web/admin/prospects.js');
+ assert.match(management,/send-followup-whatsapp/);
+ assert.match(management,/followupApprovedMessage/);
+ assert.match(management,/24\*60\*60\*1000/);
+ assert.match(management,/plantilla aprobada por Meta/);
+ assert.match(notifications,/sendProspectReply/);
+ assert.match(notifications,/type:'text'/);
+ assert.match(js,/Enviar respuesta revisada/);
+ assert.match(js,/payload\.followupApprovedMessage=message/);
+ assert.match(js,/if\(isFollowup\)/);
+});
