@@ -10,7 +10,7 @@ const GOY_WHATSAPP = String(
   process.env.EXPO_PUBLIC_GOY_WHATSAPP_NUMBER || '593997729964',
 ).replace(/\D/g, '');
 
-async function request(path, {method='GET', token, body, headers={}, timeoutMs=25000} = {}) {
+async function request(path, {method='GET', token, body, headers={}, timeoutMs=45000} = {}) {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   let response;
