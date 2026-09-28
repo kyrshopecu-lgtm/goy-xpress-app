@@ -388,6 +388,14 @@ async function adminUpdateRequest(request, env, code, ctx) {
     for (const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone']) {
       if (Object.prototype.hasOwnProperty.call(body, field)) patch[field] = String(body[field] || '').trim();
     }
+    if (Array.isArray(body.stops)) {
+      patch.stops = body.stops.slice(0, 20).map((stop,index)=>({
+        order:index+1,
+        address:String(stop?.address||'').trim(),
+        description:String(stop?.description||'').trim(),
+        serviceType:String(stop?.serviceType||'Otro').trim(),
+      })).filter(stop=>stop.address);
+    }
     if (body.serviceCost !== undefined) {
       const value = Math.max(0, Number(body.serviceCost || 0));
       patch.serviceCost = Math.round(value * 100) / 100;
