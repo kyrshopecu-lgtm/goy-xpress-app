@@ -537,7 +537,7 @@ async function buildClientRequest(body, user, config, mapsFetch) {
       standardSize:'30x30x30 cm',standardWeightKg:10,maxDepthCm:45,maxWidthCm:50,maxHeightCm:60,maxWeightKg:25,maxDeclaredValue:1000,
       fragileAllowed:false,freeWaitMinutes:10,extraWaitMinute:0.10,
     };
-    if (body.packagePhoto) request.evidence.packagePhoto=body.packagePhoto;
+    if (body.packagePhoto) { request.evidence.packagePhoto=body.packagePhoto; delete request.packagePhoto; }
   } else if (kind === 'shipment') {
     const route = await computeGoogleRoute(body.originAddress,body.destinationAddress,config,mapsFetch);
     const mode = body.deliveryMode === 'express' ? 'express' : 'scheduled';
@@ -556,6 +556,11 @@ async function buildClientRequest(body, user, config, mapsFetch) {
     if(!deposit.valid){const error=new Error(deposit.error);error.status=400;throw error;}
     request.depositPricing=deposit;request.baseServiceCost=deposit.total;request.serviceCost=deposit.total;request.totalToCollect=0;
   } else {
+    if (body.packagePhoto) {
+      if (!validImageDataUrl(body.packagePhoto)) { const error=new Error('La foto del paquete no tiene un formato válido.'); error.status=400; throw error; }
+      request.evidence.packagePhoto=body.packagePhoto;
+      delete request.packagePhoto;
+    }
     request.baseServiceCost=0;request.serviceCost=0;request.totalToCollect=0;request.quote={status:'Pendiente de cotización',amount:null,acceptedAt:null};
   }
   appendEvent(request,'request_created',{cycleKey:request.cycleKey,clientId:user.id});
