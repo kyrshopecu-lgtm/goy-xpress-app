@@ -2,7 +2,7 @@ const {ensureStateTable,readVersionedState,writeVersionedState}=require('./versi
 const fs=require('fs');
 const path=require('path');
 const crypto=require('crypto');
-const {cleanPhone,sendProspectFirstContact}=require('./whatsappNotifications');
+const {cleanPhone,sendProspectFirstContact,sendProspectReply}=require('./whatsappNotifications');
 
 function safeEqual(a,b){const x=Buffer.from(String(a));const y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y);}
 function verifyToken(token,secret){if(!token||!secret)return null;const [body,sig]=String(token).split('.');if(!body||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(sig,expected))return null;try{const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));if(!payload.exp||Date.now()>payload.exp)return null;return payload;}catch{return null;}}
@@ -73,8 +73,9 @@ function wrap(next,overrides={}){
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
   const prospectSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-whatsapp$/);
   const prospectFollowupMatch=p.match(/^\/admin\/prospects\/([^/]+)\/draft-followup$/);
+  const prospectFollowupSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-followup-whatsapp$/);
   const prospectWhatsAppStatus=p==='/admin/prospects/whatsapp-status';
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),workersAiRun:typeof overrides.workersAiRun==='function'?overrides.workersAiRun:null,openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),openaiFallbackEnabled:String(overrides.openaiFallbackEnabled??process.env.GOY_AI_OPENAI_FALLBACK??'').toLowerCase()==='true',googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -139,6 +140,24 @@ function wrap(next,overrides={}){
     prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;
     await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
    }
+   if(prospectFollowupSendMatch){
+    const id=decodeURIComponent(prospectFollowupSendMatch[1]),prospect=data.prospects.find(x=>x.id===id);
+    if(!prospect)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
+    if(prospect.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea más contacto.'},config.allowedOrigin);
+    if(!['Respondió','Interesado','Solicita llamada'].includes(String(prospect.status||'')))return json(res,409,{error:'El seguimiento solo se puede enviar después de una respuesta del prospecto.'},config.allowedOrigin);
+    const conversation=Array.isArray(prospect.conversation)?prospect.conversation:[],inbound=conversation.filter(x=>x.direction==='inbound'&&String(x.channel||'').toLowerCase()==='whatsapp'&&x.sentAt).map(x=>Date.parse(x.sentAt)).filter(Number.isFinite);
+    const lastInboundAt=inbound.length?Math.max(...inbound):0;
+    if(!lastInboundAt)return json(res,409,{error:'No existe un mensaje entrante de WhatsApp para abrir la ventana de respuesta.'},config.allowedOrigin);
+    if(Date.now()-lastInboundAt>24*60*60*1000)return json(res,409,{error:'La ventana de atención de WhatsApp de 24 horas está cerrada. Para volver a contactar se requiere una plantilla aprobada por Meta.'},config.allowedOrigin);
+    const message=String(prospect.followupApprovedMessage||'').trim(),phone=cleanPhone(prospect.contact);
+    if(!message)return json(res,409,{error:'Primero revisa y aprueba la respuesta de seguimiento.'},config.allowedOrigin);
+    if(phone.length<11)return json(res,409,{error:'No existe un WhatsApp público válido registrado.'},config.allowedOrigin);
+    const sent=await sendProspectReply({phone,message});
+    if(!sent.ok)return json(res,502,{error:sent.reason||sent.error||'WhatsApp no confirmó el seguimiento.'},config.allowedOrigin);
+    const now=new Date().toISOString();conversation.push({direction:'outbound',channel:'WhatsApp',message,providerMessageId:sent.id||'',sentAt:now});
+    prospect.conversation=conversation;prospect.lastContact=now;prospect.followupSentAt=now;prospect.followupLastSentMessage=message;prospect.followupApprovedMessage='';prospect.updatedAt=now;
+    await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
+   }
    if(prospectFollowupMatch){
     const id=decodeURIComponent(prospectFollowupMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
     if(item.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea más contacto.'},config.allowedOrigin);
@@ -196,6 +215,7 @@ function wrap(next,overrides={}){
       item.status=String(body.status);
     }
     if(Object.prototype.hasOwnProperty.call(body,'approvedMessage'))item.approvedMessage=String(body.approvedMessage||'').trim();
+    if(Object.prototype.hasOwnProperty.call(body,'followupApprovedMessage'))item.followupApprovedMessage=String(body.followupApprovedMessage||'').trim().slice(0,4096);
     item.updatedAt=new Date().toISOString();await writeState(config,data);return json(res,200,{prospect:item},config.allowedOrigin);
    }
    if(p==='/admin/services'&&req.method==='GET')return json(res,200,{services:data.customServices.map(publicService)},config.allowedOrigin);
