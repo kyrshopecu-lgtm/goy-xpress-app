@@ -72,7 +72,8 @@ function wrap(next,overrides={}){
   const prospectDiscover=p==='/admin/prospects/discover';
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
   const prospectSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-whatsapp$/);
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const prospectWhatsAppStatus=p==='/admin/prospects/whatsapp-status';
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -86,6 +87,11 @@ function wrap(next,overrides={}){
     data.users=data.users.filter(u=>u.id!==id);
     if(role==='client')data.clients=data.clients.filter(x=>x.userId!==id&&x.id!==id);else data.couriers=data.couriers.filter(x=>x.userId!==id&&x.id!==id);
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
+   }
+   if(prospectWhatsAppStatus){
+    const accessToken=String(process.env.WHATSAPP_ACCESS_TOKEN||''),phoneNumberId=String(process.env.WHATSAPP_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_PROSPECT_TEMPLATE||'');
+    const missing=[];if(!accessToken)missing.push('WHATSAPP_ACCESS_TOKEN');if(!phoneNumberId)missing.push('WHATSAPP_PHONE_NUMBER_ID');if(!template)missing.push('GOY_WA_PROSPECT_TEMPLATE');
+    return json(res,200,{configured:missing.length===0,missing,templateConfigured:Boolean(template)},config.allowedOrigin);
    }
    if(prospectDiscover&&req.method==='POST'){
     const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(177,Number(body.limit||50)));
