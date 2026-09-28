@@ -353,4 +353,6 @@ test('Seguimiento WhatsApp queda separado del primer contacto y exige ventana ac
  assert.match(js,/Enviar respuesta revisada/);
  assert.match(js,/payload\.followupApprovedMessage=message/);
  assert.match(js,/if\(isFollowup\)/);
+ assert.match(js,/const proposed=isFollowup\?\(p\.followupApprovedMessage\|\|p\.followupDraft\|\|''\)/);
+ assert.doesNotMatch(js,/followupDraft\|\|p\.approvedMessage/);
 });
