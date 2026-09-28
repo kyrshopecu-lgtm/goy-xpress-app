@@ -313,3 +313,13 @@ test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () 
   const worker=read('cloudflare-worker-v2.js');
   for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
 });
+
+
+test('Buscador de prospectos mantiene importación accesible en móvil', () => {
+  const prospects=read('public-web/admin/prospects.js'),css=read('public-web/admin/styles.css');
+  assert.match(prospects, /discover-import-bar/);
+  assert.match(prospects, /discoverSelectedCount/);
+  assert.match(prospects, /setTimeout\(\(\)=>o\.remove\(\),650\)/);
+  assert.match(css, /discover-results-scroll/);
+  assert.match(css, /position:sticky/);
+});
