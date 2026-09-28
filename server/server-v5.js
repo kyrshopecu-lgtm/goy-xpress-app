@@ -13,6 +13,7 @@ const {
 const {
   calculateDeliveryPrice,
   calculateExecutivePrice,
+  calculatePackagePrice,
   calculateCollectTotal,
 } = require('../src/domain');
 
@@ -496,7 +497,7 @@ function makeSession(user, config) {
 
 async function buildClientRequest(body, user, config, mapsFetch) {
   const kind = String(body.kind || '').trim();
-  if (!['shipment','procedure','deposit','diverse'].includes(kind)) { const error=new Error('Tipo de servicio no válido.'); error.status=400; throw error; }
+  if (!['shipment','package','procedure','deposit','diverse'].includes(kind)) { const error=new Error('Tipo de servicio no válido.'); error.status=400; throw error; }
   const createdAt = body.createdAt || new Date().toISOString();
   const code = String(body.code || `GOY-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`);
   const request = {
@@ -506,7 +507,38 @@ async function buildClientRequest(body, user, config, mapsFetch) {
     wait:{freeMinutes:10,elapsedMinutes:0,extraMinutes:0,extraCost:0,decision:null},
     evidence:{},gps:{last:null,history:[]},wallet:{collected:0,depositPhoto:null,released:true},events:[],createdAt,updatedAt:new Date().toISOString(),
   };
-  if (kind === 'shipment') {
+  if (kind === 'package') {
+    if (body.policyAccepted !== true) {
+      const error=new Error('Debes aceptar las políticas del servicio de paquetes.'); error.status=422; throw error;
+    }
+    const route = await computeGoogleRoute(body.originAddress,body.destinationAddress,config,mapsFetch);
+    const pricing = calculatePackagePrice({
+      distanceKm:route.distanceKm,
+      depthCm:body.depthCm,
+      widthCm:body.widthCm,
+      heightCm:body.heightCm,
+      weightKg:body.weightKg,
+      productValue:body.productValue,
+      delicate:Boolean(body.delicate),
+    });
+    if (pricing.policyError) { const error=new Error(pricing.policyError); error.status=422; error.code='PACKAGE_POLICY'; throw error; }
+    if (pricing.autoRequired) {
+      const error=new Error('El paquete supera las medidas o el peso permitidos. Solicita Servicio de auto para cotización administrativa.');
+      error.status=422; error.code='AUTO_QUOTE_REQUIRED'; throw error;
+    }
+    if (!pricing.eligible) { const error=new Error('Completa una ruta, medidas y peso válidos para el paquete.'); error.status=422; throw error; }
+    if (body.packagePhoto && !validImageDataUrl(body.packagePhoto)) { const error=new Error('La foto del paquete no tiene un formato válido.'); error.status=400; throw error; }
+    request.serviceLabel='Retiro y/o entrega de paquetes';
+    request.route=route; request.distanceKm=route.distanceKm;
+    request.depthCm=pricing.depthCm; request.widthCm=pricing.widthCm; request.heightCm=pricing.heightCm; request.weightKg=pricing.weightKg;
+    request.productValue=pricing.productValue; request.delicate=false; request.policyAccepted=true;
+    request.packagePricing=pricing; request.baseServiceCost=pricing.total; request.serviceCost=pricing.total; request.totalToCollect=0;
+    request.packagePolicy={
+      standardSize:'30x30x30 cm',standardWeightKg:10,maxDepthCm:45,maxWidthCm:50,maxHeightCm:60,maxWeightKg:25,maxDeclaredValue:1000,
+      fragileAllowed:false,freeWaitMinutes:10,extraWaitMinute:0.10,
+    };
+    if (body.packagePhoto) request.evidence.packagePhoto=body.packagePhoto;
+  } else if (kind === 'shipment') {
     const route = await computeGoogleRoute(body.originAddress,body.destinationAddress,config,mapsFetch);
     const mode = body.deliveryMode === 'express' ? 'express' : 'scheduled';
     const pricing = calculateDeliveryPrice(mode,route.distanceKm);
@@ -598,7 +630,7 @@ function createHandler(options = {}) {
         await store.write(data);
         return json(res,200,{ok:true,registered:true},config.allowedOrigin);
       }
-      if(req.method==='POST'&&pathname==='/maps/route'){const body=await readBody(req),data=await store.read(),user=requireUser(req,res,data,config,'client');if(!user)return;const route=await computeGoogleRoute(body.origin,body.destination,config,mapsFetch);const mode=body.mode==='express'?'express':'scheduled';const pricing=calculateDeliveryPrice(mode,route.distanceKm);return json(res,200,{route,pricing:{eligible:Boolean(pricing?.eligible),total:Number(pricing?.total||0),mode}},config.allowedOrigin);}
+      if(req.method==='POST'&&pathname==='/maps/route'){const body=await readBody(req),data=await store.read(),user=requireUser(req,res,data,config,'client');if(!user)return;const route=await computeGoogleRoute(body.origin,body.destination,config,mapsFetch);if(body.mode==='package'){const pricing=calculatePackagePrice({distanceKm:route.distanceKm,depthCm:body.depthCm,widthCm:body.widthCm,heightCm:body.heightCm,weightKg:body.weightKg,productValue:body.productValue,delicate:Boolean(body.delicate)});return json(res,200,{route,pricing},config.allowedOrigin);}const mode=body.mode==='express'?'express':'scheduled';const pricing=calculateDeliveryPrice(mode,route.distanceKm);return json(res,200,{route,pricing:{eligible:Boolean(pricing?.eligible),total:Number(pricing?.total||0),mode}},config.allowedOrigin);}
       if(req.method==='GET'&&pathname==='/client/requests'){const data=await store.read(),user=requireUser(req,res,data,config,'client');if(!user)return;return json(res,200,{requests:data.requests.filter(r=>r.clientId===user.id).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(sanitizeRequest)},config.allowedOrigin);}
       if(req.method==='POST'&&pathname==='/client/requests'){const body=await readBody(req),data=await store.read(),user=requireUser(req,res,data,config,'client');if(!user)return;const existing=body.code?data.requests.find(r=>r.code===body.code&&r.clientId===user.id):null;if(existing)return json(res,200,{request:sanitizeRequest(existing),duplicate:true},config.allowedOrigin);const request=await buildClientRequest(body,user,config,mapsFetch);data.requests.unshift(request);await store.write(data);return json(res,201,{request:sanitizeRequest(request)},config.allowedOrigin);}
       if(req.method==='GET'&&pathname==='/courier/jobs'){const data=await store.read(),user=requireUser(req,res,data,config,'courier');if(!user)return;if(!user.approved)return json(res,403,{error:'Tu cuenta de mensajero está pendiente de aprobación administrativa.',pendingApproval:true},config.allowedOrigin);return json(res,200,{jobs:data.requests.filter(r=>r.courierId===user.id).sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt))).map(sanitizeRequest)},config.allowedOrigin);}
