@@ -325,6 +325,10 @@ test('GOY SALES AI usa Workers AI gratuito como motor principal', () => {
   assert.match(management, /@cf\/zai-org\/glm-4\.7-flash/);
   assert.match(management, /cloudflare-workers-ai/);
   assert.match(management, /config\.workersAiRun/);
+  assert.match(management, /GOY_AI_OPENAI_FALLBACK/);
+  assert.match(management, /openaiFallbackEnabled/);
+  assert.match(management, /!raw&&config\.openaiFallbackEnabled&&config\.openaiApiKey/);
+  assert.match(worker, /GOY_AI_OPENAI_FALLBACK/);
 });
 
 test('Buscador de prospectos mantiene importación accesible en móvil', () => {
