@@ -313,3 +313,16 @@ test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () 
   const worker=read('cloudflare-worker-v2.js');
   for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
 });
+
+
+test('GOY SALES AI usa Workers AI gratuito como motor principal', () => {
+  const management=read('server/admin-management.js');
+  const worker=read('cloudflare-worker-v2.js');
+  const wrangler=read('wrangler.jsonc');
+  assert.match(wrangler, /"ai"\s*:\s*\{\s*"binding"\s*:\s*"AI"/);
+  assert.match(worker, /workersAiRun/);
+  assert.match(worker, /env\.AI\.run/);
+  assert.match(management, /@cf\/zai-org\/glm-4\.7-flash/);
+  assert.match(management, /cloudflare-workers-ai/);
+  assert.match(management, /config\.workersAiRun/);
+});

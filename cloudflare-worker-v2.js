@@ -59,6 +59,9 @@ function buildBackend(env) {
     tokenSecret: config.tokenSecret,
     allowedOrigin: config.allowedOrigin,
     dataFile: config.dataFile,
+    workersAiRun: env.AI && typeof env.AI.run === 'function'
+      ? (model, input) => env.AI.run(model, input)
+      : null,
   };
   const base = backendV5.createHandler({ config });
   const withClients = adminClients.wrap(base, overrides);
