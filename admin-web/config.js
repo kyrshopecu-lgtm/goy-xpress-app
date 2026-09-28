@@ -13,7 +13,9 @@ window.GOY_ADMIN_CONFIG = {
     const isGoyApi=target.startsWith('/api')||target.includes('/api/');
     if(!isGoyApi||init.signal)return nativeFetch(input,init);
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    const isAiOperation=/\/api\/admin\/prospects\/[^/]+\/(?:analyze|draft-followup)(?:\?|$)/.test(target);
+    const operationTimeoutMs=isAiOperation?60000:timeoutMs;
+    const timer=setTimeout(()=>controller.abort(),operationTimeoutMs);
     try{return await nativeFetch(input,{...init,signal:controller.signal});}
     catch(error){if(error?.name==='AbortError')throw new Error('El servidor tardó demasiado en responder. Revisa tu conexión e intenta nuevamente.');throw error;}
     finally{clearTimeout(timer);}
