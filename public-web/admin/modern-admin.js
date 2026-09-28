@@ -14,6 +14,13 @@
     return body;
   }
 
+  async function fileInputDataUrl(input) {
+    const file=input?.files?.[0];
+    if(!file)return '';
+    if(file.size>1_300_000)throw new Error('La foto del paquete es demasiado grande. Usa una imagen menor a 1,3 MB.');
+    return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('No se pudo leer la foto del paquete.'));reader.readAsDataURL(file);});
+  }
+
   function closeModal() {
     document.getElementById('adminOrderModal')?.remove();
   }
@@ -30,6 +37,24 @@
   }
 
   function serviceFields(value) {
+    if (value === 'package') {
+      return `
+        <div class="form-grid two">
+          <label>Dirección de retiro<input name="originAddress" required placeholder="Punto de retiro en Quito"></label>
+          <label>Dirección de entrega<input name="destinationAddress" required placeholder="Punto de entrega en Quito"></label>
+          <label>Persona que recibe<input name="recipient" required placeholder="Nombre del destinatario"></label>
+          <label>WhatsApp destinatario<input name="recipientPhone" required placeholder="0991234567"></label>
+          <label>Fondo (cm)<input name="depthCm" type="number" min="1" step="0.1" value="30" required></label>
+          <label>Ancho (cm)<input name="widthCm" type="number" min="1" step="0.1" value="30" required></label>
+          <label>Alto (cm)<input name="heightCm" type="number" min="1" step="0.1" value="30" required></label>
+          <label>Peso (kg)<input name="weightKg" type="number" min="0.1" step="0.1" value="10" required></label>
+          <label>Valor declarado<input name="productValue" type="number" min="0" max="1000" step="0.01" value="0"></label>
+          <label>Foto del paquete<input name="packagePhoto" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        </div>
+        <label class="check-line"><input name="packagePolicy" type="checkbox" required> Confirmo que no es delicado y su valor no supera $1.000.</label>
+        <div class="map-hint">Tarifa: $3,50 hasta 4 km + $0,50/km adicional. Sobre 30×30×30 cm: +$0,50. Peso &gt;10–19 kg: +$0,50; 20–25 kg: +$1. Máximo 45×50×60 cm y 25 kg.</div>
+        <div class="map-hint warning">Si excede las medidas o 25 kg, se creará automáticamente “Servicio de auto · cotización” para revisión del administrador.</div>`;
+    }
     if (value === 'shipment-scheduled' || value === 'shipment-express') {
       return `
         <div class="form-grid two">
@@ -89,6 +114,26 @@
       adminNotes:String(fd.get('adminNotes') || ''),
       internalReference:String(fd.get('internalReference') || ''),
     };
+    if (service === 'package') {
+      const depthCm=Number(fd.get('depthCm')||0),widthCm=Number(fd.get('widthCm')||0),heightCm=Number(fd.get('heightCm')||0),weightKg=Number(fd.get('weightKg')||0),productValue=Number(fd.get('productValue')||0);
+      const vehicleRequired=depthCm>45||widthCm>50||heightCm>60||weightKg>25;
+      const packageData={
+        ...common,
+        kind:vehicleRequired?'diverse':'package',
+        courierId:vehicleRequired?'':common.courierId,
+        vehicleRequired,
+        serviceLabel:vehicleRequired?'Servicio de auto · paquete sobredimensionado':'Retiro y/o entrega de paquetes',
+        originAddress:String(fd.get('originAddress')||''),
+        destinationAddress:String(fd.get('destinationAddress')||''),
+        recipient:String(fd.get('recipient')||''),
+        recipientPhone:String(fd.get('recipientPhone')||''),
+        depthCm,widthCm,heightCm,weightKg,productValue,
+        delicate:false,
+        policyAccepted:fd.get('packagePolicy')==='on',
+      };
+      if(vehicleRequired) packageData.details=`Paquete fuera de límite para moto. Medidas: ${depthCm}×${widthCm}×${heightCm} cm. Peso: ${weightKg} kg. Requiere servicio de auto y cotización administrativa.`;
+      return packageData;
+    }
     if (service === 'shipment-scheduled' || service === 'shipment-express') {
       return {
         ...common,
@@ -201,7 +246,7 @@
         <form id="adminOrderForm" class="admin-order-form">
           <div class="form-grid two">
             <label>Cliente<select name="clientId" required><option value="">Selecciona un cliente</option>${clients.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.businessName || c.name || c.email || 'Cliente')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
-            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
+            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
           </div>
           <div id="adminServiceFields">${serviceFields('shipment-scheduled')}</div>
           <div class="form-grid two">
@@ -235,6 +280,8 @@
         submit.textContent = 'Creando…';
         try {
           const payload = buildRequest(form);
+          const packagePhotoInput=form.querySelector('input[name="packagePhoto"]');
+          if(packagePhotoInput?.files?.[0]) payload.packagePhoto=await fileInputDataUrl(packagePhotoInput);
           const result = await api('/admin-create-request', {method:'POST', body:JSON.stringify(payload)});
           form.classList.add('hidden');
           $('adminOrderResult').innerHTML = `${renderSummary(result)}<div class="modal-actions"><button type="button" class="ghost" id="createAnotherOrder">Crear otra</button><button type="button" class="primary action-primary" id="goToOrders">Ver solicitudes</button></div>`;
