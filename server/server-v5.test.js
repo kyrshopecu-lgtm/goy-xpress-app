@@ -137,6 +137,62 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
   assert.equal(route.body.pricing.eligible, true);
   assert.ok(route.body.route.mapUrl.includes('google.com/maps/dir'));
 
+  const packageRoute = await call(base, '/api/maps/route', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{origin:'Jorge Juan y Mariana de Jesús, Quito',destination:'La Carolina, Quito',mode:'package',depthCm:30,widthCm:30,heightCm:30,weightKg:10,productValue:100},
+  });
+  assert.equal(packageRoute.status, 200);
+  assert.equal(packageRoute.body.pricing.eligible, true);
+  assert.equal(packageRoute.body.pricing.total, 3.5);
+
+  const packageCreated = await call(base, '/api/client/requests', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{
+      code:'PAQ-TEST-001',kind:'package',
+      originAddress:'Jorge Juan y Mariana de Jesús, Quito',
+      destinationAddress:'La Carolina, Quito',
+      recipient:'Cliente paquete',recipientPhone:'0993334455',
+      depthCm:35,widthCm:30,heightCm:30,weightKg:15,productValue:200,
+      packagePhoto:'data:image/jpeg;base64,QUJDRA==',
+      policyAccepted:true,
+    },
+  });
+  assert.equal(packageCreated.status, 201);
+  assert.equal(packageCreated.body.request.kind, 'package');
+  assert.equal(packageCreated.body.request.packagePricing.dimensionSurcharge, 0.5);
+  assert.equal(packageCreated.body.request.packagePricing.weightSurcharge, 0.5);
+  assert.ok(packageCreated.body.request.evidence.packagePhoto);
+
+  const oversizedPackage = await call(base, '/api/client/requests', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{
+      code:'PAQ-AUTO-001',kind:'package',
+      originAddress:'Jorge Juan y Mariana de Jesús, Quito',
+      destinationAddress:'La Carolina, Quito',
+      depthCm:46,widthCm:30,heightCm:30,weightKg:10,productValue:100,
+      policyAccepted:true,
+    },
+  });
+  assert.equal(oversizedPackage.status, 422);
+  assert.equal(oversizedPackage.body.code, 'AUTO_QUOTE_REQUIRED');
+
+  const diverseStops = await call(base, '/api/client/requests', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{
+      code:'DIV-STOPS-001',kind:'diverse',details:'Gestión con varias direcciones',
+      stops:[
+        {address:'La Carolina, Quito',serviceType:'Retiro',description:'Retirar documentos'},
+        {address:'Centro Histórico, Quito',serviceType:'Entrega',description:'Entregar documentos'},
+      ],
+    },
+  });
+  assert.equal(diverseStops.status, 201);
+  assert.equal(diverseStops.body.request.stops.length, 2);
+
   const created = await call(base, '/api/client/requests', {
     method:'POST',
     token:clientReg.body.token,
