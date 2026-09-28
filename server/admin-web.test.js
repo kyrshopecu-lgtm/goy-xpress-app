@@ -325,6 +325,10 @@ test('GOY SALES AI usa Workers AI gratuito como motor principal', () => {
   assert.match(management, /@cf\/zai-org\/glm-4\.7-flash/);
   assert.match(management, /cloudflare-workers-ai/);
   assert.match(management, /config\.workersAiRun/);
+  assert.match(management, /GOY_AI_OPENAI_FALLBACK/);
+  assert.match(management, /openaiFallbackEnabled/);
+  assert.match(management, /!raw&&config\.openaiFallbackEnabled&&config\.openaiApiKey/);
+  assert.match(worker, /GOY_AI_OPENAI_FALLBACK/);
 });
 
 test('Buscador de prospectos mantiene importación accesible en móvil', () => {
@@ -336,4 +340,19 @@ test('GOY SALES AI prepara seguimiento supervisado con Workers AI', () => {
  const management=read('server/admin-management.js'),js=read('public-web/admin/prospects.js');
  assert.match(management,/draft-followup/);assert.match(management,/followupDraft/);assert.match(management,/@cf\/zai-org\/glm-4\.7-flash/);
  assert.match(js,/Preparar respuesta con IA/);assert.match(js,/Conversación reciente/);assert.match(js,/Revísalo, edítalo y apruébalo antes de cualquier envío/);
+});
+
+test('Seguimiento WhatsApp queda separado del primer contacto y exige ventana activa', () => {
+ const management=read('server/admin-management.js'),notifications=read('server/whatsappNotifications.js'),js=read('public-web/admin/prospects.js');
+ assert.match(management,/send-followup-whatsapp/);
+ assert.match(management,/followupApprovedMessage/);
+ assert.match(management,/24\*60\*60\*1000/);
+ assert.match(management,/plantilla aprobada por Meta/);
+ assert.match(notifications,/sendProspectReply/);
+ assert.match(notifications,/type:'text'/);
+ assert.match(js,/Enviar respuesta revisada/);
+ assert.match(js,/payload\.followupApprovedMessage=message/);
+ assert.match(js,/if\(isFollowup\)/);
+ assert.match(js,/const proposed=isFollowup\?\(p\.followupApprovedMessage\|\|p\.followupDraft\|\|''\)/);
+ assert.doesNotMatch(js,/followupDraft\|\|p\.approvedMessage/);
 });

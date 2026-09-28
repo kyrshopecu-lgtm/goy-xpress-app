@@ -102,6 +102,17 @@ async function sendProspectFirstContact({phone,business,message}) {
   return sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg);
 }
 
+async function sendProspectReply({phone,message}) {
+  const cfg=config(),to=cleanPhone(phone),body=String(message||'').trim();
+  if(!isConfigured(cfg))return {ok:false,skipped:true,reason:'WHATSAPP_NOT_CONFIGURED'};
+  if(!to||!body)return {ok:false,skipped:true,reason:'RECIPIENT_OR_MESSAGE_MISSING'};
+  const url=`https://graph.facebook.com/${cfg.graphVersion}/${cfg.phoneNumberId}/messages`;
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${cfg.accessToken}`},body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to,type:'text',text:{preview_url:false,body:body.slice(0,4096)}})});
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok){console.error('GOY WhatsApp prospect reply error',response.status,JSON.stringify(payload).slice(0,600));return {ok:false,status:response.status,error:payload?.error?.message||'WHATSAPP_SEND_FAILED'};}
+  return {ok:true,id:payload?.messages?.[0]?.id||''};
+}
+
 async function safeNotify(label, fn) {
   try { return await fn(); }
   catch (error) {
@@ -118,5 +129,6 @@ module.exports = {
   notifyCourierAssigned,
   notifyClientDelivered,
   sendProspectFirstContact,
+  sendProspectReply,
   safeNotify,
 };
