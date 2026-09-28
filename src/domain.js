@@ -13,6 +13,22 @@ const PRICING = Object.freeze({
   cashDepositLimit: 1000,
   courierFreeWaitMinutes: 10,
   courierExtraWaitMinute: 0.1,
+  packageBase: 3.5,
+  packageIncludedKm: 4,
+  packageExtraKm: 0.5,
+  packageStandardDepthCm: 30,
+  packageStandardWidthCm: 30,
+  packageStandardHeightCm: 30,
+  packageDimensionSurcharge: 0.5,
+  packageStandardWeightKg: 10,
+  packageMediumWeightMaxKg: 19,
+  packageMaxWeightKg: 25,
+  packageMediumWeightSurcharge: 0.5,
+  packageHeavyWeightSurcharge: 1,
+  packageMaxDepthCm: 45,
+  packageMaxWidthCm: 50,
+  packageMaxHeightCm: 60,
+  packageMaxDeclaredValue: 1000,
 });
 
 const REQUEST_STATUS = Object.freeze({
@@ -28,6 +44,7 @@ const REQUEST_STATUS = Object.freeze({
 
 const REQUEST_KIND = Object.freeze({
   shipment: 'shipment',
+  package: 'package',
   procedure: 'procedure',
   deposit: 'deposit',
   diverse: 'diverse',
@@ -66,6 +83,64 @@ function calculateDeliveryPrice(mode, distanceKm) {
   return {mode: 'express', distanceKm: distance, includedKm: PRICING.expressIncludedKm, extraKm, total: roundMoney(PRICING.expressBase + extraKm * PRICING.expressExtraKm), eligible: distance > 0};
 }
 
+function calculatePackagePrice({distanceKm, depthCm, widthCm, heightCm, weightKg, productValue, delicate=false} = {}) {
+  const distance = nonNegativeNumber(distanceKm);
+  const depth = nonNegativeNumber(depthCm);
+  const width = nonNegativeNumber(widthCm);
+  const height = nonNegativeNumber(heightCm);
+  const weight = nonNegativeNumber(weightKg);
+  const declaredValue = nonNegativeNumber(productValue);
+
+  const invalidDimensions = depth <= 0 || width <= 0 || height <= 0;
+  const invalidWeight = weight <= 0;
+  const exceedsDimensions =
+    depth > PRICING.packageMaxDepthCm ||
+    width > PRICING.packageMaxWidthCm ||
+    height > PRICING.packageMaxHeightCm;
+  const exceedsWeight = weight > PRICING.packageMaxWeightKg;
+  const autoRequired = exceedsDimensions || exceedsWeight;
+
+  const extraKm = Math.max(0, Math.ceil(distance - PRICING.packageIncludedKm));
+  const distanceCost = roundMoney(PRICING.packageBase + extraKm * PRICING.packageExtraKm);
+  const dimensionSurcharge =
+    depth > PRICING.packageStandardDepthCm ||
+    width > PRICING.packageStandardWidthCm ||
+    height > PRICING.packageStandardHeightCm
+      ? PRICING.packageDimensionSurcharge
+      : 0;
+  const weightSurcharge = weight > PRICING.packageMediumWeightMaxKg
+    ? PRICING.packageHeavyWeightSurcharge
+    : weight > PRICING.packageStandardWeightKg
+      ? PRICING.packageMediumWeightSurcharge
+      : 0;
+
+  const policyError = delicate
+    ? 'No se aceptan paquetes delicados en este servicio.'
+    : declaredValue > PRICING.packageMaxDeclaredValue
+      ? 'El valor declarado del paquete no puede superar $1.000.'
+      : '';
+
+  return {
+    distanceKm: distance,
+    includedKm: PRICING.packageIncludedKm,
+    extraKm,
+    distanceCost,
+    depthCm: depth,
+    widthCm: width,
+    heightCm: height,
+    weightKg: weight,
+    productValue: declaredValue,
+    dimensionSurcharge,
+    weightSurcharge,
+    autoRequired,
+    exceedsDimensions,
+    exceedsWeight,
+    policyError,
+    eligible: distance > 0 && !invalidDimensions && !invalidWeight && !autoRequired && !policyError,
+    total: roundMoney(distanceCost + dimensionSurcharge + weightSurcharge),
+  };
+}
+
 function calculateCollectTotal({productValue, deliveryCost, cashOnDelivery, deliveryPayer}) {
   if (!cashOnDelivery) return 0;
   return roundMoney(nonNegativeNumber(productValue) + (deliveryPayer === 'recipient' ? nonNegativeNumber(deliveryCost) : 0));
@@ -74,6 +149,7 @@ function calculateCollectTotal({productValue, deliveryCost, cashOnDelivery, deli
 function createCode(kind, now = Date.now(), random = Math.random()) {
   const prefixByKind = {
     [REQUEST_KIND.shipment]: 'GOY',
+    [REQUEST_KIND.package]: 'PAQ',
     [REQUEST_KIND.procedure]: 'TRM',
     [REQUEST_KIND.deposit]: 'DEP',
     [REQUEST_KIND.diverse]: 'DIV',
@@ -105,6 +181,7 @@ function normalizeRequest(request) {
 function requestKindLabel(kind) {
   const labels = {
     [REQUEST_KIND.shipment]: 'Envío',
+    [REQUEST_KIND.package]: 'Retiro y/o entrega de paquetes',
     [REQUEST_KIND.procedure]: 'Mensajería ejecutiva',
     [REQUEST_KIND.deposit]: 'Depósito',
     [REQUEST_KIND.diverse]: 'Servicios diversos',
@@ -118,4 +195,4 @@ function requestPrimaryAddress(request) {
   return request?.destinationAddress || request?.address || request?.place || request?.institution || 'Dirección no registrada';
 }
 
-module.exports = {PRICING, REQUEST_KIND, REQUEST_STATUS, calculateCollectTotal, calculateDeliveryPrice, calculateExecutivePrice, createCode, nonNegativeNumber, normalizeRequest, parseNumber, requestKindLabel, requestPrimaryAddress, roundMoney};
+module.exports = {PRICING, REQUEST_KIND, REQUEST_STATUS, calculateCollectTotal, calculateDeliveryPrice, calculateExecutivePrice, calculatePackagePrice, createCode, nonNegativeNumber, normalizeRequest, parseNumber, requestKindLabel, requestPrimaryAddress, roundMoney};
