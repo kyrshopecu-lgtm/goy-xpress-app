@@ -21,7 +21,9 @@ window.GOY_ADMIN_CONFIG = {
 
     for(let attempt=1;attempt<=attempts;attempt++){
       const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),timeoutMs);
+      const isAiOperation=/\/api\/admin\/prospects\/[^/]+\/(?:analyze|draft-followup)(?:\?|$)/.test(target);
+      const operationTimeoutMs=isAiOperation?60000:timeoutMs;
+      const timer=setTimeout(()=>controller.abort(),operationTimeoutMs);
       try{
         const response=await nativeFetch(input,{...init,cache:'no-store',signal:controller.signal});
         if(isAdminData && attempt<attempts && (response.status===429||response.status>=500)){
