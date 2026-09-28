@@ -47,6 +47,7 @@ async function request(path, {method='GET', token, body, headers={}, timeoutMs=4
 function serviceName(kind) {
   return {
     shipment:'Entrega',
+    package:'Retiro y/o entrega de paquetes',
     procedure:'Trámite ejecutivo',
     deposit:'Depósito bancario',
     diverse:'Servicio diverso',
@@ -73,6 +74,7 @@ async function notifyGoyWhatsapp(token, created, payload={}) {
       created.recipientPhone || payload.recipientPhone ? `WhatsApp destinatario: ${created.recipientPhone || payload.recipientPhone}` : '',
       created.destinationAddress || payload.destinationAddress ? `Entrega: ${created.destinationAddress || payload.destinationAddress}` : '',
       created.destinationMapUrl || payload.destinationMapUrl ? `Ubicación Maps: ${created.destinationMapUrl || payload.destinationMapUrl}` : '',
+      created.kind === 'package' ? `Paquete: ${created.depthCm || payload.depthCm || 0}×${created.widthCm || payload.widthCm || 0}×${created.heightCm || payload.heightCm || 0} cm · ${created.weightKg || payload.weightKg || 0} kg` : '',
       Number(created.productValue || payload.productValue || 0) > 0 ? `Valor producto: ${Number(created.productValue || payload.productValue).toFixed(2)}` : '',
       Number(created.serviceCost || 0) > 0 ? `Valor servicio: $${Number(created.serviceCost).toFixed(2)}` : '',
       created.cashOnDelivery || payload.cashOnDelivery ? 'Cobro contra entrega: Sí' : '',
@@ -129,11 +131,11 @@ export async function createClientRequest(token, payload) {
   return data.request;
 }
 
-export async function estimateGoogleRoute(token, {origin, destination, mode='scheduled'}) {
+export async function estimateGoogleRoute(token, {origin, destination, mode='scheduled', ...details}) {
   return request('/maps/route', {
     method:'POST',
     token,
-    body:{origin, destination, mode},
+    body:{origin, destination, mode, ...details},
   });
 }
 
@@ -196,6 +198,10 @@ export function pickClientLogo() {
 
 export function pickCourierPhoto(fromCamera=false) {
   return imageDataUrl({camera:fromCamera, aspect:[1,1], quality:0.45});
+}
+
+export function pickPackagePhoto(fromCamera=false) {
+  return imageDataUrl({camera:fromCamera, aspect:[4,3], quality:0.5});
 }
 
 export function takeEvidencePhoto() {
