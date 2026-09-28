@@ -72,8 +72,9 @@ function wrap(next,overrides={}){
   const prospectDiscover=p==='/admin/prospects/discover';
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
   const prospectSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-whatsapp$/);
+  const prospectFollowupMatch=p.match(/^\/admin\/prospects\/([^/]+)\/draft-followup$/);
   const prospectWhatsAppStatus=p==='/admin/prospects/whatsapp-status';
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -137,6 +138,21 @@ function wrap(next,overrides={}){
     prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,providerMessageId:sent.id||'',sentAt:now});
     prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;
     await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
+   }
+   if(prospectFollowupMatch){
+    const id=decodeURIComponent(prospectFollowupMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
+    if(item.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea más contacto.'},config.allowedOrigin);
+    if(!config.openaiApiKey)return json(res,503,{error:'GOY SALES AI no está configurado para preparar seguimientos.'},config.allowedOrigin);
+    const conversation=(Array.isArray(item.conversation)?item.conversation:[]).slice(-12).map(x=>({direction:x.direction==='inbound'?'prospecto':'GOY XPRESS',message:String(x.message||'').slice(0,1500),sentAt:x.sentAt||''}));
+    if(!conversation.some(x=>x.direction==='prospecto'))return json(res,409,{error:'Aún no existe una respuesta del prospecto para analizar.'},config.allowedOrigin);
+    const context={business:item.business,city:item.city,category:item.category,observedNeeds:item.observedNeeds,growthOpportunities:item.growthOpportunities,suggestedServices:item.suggestedServices,conversation};
+    const prompt='Prepara el siguiente mensaje comercial de GOY XPRESS para este prospecto. Debe responder específicamente a lo que escribió, ser breve, amable y natural, no inventar necesidades ni datos, no presionar, respetar cualquier rechazo y orientar a una llamada solo si el prospecto muestra interés. Devuelve JSON válido sin markdown con las claves draftMessage, intent y recommendedStatus. recommendedStatus solo puede ser Respondió, Interesado, Solicita llamada o Descartado. Si el mensaje expresa rechazo o no contacto, usa Descartado y draftMessage vacío. Contexto: '+JSON.stringify(context);
+    const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.openaiApiKey},body:JSON.stringify({model:'gpt-4o-mini',temperature:0.3,response_format:{type:'json_object'},messages:[{role:'system',content:'Eres GOY SALES AI. Preparas borradores para revisión humana; nunca afirmes que un mensaje fue enviado.'},{role:'user',content:prompt}]})});
+    if(!response.ok)return json(res,502,{error:'No se pudo preparar el seguimiento con IA.'},config.allowedOrigin);
+    const ai=await response.json();let draft;try{draft=JSON.parse(ai?.choices?.[0]?.message?.content||'{}');}catch{return json(res,502,{error:'GOY SALES AI devolvió un seguimiento no válido.'},config.allowedOrigin);}
+    const allowed=['Respondió','Interesado','Solicita llamada','Descartado'],recommendedStatus=allowed.includes(String(draft.recommendedStatus))?String(draft.recommendedStatus):'Respondió';
+    item.followupDraft=String(draft.draftMessage||'').trim().slice(0,4000);item.followupIntent=String(draft.intent||'').trim().slice(0,1000);item.followupRecommendedStatus=recommendedStatus;item.followupDraftAt=new Date().toISOString();item.updatedAt=item.followupDraftAt;
+    await writeState(config,data);return json(res,200,{prospect:item,draft:{draftMessage:item.followupDraft,intent:item.followupIntent,recommendedStatus}});
    }
    if(prospectAnalyzeMatch){
     const id=decodeURIComponent(prospectAnalyzeMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
