@@ -1,0 +1,50 @@
+name: Desplegar Cloudflare producción
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare-worker-v2.js'
+      - 'cloudflare-entry.js'
+      - 'cloudflare-entry-auth.js'
+      - 'cloudflare-admin-client-create.js'
+      - 'cloudflare-auth-proof.js'
+      - 'cloudflare-login-v2.js'
+      - 'cloudflare-password.mjs'
+      - 'wrangler.jsonc'
+      - 'server/**'
+      - 'api/**'
+      - 'public-web/**'
+      - 'package.json'
+      - '.github/workflows/cloudflare-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Ejecutar pruebas
+        run: npm test
+      - name: Verificar credenciales Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Falta CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Falta CLOUDFLARE_ACCOUNT_ID" && exit 1)
+      - name: Desplegar Worker y assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
