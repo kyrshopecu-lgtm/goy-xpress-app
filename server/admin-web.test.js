@@ -326,3 +326,14 @@ test('GOY SALES AI usa Workers AI gratuito como motor principal', () => {
   assert.match(management, /cloudflare-workers-ai/);
   assert.match(management, /config\.workersAiRun/);
 });
+
+test('Buscador de prospectos mantiene importación accesible en móvil', () => {
+ const js=read('public-web/admin/prospects.js'),css=read('public-web/admin/styles.css');
+ assert.match(js,/discover-import-bar/);assert.match(js,/discoverSelectedCount/);assert.match(css,/discover-results-scroll/);assert.match(css,/position:sticky/);
+});
+
+test('GOY SALES AI prepara seguimiento supervisado con Workers AI', () => {
+ const management=read('server/admin-management.js'),js=read('public-web/admin/prospects.js');
+ assert.match(management,/draft-followup/);assert.match(management,/followupDraft/);assert.match(management,/@cf\/zai-org\/glm-4\.7-flash/);
+ assert.match(js,/Preparar respuesta con IA/);assert.match(js,/Conversación reciente/);assert.match(js,/Revísalo, edítalo y apruébalo antes de cualquier envío/);
+});
