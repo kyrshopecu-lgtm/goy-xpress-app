@@ -313,3 +313,15 @@ test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () 
   const worker=read('cloudflare-worker-v2.js');
   for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
 });
+
+
+test('GOY SALES AI prepara seguimiento de respuestas sin envío automático', () => {
+  const management=read('server/admin-management.js'),js=read('public-web/admin/prospects.js');
+  assert.match(management, /draft-followup/);
+  assert.match(management, /followupDraft/);
+  assert.match(management, /recommendedStatus/);
+  assert.match(management, /Aún no existe una respuesta del prospecto/);
+  assert.match(js, /Preparar respuesta con IA/);
+  assert.match(js, /Conversación reciente/);
+  assert.match(js, /Revísalo, edítalo y apruébalo antes de cualquier envío/);
+});
