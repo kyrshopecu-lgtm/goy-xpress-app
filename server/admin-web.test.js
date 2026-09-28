@@ -293,3 +293,17 @@ test('GOY SALES AI informa si WhatsApp comercial está listo sin exponer secreto
   assert.doesNotMatch(management, /accessToken\s*[,}]/);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
+
+
+test('Cloudflare conecta webhook firmado de respuestas WhatsApp para prospectos', () => {
+  const edge=read('cloudflare-entry-auth.js'),hook=read('cloudflare-whatsapp-prospect-webhook.js');
+  assert.match(edge, /\/api\/webhooks\/whatsapp\/prospects/);
+  assert.match(edge, /whatsappProspectWebhook/);
+  assert.match(hook, /X-Hub-Signature-256/);
+  assert.match(hook, /WHATSAPP_WEBHOOK_VERIFY_TOKEN/);
+  assert.match(hook, /META_APP_SECRET/);
+  assert.match(hook, /providerMessageId/);
+  assert.match(hook, /p\.status='Respondió'/);
+  assert.match(hook, /p\.doNotContact=true/);
+  assert.match(hook, /STATE_CONFLICT/);
+});
