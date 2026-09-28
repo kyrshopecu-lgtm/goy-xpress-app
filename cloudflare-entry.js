@@ -349,6 +349,15 @@ async function adminUpdateRequest(request, env, code, ctx) {
 
     if (body.status) patch.status = normalizeStatus(body.status);
 
+    const diverseAwaitingConfirmation =
+      current.kind === 'diverse' &&
+      normalizeStatus(current.status) !== 'Aceptado' &&
+      String(current.quote?.status || '') !== 'Aceptado';
+    const attemptsAssignment = Boolean(body.courierId) || normalizeStatus(body.status) === 'Asignado';
+    if (diverseAwaitingConfirmation && attemptsAssignment) {
+      return json({error:'El cliente debe confirmar la cotización del servicio diverso antes de asignar mensajero.'}, 409);
+    }
+
     if (body.courierId) {
       const courier = state.users.find(user =>
         String(user.id) === String(body.courierId) &&
@@ -376,6 +385,9 @@ async function adminUpdateRequest(request, env, code, ctx) {
 
     if (body.kind) patch.kind = String(body.kind);
     if (body.serviceLabel) patch.serviceLabel = String(body.serviceLabel).trim();
+    for (const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone']) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) patch[field] = String(body[field] || '').trim();
+    }
     if (body.serviceCost !== undefined) {
       const value = Math.max(0, Number(body.serviceCost || 0));
       patch.serviceCost = Math.round(value * 100) / 100;
