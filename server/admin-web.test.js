@@ -33,6 +33,28 @@ test('panel moderno tiene logo, botones de nueva orden y scripts válidos', () =
   new vm.Script(modern, {filename:'modern-admin.js'});
 });
 
+test('panel administrativo incluye paquetes, políticas, foto y derivación a auto', () => {
+  const modern = read('public-web/admin/modern-admin.js');
+  const quote = read('public-web/admin/quote-whatsapp.js');
+  const details = read('public-web/admin/order-details.js');
+  const evidence = read('public-web/admin/order-evidence.js');
+  assert.match(modern, /Retiro y\/o entrega de paquetes/);
+  assert.match(modern, /name="depthCm"/);
+  assert.match(modern, /name="weightKg"/);
+  assert.match(modern, /name="packagePhoto"/);
+  assert.match(modern, /packagePolicy/);
+  assert.match(modern, /Servicio de auto · paquete sobredimensionado/);
+  assert.match(quote, /Direcciones \/ paradas del servicio/);
+  assert.match(quote, /patch\.stops/);
+  assert.match(details, /packageSummary/);
+  assert.match(details, /stopSummary/);
+  assert.match(evidence, /packagePhoto/);
+  new vm.Script(modern, {filename:'public-web/admin/modern-admin.js'});
+  new vm.Script(quote, {filename:'public-web/admin/quote-whatsapp.js'});
+  new vm.Script(details, {filename:'public-web/admin/order-details.js'});
+  new vm.Script(evidence, {filename:'public-web/admin/order-evidence.js'});
+});
+
 test('crear orden no permite kilometraje manual y mantiene cálculo de Maps en servidor', () => {
   const html = read('admin-web/index.html');
   const modern = read('admin-web/modern-admin.js');
