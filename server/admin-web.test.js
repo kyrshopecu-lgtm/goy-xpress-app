@@ -307,3 +307,9 @@ test('Cloudflare conecta webhook firmado de respuestas WhatsApp para prospectos'
   assert.match(hook, /p\.doNotContact=true/);
   assert.match(hook, /STATE_CONFLICT/);
 });
+
+
+test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () => {
+  const worker=read('cloudflare-worker-v2.js');
+  for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
+});
