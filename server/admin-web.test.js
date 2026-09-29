@@ -564,3 +564,25 @@ test('Aprendizaje de campañas usa la imagen realmente enviada', () => {
   assert.match(management,/mediaUrl=String\(firstOutbound\?\.mediaUrl\|\|''\)/);
   assert.match(management,/actualMedia=sent\.mediaSkipped\?'':requestedMedia/);
 });
+
+
+test('Worker expone health check no sensible para GOY SALES AI', () => {
+  const edge=read('cloudflare-entry-auth.js');
+  assert.match(edge,/\/api\/health/);
+  assert.match(edge,/sales-ai-production-smoke-v1/);
+  assert.match(edge,/dailySalesReady/);
+  assert.match(edge,/mediaMode/);
+  assert.match(edge,/mediaFallbackEnabled:true/);
+  assert.match(edge,/GOY_WA_PROSPECT_TEMPLATE/);
+  assert.match(edge,/WHATSAPP_ACCESS_TOKEN_and_PHONE_NUMBER_ID/);
+  assert.doesNotMatch(edge,/accessToken:/);
+});
+
+test('Smoke test de producción espera despliegue y exige agente comercial listo', () => {
+  const workflow=read('.github/workflows/production-smoke.yml');
+  assert.match(workflow,/goy-xpress-app\.kyrshopecu\.workers\.dev\/api\/health/);
+  assert.match(workflow,/sales-ai-production-smoke-v1/);
+  assert.match(workflow,/dailySalesReady == true/);
+  assert.match(workflow,/Faltan:/);
+  assert.match(workflow,/seq 1 36/);
+});
