@@ -7,6 +7,7 @@
   let whatsappReady=null;
   let whatsappMediaReady=false;
   let serviceIntelligence={services:[],searchQueries:[]};
+  let salesAiMetrics=null;
 
   async function api(path,options={}){
     const headers={'Content-Type':'application/json',...(options.headers||{})};
@@ -18,6 +19,16 @@
   }
 
   function sourceLabel(p){return [p.source,p.city,p.category].filter(Boolean).join(' · ')||'Sin clasificar';}
+  const pct=v=>Math.round(Math.max(0,Math.min(1,Number(v||0)))*100)+'%';
+  function renderSalesMetrics(){
+    const m=salesAiMetrics||{},today=m.today||{},set=(id,value)=>{const el=$(id);if(el)el.textContent=String(value??0);};
+    set('salesAiFound',today.found||0);set('salesAiAnalyzed',today.analyzed||0);set('salesAiContacted',today.contacted||0);set('salesAiResponded',today.responded||0);set('salesAiInterested',today.interested||0);set('salesAiClients',today.clients||0);
+    const latest=$('salesAiLatestRun');
+    if(latest){const run=m.latestRun;if(run?.completedAt){const date=new Date(run.completedAt);latest.textContent='Último ciclo: '+date.toLocaleString('es-EC')+(run.note?' · '+run.note:'');}else latest.textContent='Aún no existe un ciclo automático registrado hoy.';}
+    const body=$('salesAiPerformanceBody');if(!body)return;
+    const rows=Array.isArray(m.servicePerformance)?m.servicePerformance:[];
+    body.innerHTML=rows.length?rows.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td><strong>${esc(s.priorityScore||50)}/100</strong></td><td>${esc(s.contacted||0)}</td><td>${esc(s.responded||0)}</td><td>${esc(s.interested||0)}</td><td>${esc(s.clients||0)}</td><td>${pct(s.responseRate)}</td><td>${pct(s.conversionRate)}</td></tr>`).join(''):'<tr><td colspan="8">Todavía no hay suficiente historial para mostrar rendimiento por servicio.</td></tr>';
+  }
   function uniqueMedia(){
     const seen=new Set(),items=[];
     for(const s of serviceIntelligence.services||[]){const url=String(s.mediaUrl||'').trim();if(!url||seen.has(url))continue;seen.add(url);items.push({url,label:s.name||'Pieza GOY XPRESS'});}
@@ -87,10 +98,14 @@
     try{const data=await api('/admin/prospects/service-intelligence');serviceIntelligence={services:data.services||[],searchQueries:data.searchQueries||[]};return serviceIntelligence;}
     catch(_){serviceIntelligence={services:[],searchQueries:[]};return serviceIntelligence;}
   }
+  async function loadSalesMetrics(){
+    try{salesAiMetrics=await api('/admin/prospects/metrics');renderSalesMetrics();return salesAiMetrics;}
+    catch(_){salesAiMetrics=null;renderSalesMetrics();return null;}
+  }
 
   async function load(){
     if(!token()||!$('prospectsBody'))return;
-    try{const [data]=await Promise.all([api('/admin/prospects'),loadWhatsAppStatus(),loadServiceIntelligence()]);prospects=data.prospects||[];render();}
+    try{const [data]=await Promise.all([api('/admin/prospects'),loadWhatsAppStatus(),loadServiceIntelligence(),loadSalesMetrics()]);prospects=data.prospects||[];render();}
     catch(e){$('prospectsBody').innerHTML=`<tr><td colspan="7">${esc(e.message)}</td></tr>`;}
   }
 
