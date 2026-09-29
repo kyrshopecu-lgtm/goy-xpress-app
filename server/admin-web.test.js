@@ -537,3 +537,30 @@ test('Memoria comercial expone campaña aprendida sin sustituir la revisión hum
   assert.match(js,/messageAngle:o\.querySelector\('#prospectMessageAngle'\)/);
   assert.match(js,/Aprobar para contacto/);
 });
+
+
+test('GOY SALES AI no bloquea el contacto si Meta aún no habilita imagen', () => {
+  const management=read('server/admin-management.js');
+  const whatsapp=read('server/whatsappNotifications.js');
+  const js=read('public-web/admin/prospects.js');
+  assert.match(whatsapp,/mediaSkipped:true/);
+  assert.match(whatsapp,/fallback:'text-only'/);
+  assert.match(management,/mediaRequestedUrl/);
+  assert.match(management,/mediaSkipped:Boolean\(sent\.mediaSkipped\)/);
+  assert.match(management,/mediaSkipped:mediaSkippedCount/);
+  assert.match(js,/Enviar texto · imagen pendiente/);
+  assert.match(js,/se enviará solo el texto/);
+  assert.match(js,/imagen\(es\) pendientes/);
+  assert.doesNotMatch(js,/if\(hasMedia&&!whatsappMediaReady\).*return/);
+  assert.doesNotMatch(js,/if\(withMedia&&!whatsappMediaReady\).*return/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+  new vm.Script(management,{filename:'server/admin-management.js'});
+  new vm.Script(whatsapp,{filename:'server/whatsappNotifications.js'});
+});
+
+test('Aprendizaje de campañas usa la imagen realmente enviada', () => {
+  const management=read('server/admin-management.js');
+  assert.match(management,/firstOutbound=conversation\.find/);
+  assert.match(management,/mediaUrl=String\(firstOutbound\?\.mediaUrl\|\|''\)/);
+  assert.match(management,/actualMedia=sent\.mediaSkipped\?'':requestedMedia/);
+});

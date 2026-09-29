@@ -36,8 +36,8 @@ function normalizeMessageAngle(value){
 function prospectCampaignPerformance(data){
  const rows=new Map();
  for(const p of data.prospects||[]){
-  const service=String(p.matchedService||'').trim(),angle=normalizeMessageAngle(p.messageAngle)||'Sin clasificar',mediaUrl=String(p.approvedMediaUrl||'').trim();
-  const conversation=Array.isArray(p.conversation)?p.conversation:[];
+  const service=String(p.matchedService||'').trim(),conversation=Array.isArray(p.conversation)?p.conversation:[],firstOutbound=conversation.find(x=>x.direction==='outbound'&&String(x.channel||'').toLowerCase()==='whatsapp');
+  const angle=normalizeMessageAngle(firstOutbound?.messageAngle||p.messageAngle)||'Sin clasificar',mediaUrl=String(firstOutbound?.mediaUrl||'').trim();
   const contacted=Boolean(p.firstContactAt)||conversation.some(x=>x.direction==='outbound')||['Contactado','Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||''));
   if(!service||!contacted)continue;
   const key=service+'|'+angle+'|'+mediaUrl;
@@ -209,7 +209,7 @@ function wrap(next,overrides={}){
    if(prospectWhatsAppStatus){
     const accessToken=String(process.env.WHATSAPP_ACCESS_TOKEN||''),phoneNumberId=String(process.env.WHATSAPP_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_PROSPECT_TEMPLATE||''),mediaHeader=String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER||'').toLowerCase()==='true';
     const missing=[];if(!accessToken)missing.push('WHATSAPP_ACCESS_TOKEN');if(!phoneNumberId)missing.push('WHATSAPP_PHONE_NUMBER_ID');if(!template)missing.push('GOY_WA_PROSPECT_TEMPLATE');
-    return json(res,200,{configured:missing.length===0,missing,templateConfigured:Boolean(template),mediaHeaderConfigured:mediaHeader},config.allowedOrigin);
+    return json(res,200,{configured:missing.length===0,missing,templateConfigured:Boolean(template),mediaHeaderConfigured:mediaHeader,mediaFallbackToText:true},config.allowedOrigin);
    }
    if(prospectServiceIntelligence){
     const knowledge=salesServiceKnowledge(data);
@@ -258,33 +258,33 @@ function wrap(next,overrides={}){
    if(prospectSendApprovedBatch){
     const body=await readBody(req),limit=Math.max(1,Math.min(60,Number(body.limit||60)));
     const ready=data.prospects.filter(x=>x.status==='Aprobado para contacto'&&!x.doNotContact&&String(x.approvedMessage||'').trim()&&cleanPhone(x.contact).length>=11).sort((a,b)=>Number(b.score||0)-Number(a.score||0)).slice(0,limit);
-    const results=[];let sentCount=0;
+    const results=[];let sentCount=0,mediaSkippedCount=0;
     for(const prospect of ready){
-      const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),media=absoluteMediaUrl(req,prospect.approvedMediaUrl||'');
+      const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),requestedMedia=String(prospect.approvedMediaUrl||'').trim(),media=absoluteMediaUrl(req,requestedMedia);
       const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
       if(!sent.ok){results.push({id:prospect.id,business:prospect.business,ok:false,error:sent.reason||sent.error||'WHATSAPP_SEND_FAILED'});continue;}
-      const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
-      prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,messageAngle:prospect.messageAngle||'',mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
-      prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;sentCount++;
-      results.push({id:prospect.id,business:prospect.business,ok:true,providerMessageId:sent.id||''});
+      const now=new Date().toISOString(),actualMedia=sent.mediaSkipped?'':requestedMedia;prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
+      prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,messageAngle:prospect.messageAngle||'',mediaUrl:actualMedia,mediaRequestedUrl:requestedMedia,mediaSkipped:Boolean(sent.mediaSkipped),providerMessageId:sent.id||'',sentAt:now});
+      prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;sentCount++;if(sent.mediaSkipped)mediaSkippedCount++;
+      results.push({id:prospect.id,business:prospect.business,ok:true,mediaSkipped:Boolean(sent.mediaSkipped),providerMessageId:sent.id||''});
     }
     if(ready.length)await writeState(config,data);
-    return json(res,200,{ok:true,attempted:ready.length,sent:sentCount,failed:ready.length-sentCount,results},config.allowedOrigin);
+    return json(res,200,{ok:true,attempted:ready.length,sent:sentCount,failed:ready.length-sentCount,mediaSkipped:mediaSkippedCount,results},config.allowedOrigin);
    }
    if(prospectSendMatch){
     const id=decodeURIComponent(prospectSendMatch[1]),prospect=data.prospects.find(x=>x.id===id);
     if(!prospect)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
     if(prospect.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea contacto.'},config.allowedOrigin);
     if(prospect.status!=='Aprobado para contacto')return json(res,409,{error:'El contacto debe estar aprobado antes de enviar.'},config.allowedOrigin);
-    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),media=absoluteMediaUrl(req,prospect.approvedMediaUrl||'');
+    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),requestedMedia=String(prospect.approvedMediaUrl||'').trim(),media=absoluteMediaUrl(req,requestedMedia);
     if(!message)return json(res,409,{error:'No existe un mensaje final aprobado.'},config.allowedOrigin);
     if(phone.length<11)return json(res,409,{error:'No existe un WhatsApp público válido registrado.'},config.allowedOrigin);
     const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
-    if(!sent.ok){const reason=sent.reason==='PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'?'La plantilla de primer contacto no tiene habilitada una cabecera de imagen. Activa GOY_WA_PROSPECT_MEDIA_HEADER o envía sin imagen.':sent.reason||sent.error||'WhatsApp no confirmó el envío.';return json(res,502,{error:reason},config.allowedOrigin);}
-    const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
-    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,messageAngle:prospect.messageAngle||'',mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
+    if(!sent.ok)return json(res,502,{error:sent.reason||sent.error||'WhatsApp no confirmó el envío.'},config.allowedOrigin);
+    const now=new Date().toISOString(),actualMedia=sent.mediaSkipped?'':requestedMedia;prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
+    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,messageAngle:prospect.messageAngle||'',mediaUrl:actualMedia,mediaRequestedUrl:requestedMedia,mediaSkipped:Boolean(sent.mediaSkipped),providerMessageId:sent.id||'',sentAt:now});
     prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;
-    await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
+    await writeState(config,data);return json(res,200,{ok:true,prospect,mediaSkipped:Boolean(sent.mediaSkipped),providerMessageId:sent.id||''},config.allowedOrigin);
    }
    if(prospectFollowupSendMatch){
     const id=decodeURIComponent(prospectFollowupSendMatch[1]),prospect=data.prospects.find(x=>x.id===id);
