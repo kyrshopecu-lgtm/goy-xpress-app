@@ -17,6 +17,42 @@ async function writeState(config,data){const normalized=cleanData(data);if(confi
 function activeStatus(value){return !['Entrega finalizada','Cancelado','Entregado','Finalizado'].includes(String(value||''));}
 function cleanMoney(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;}
 function publicService(item){return {id:item.id,name:item.name,price:Number(item.price||0),description:item.description||'',active:item.active!==false,createdAt:item.createdAt,updatedAt:item.updatedAt};}
+
+const SALES_BASE_SERVICES=[
+ {id:'packages',name:'Retiro y/o entrega de paquetes',description:'Retiro y entrega de paquetes en Quito con tarifa por distancia, medidas y peso.',mediaUrl:'/assets/01_mensajeria_envios.png',queries:['tiendas online','ecommerce','boutiques','tecnología','accesorios','repuestos','regalos','juguetes y coleccionables']},
+ {id:'messaging',name:'Mensajería y Envíos',description:'Mensajería programada y express para negocios y personas.',mediaUrl:'/assets/01_mensajeria_envios.png',queries:['tiendas online','emprendimientos','distribuidores','oficinas','floristerías']},
+ {id:'procedures',name:'Trámites Generales y Mensajería Ejecutiva',description:'Ingreso y retiro de documentos, gestiones institucionales y trámites en Quito.',mediaUrl:'/assets/02_tramites_generales.png',queries:['estudios jurídicos','abogados','contadores','consultoras','inmobiliarias','agencias de viajes']},
+ {id:'legal',name:'Apoyo Legal y Judicial',description:'Gestiones e ingreso de documentos para abogados y estudios jurídicos.',mediaUrl:'/assets/04_apoyo_legal_judicial.png',queries:['abogados','estudios jurídicos','bufetes','notarías','consultores legales']},
+ {id:'vehicle',name:'Trámites Vehiculares',description:'Apoyo operativo para matriculación, revisión y gestiones vehiculares.',mediaUrl:'/assets/05_tramites_vehiculares.png',queries:['concesionarios','patios de autos','talleres automotrices','rent a car','venta de vehículos']},
+ {id:'apostille',name:'Apostilla de Documentos',description:'Gestión de apostilla y documentación para clientes en Quito o de otras ciudades.',mediaUrl:'/assets/06_apostilla_documentos.png',queries:['agencias migratorias','abogados','traductores','agencias de estudios en el exterior','consultoras']},
+ {id:'deposits',name:'Depósitos y gestiones de pago',description:'Depósito de cheques, efectivo y gestiones de pago dentro de los límites operativos.',mediaUrl:'/assets/03_cambio_dinero_negocio.png',queries:['distribuidores','mayoristas','comercios','tiendas','empresas de ventas']},
+ {id:'additional',name:'Servicios diversos y personalizados',description:'Gestiones especiales cotizadas por administración según la necesidad del cliente.',mediaUrl:'/assets/08_servicios_adicionales.png',queries:['pymes','emprendimientos','servicios profesionales','empresas']},
+];
+function salesServiceKnowledge(data){
+ const custom=(data.customServices||[]).filter(s=>s.active!==false).map(s=>({id:'custom:'+s.id,name:String(s.name||'').trim(),description:String(s.description||'').trim(),price:Number(s.price||0),mediaUrl:'/assets/08_servicios_adicionales.png',queries:[String(s.name||'').trim(),String(s.description||'').trim()].filter(x=>x.length>=3)}));
+ const services=[...SALES_BASE_SERVICES,...custom];
+ const queries=[...new Set(services.flatMap(s=>s.queries||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
+ return {services,queries};
+}
+function serviceMediaForName(knowledge,name){
+ const target=String(name||'').trim().toLowerCase();
+ if(!target)return '';
+ const match=(knowledge.services||[]).find(s=>String(s.name||'').trim().toLowerCase()===target)|| (knowledge.services||[]).find(s=>target.includes(String(s.name||'').trim().toLowerCase())||String(s.name||'').trim().toLowerCase().includes(target));
+ return match?.mediaUrl||'';
+}
+function validMediaUrl(value){
+ const v=String(value||'').trim();
+ return !v||/^\/assets\/[A-Za-z0-9._/-]+$/.test(v)||/^https:\/\/[^\s]+$/i.test(v);
+}
+function absoluteMediaUrl(req,value){
+ const v=String(value||'').trim();if(!v)return '';
+ if(/^https:\/\//i.test(v))return v;
+ if(!v.startsWith('/'))return '';
+ const host=String(req.headers?.['x-forwarded-host']||req.headers?.host||'').trim();
+ if(!host)return '';
+ const proto=String(req.headers?.['x-forwarded-proto']||'https').split(',')[0].trim()||'https';
+ return `${proto}://${host}${v}`;
+}
 function preliminaryFitScore({category='',city='',website=false}={}){
  const text=String(category).toLowerCase();let score=35;
  if(/tecnolog|accesor|ropa|juguete|coleccion|tienda|emprend|repuesto/.test(text))score+=25;
@@ -31,7 +67,8 @@ async function discoverProspects(config,criteria){
   const results=[],seen=new Set();let requestsUsed=0;
   const requestBudget=Math.max(0,Number(criteria.requestBudget||0));
   const defaultCategories=['tecnología','accesorios','ropa','juguetes y coleccionables','emprendimientos','tiendas online','repuestos','servicios profesionales'];
-  const queries=String(criteria.category||'').trim()?[String(criteria.category).trim()]:defaultCategories;
+  const learned=Array.isArray(criteria.queries)?criteria.queries.map(x=>String(x||'').trim()).filter(Boolean):[];
+  const queries=String(criteria.category||'').trim()?[String(criteria.category).trim()]:(learned.length?learned:defaultCategories);
   for(const query of queries){
    let pageToken='';
    while(results.length<criteria.limit&&requestsUsed<requestBudget){
