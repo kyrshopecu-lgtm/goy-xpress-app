@@ -445,3 +445,57 @@ test('GOY SALES AI ejecuta ciclo diario de lunes a sábado con control de aproba
   assert.match(management, /Math\.min\(60/);
   assert.match(prospects, /Math\.min\(60,ready\.length\)/);
 });
+
+
+test('GOY SALES AI muestra tablero diario de embudo comercial', () => {
+  const html=read('public-web/admin/index.html'),js=read('public-web/admin/prospects.js'),management=read('server/admin-management.js');
+  for(const id of ['salesAiFound','salesAiAnalyzed','salesAiContacted','salesAiResponded','salesAiInterested','salesAiClients','salesAiPerformanceBody']) assert.match(html,new RegExp(id));
+  assert.match(js,/loadSalesMetrics/);
+  assert.match(js,/\/admin\/prospects\/metrics/);
+  assert.match(js,/renderSalesMetrics/);
+  assert.match(management,/prospectMetrics\(data\)/);
+  assert.match(management,/prospectDailyRuns/);
+  assert.match(management,/responseAt/);
+  assert.match(management,/interestedAt/);
+  assert.match(management,/clientAt/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+  new vm.Script(management,{filename:'server/admin-management.js'});
+});
+
+test('GOY SALES AI aprende del rendimiento por servicio sin dejar de explorar', () => {
+  const management=read('server/admin-management.js');
+  assert.match(management,/prospectServicePerformance/);
+  assert.match(management,/responseRate/);
+  assert.match(management,/interestRate/);
+  assert.match(management,/conversionRate/);
+  assert.match(management,/priorityScore/);
+  assert.match(management,/contacted<3\?50/);
+  assert.match(management,/const exploration=services\.map/);
+  assert.match(management,/performanceQueries/);
+  assert.match(management,/\.sort\(\(a,b\)=>Number\(b\.performance\.priorityScore/);
+});
+
+test('Ciclo diario guarda resultados y etiqueta prospectos adquiridos por IA', () => {
+  const edge=read('cloudflare-entry-auth.js'),management=read('server/admin-management.js');
+  assert.match(edge,/acquisitionMode:'daily-ai'/);
+  assert.match(edge,/daily-run-log/);
+  assert.match(edge,/startedAt/);
+  assert.match(management,/prospectDailyRunLog/);
+  assert.match(management,/acquisitionMode=String\(body\.acquisitionMode/);
+  assert.match(management,/discoveredAt:now/);
+  assert.match(management,/data\.prospectDailyRuns\.unshift/);
+});
+
+test('Estado comercial sugerido por IA requiere validación humana', () => {
+  const js=read('public-web/admin/prospects.js'),management=read('server/admin-management.js'),hook=read('cloudflare-whatsapp-prospect-webhook.js');
+  assert.match(js,/prospectFollowupStatus/);
+  assert.match(js,/IA sugiere:/);
+  assert.match(js,/confirma o cambia el estado antes de guardar/);
+  assert.match(js,/payload\.status=o\.querySelector\('#prospectFollowupStatus'\)/);
+  assert.match(management,/followupRecommendedStatus/);
+  assert.match(management,/if\(nextStatus==='Respondió'/);
+  assert.match(management,/interestedAt/);
+  assert.match(management,/clientAt/);
+  assert.match(hook,/p\.responseAt=p\.responseAt\|\|at/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+});
