@@ -111,8 +111,12 @@ async function sendProspectFirstContact({phone,business,message,imageUrl=''}) {
   const cfg=config();
   if(!cfg.prospectTemplate)return {ok:false,skipped:true,reason:'PROSPECT_TEMPLATE_MISSING'};
   const media=String(imageUrl||'').trim();
-  if(media&&!cfg.prospectMediaHeader)return {ok:false,skipped:true,reason:'PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'};
-  return sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg,media?{headerImageUrl:media}:{});
+  if(media&&!cfg.prospectMediaHeader){
+    const sent=await sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg);
+    return sent.ok?{...sent,mediaRequested:true,mediaSkipped:true,fallback:'text-only'}:sent;
+  }
+  const sent=await sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg,media?{headerImageUrl:media}:{});
+  return sent.ok?{...sent,mediaRequested:Boolean(media),mediaSkipped:false,fallback:''}:sent;
 }
 
 async function sendProspectReply({phone,message,imageUrl=''}) {
