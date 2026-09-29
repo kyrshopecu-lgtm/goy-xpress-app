@@ -426,3 +426,22 @@ test('GOY SALES AI permite texto más imagen y contacto diario solo de aprobados
   new vm.Script(management,{filename:'server/admin-management.js'});
   new vm.Script(whatsapp,{filename:'server/whatsappNotifications.js'});
 });
+
+
+test('GOY SALES AI ejecuta ciclo diario de lunes a sábado con control de aprobación', () => {
+  const edge=read('cloudflare-entry-auth.js');
+  const wrangler=read('wrangler.jsonc');
+  const management=read('server/admin-management.js');
+  const prospects=read('public-web/admin/prospects.js');
+  assert.match(wrangler, /"crons"\s*:\s*\["0 15 \* \* 1-6"\]/);
+  assert.match(edge, /async scheduled\(/);
+  assert.match(edge, /runDailySalesCycle/);
+  assert.match(edge, /\/api\/admin\/prospects\/discover/);
+  assert.match(edge, /limit:60/);
+  assert.match(edge, /imported\.slice\(0,20\)/);
+  assert.match(edge, /\/analyze/);
+  assert.match(edge, /send-approved-batch/);
+  assert.match(management, /status==='Aprobado para contacto'/);
+  assert.match(management, /Math\.min\(60/);
+  assert.match(prospects, /Math\.min\(60,ready\.length\)/);
+});
