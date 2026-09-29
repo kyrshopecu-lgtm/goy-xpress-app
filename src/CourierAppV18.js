@@ -29,6 +29,15 @@ function routeLocations(req){
   const firstStop=Array.isArray(req?.stops)?firstText(req.stops[0]?.address):'';
   return{pickup,target:delivery||procedure||firstStop,targetLabel:delivery?'Punto de entrega':procedure?'Lugar del trámite':firstStop?'Primera parada':'Punto de entrega',targetKind:delivery?'delivery':procedure?'procedure':firstStop?'stop':'delivery'};
 }
+function depositBankList(req){
+  const out=[];
+  const add=value=>{const v=text(typeof value==='string'?value:value?.name||value?.bank||value?.destination);if(v&&!out.includes(v))out.push(v)};
+  if(Array.isArray(req?.depositBanks))req.depositBanks.forEach(add);
+  if(Array.isArray(req?.banks))req.banks.forEach(add);
+  const legacy=firstText(req?.depositDestination,req?.bank,req?.depositBank,req?.bankName);
+  if(legacy)legacy.split(/[\n;]+/).map(text).filter(Boolean).forEach(add);
+  return out;
+}
 function destinationMapUrl(address){return address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=driving`:''}
 function validMapLink(value){return /^https?:\/\/(?:[^/]+\.)?(?:google\.[^/]+|maps\.app\.goo\.gl|goo\.gl)\//i.test(String(value||'').trim())}
 async function openLocation(address,label,mapLink=''){
@@ -92,6 +101,29 @@ function ClientCard({token,req,stage,done}){const[data,setData]=useState(null);u
 
 function PackageInfoCard({req}){if(req.kind!=='package'&&!req.vehicleRequired)return null;const photo=req?.evidence?.packagePhoto;return <Card><SectionHead letter="P" kicker="PAQUETE" title={req.vehicleRequired?'Servicio de auto · cotización':'Retiro y/o entrega de paquetes'}/><Text style={s.line}>Medidas: <Text style={s.bold}>{Number(req.depthCm||0)} × {Number(req.widthCm||0)} × {Number(req.heightCm||0)} cm</Text></Text><Text style={s.line}>Peso: <Text style={s.bold}>{Number(req.weightKg||0)} kg</Text></Text><Text style={s.line}>Valor declarado: <Text style={s.bold}>{money(req.productValue||0)}</Text></Text><Text style={s.note}>Política: no delicado · máximo $1.000 · 10 min de espera incluidos.</Text>{photo&&validPhoto(photo)?<Image source={{uri:photo}} style={s.packagePhoto} resizeMode="contain"/>:null}</Card>}
 
+function DepositInfoCard({req}){
+  if(req.kind!=='deposit')return null;
+  const method=String(req.depositMethod||'').toLowerCase(),banks=depositBankList(req);
+  const checks=Math.max(0,Math.floor(Number(req.checkCount??req.depositPricing?.checkCount??0)));
+  const cash=Math.max(0,Number(req.cashAmount??req.depositPricing?.cashAmount??0));
+  const details=firstText(req.depositDetails,req.details,req.instructions,req.operationDetail);
+  const reference=firstText(req.internalReference,req.reference);
+  const isCash=method==='cash'||(!method&&cash>0);
+  return <Card style={s.depositCard}>
+    <SectionHead letter="$" kicker="DATOS DEL DEPÓSITO" title={isCash?'Depósito en efectivo':'Depósito de cheques'}/>
+    <View style={s.depositHighlight}>
+      <Text style={s.depositLabel}>{isCash?'VALOR A DEPOSITAR':'NÚMERO DE CHEQUES'}</Text>
+      <Text style={s.depositValue}>{isCash?money(cash):String(checks)}</Text>
+    </View>
+    <Text style={s.depositSectionTitle}>{banks.length>1?'BANCOS / DESTINOS':'BANCO / DESTINO'}</Text>
+    {banks.length?banks.map((bank,index)=><View key={`${bank}-${index}`} style={s.depositBankRow}><View style={s.depositBankNumber}><Text style={s.depositBankNumberText}>{index+1}</Text></View><Text style={s.depositBankText}>{bank}</Text></View>):<View style={s.routeWarning}><Text style={s.routeWarningText}>No se registró banco o institución. Confirma con administración antes de realizar el depósito.</Text></View>}
+    {!isCash?<Text style={s.line}>Cantidad total de cheques: <Text style={s.bold}>{checks||'No registrada'}</Text></Text>:null}
+    {reference?<Text style={s.line}>Referencia: <Text style={s.bold}>{reference}</Text></Text>:null}
+    {details?<View style={s.noticeBox}><Text style={s.noticeTitle}>Indicaciones para el depósito</Text><Text style={s.note}>{details}</Text></View>:null}
+    <Text style={s.note}>Verifica banco, cantidad de cheques o valor en efectivo antes de realizar la gestión. Conserva la evidencia correspondiente.</Text>
+  </Card>
+}
+
 function RecipientCard({req,stage,done}){const loc=routeLocations(req);if(Array.isArray(req?.stops)&&req.stops.length)return null;if(req.kind&&!['shipment','package'].includes(req.kind)&&!loc.target)return null;const recipient=recipientData(req),phone=recipient.phone,sender=req.customer||'Cliente GOY XPRESS';const arrival=`Hola ${recipient.name}, somos GOY XPRESS.\n\nEstamos por llegar al lugar indicado para realizar tu entrega.\nEnvío de: ${sender}.\nNúmero de seguimiento: ${req.code}.${loc.target?`\nDirección: ${loc.target}.`:''}\n\nPor favor, mantente pendiente del mensajero. Gracias por confiar en GOY XPRESS.`;const general=`Hola ${recipient.name}, somos GOY XPRESS. Te contactamos por la operación ${req.code}, enviada por ${sender}.`;return <Card><SectionHead letter="D" kicker="CONTACTO" title={loc.targetKind==='procedure'?'Contacto del servicio':'Destinatario'}/><Text style={s.contactName}>{recipient.name}</Text><Text style={s.line}>WhatsApp: <Text style={s.bold}>{phone||'No registrado'}</Text></Text>{loc.target?<Text style={s.line}>{loc.targetLabel}: <Text style={s.bold}>{loc.target}</Text></Text>:null}{stage===2&&!done&&loc.targetKind==='delivery'?<View style={s.noticeBox}><Text style={s.noticeTitle}>Aviso de llegada</Text><Text style={s.note}>Avísale al destinatario que GOY XPRESS está por llegar.</Text><Btn title="Avisar por WhatsApp · estamos por llegar" green onPress={()=>phone?openWhatsApp(phone,arrival,'Destinatario'):Alert.alert('Destinatario','Esta orden no tiene WhatsApp del destinatario.')}/></View>:null}<View style={s.row}><View style={s.flex}><Btn title="Llamar" green onPress={()=>digits(phone)?Linking.openURL(`tel:${digits(phone)}`):Alert.alert('Contacto','No hay teléfono registrado.')}/></View><View style={s.flex}><Btn title="WhatsApp" outline onPress={()=>phone?openWhatsApp(phone,general,'Contacto'):Alert.alert('Contacto','No hay WhatsApp registrado.')}/></View></View></Card>}
 
 function AutoWait({token,req,onUpdated,onLeave}){const key=`goy_arrival_${req.code}`;const free=Number(req.wait?.freeMinutes||10);const[arrival,setArrival]=useState(null),[sec,setSec]=useState(Number(req.wait?.elapsedMinutes||0)*60),[pending,setPending]=useState(false),[decision,setDecision]=useState('');const tick=useRef(null);
@@ -120,6 +152,7 @@ function Detail({token,job,onBack,onUpdated}){const[req,setReq]=useState(job),[b
   <View style={s.steps}><Step n="1" title="Retiro" active={stage===0} done={stage>0}/><Step n="2" title="Ruta" active={stage===1} done={stage>1}/><Step n="3" title="Entrega" active={stage===2} done={stage>2}/></View>
   <RouteCard req={req} stage={stage}/>
   <PackageInfoCard req={req}/>
+  <DepositInfoCard req={req}/>
   {Number(req.totalToCollect||0)>0?<Card style={s.collectCard}><Text style={s.small}>VALOR A RECAUDAR</Text><Text style={s.collect}>{money(req.totalToCollect)}</Text><Text style={s.note}>Verifica el valor antes de finalizar la entrega.</Text></Card>:null}
   <ActionCard token={token} req={req} stage={stage} done={done} busy={busy} tracking={tracking} onWork={work} onTrack={track}/>
   {!done&&stage===2?<AutoWait token={token} req={req} onUpdated={apply} onLeave={onBack}/>:null}
@@ -146,7 +179,7 @@ const s=StyleSheet.create({
   safe:{flex:1,backgroundColor:C.bg},page:{padding:15,paddingBottom:52},loading:{flex:1,backgroundColor:C.navy,alignItems:'center',justifyContent:'center'},logo:{width:88,height:88,borderRadius:22},loadingText:{color:C.white,fontSize:24,fontWeight:'900',marginTop:10},
   header:{backgroundColor:C.navy,borderRadius:22,padding:14,flexDirection:'row',alignItems:'center',marginBottom:13,shadowColor:C.navy,shadowOpacity:.16,shadowRadius:12,elevation:4},headerLogo:{width:54,height:54,borderRadius:15,marginRight:11},headerKicker:{color:'#8CE6FF',fontSize:9,fontWeight:'900',letterSpacing:.7},headerTitle:{color:C.white,fontWeight:'900',fontSize:21},headerSub:{color:'#BCD8E2',fontSize:12,fontWeight:'700',marginTop:2},refresh:{width:42,height:42,borderRadius:14,backgroundColor:'#FFFFFF15',alignItems:'center',justifyContent:'center'},refreshText:{color:C.white,fontSize:22,fontWeight:'900'},
   hero:{backgroundColor:C.navy2,borderRadius:22,padding:20,marginBottom:13},heroKicker:{color:'#8CE6FF',fontSize:9,fontWeight:'900',letterSpacing:1},heroTitle:{color:C.white,fontSize:25,fontWeight:'900',marginTop:5},heroText:{color:'#C6DCE5',fontSize:13,lineHeight:19,marginTop:7},
-  packagePhoto:{width:'100%',height:220,borderRadius:14,backgroundColor:'#EDF3F5',marginTop:12},stopRoute:{borderWidth:1,borderColor:C.line,borderRadius:15,padding:12,marginTop:10,backgroundColor:'#FAFCFD'},stopRouteTitle:{color:C.cyan,fontWeight:'900',fontSize:10,letterSpacing:.5},
+  packagePhoto:{width:'100%',height:220,borderRadius:14,backgroundColor:'#EDF3F5',marginTop:12},depositCard:{borderColor:'#C9E9F4',backgroundColor:'#FCFEFF'},depositHighlight:{backgroundColor:C.navy,borderRadius:16,padding:14,marginTop:12},depositLabel:{color:'#8CE6FF',fontSize:9,fontWeight:'900',letterSpacing:1},depositValue:{color:C.white,fontSize:27,fontWeight:'900',marginTop:3},depositSectionTitle:{color:C.cyan,fontWeight:'900',fontSize:10,letterSpacing:.7,marginTop:15,marginBottom:2},depositBankRow:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:'#F7FAFB',borderWidth:1,borderColor:C.line,borderRadius:14,padding:11,marginTop:8},depositBankNumber:{width:27,height:27,borderRadius:14,backgroundColor:C.green,alignItems:'center',justifyContent:'center'},depositBankNumberText:{color:C.white,fontWeight:'900',fontSize:11},depositBankText:{flex:1,color:C.ink,fontWeight:'900',fontSize:14,lineHeight:19},stopRoute:{borderWidth:1,borderColor:C.line,borderRadius:15,padding:12,marginTop:10,backgroundColor:'#FAFCFD'},stopRouteTitle:{color:C.cyan,fontWeight:'900',fontSize:10,letterSpacing:.5},
   card:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,marginBottom:12,shadowColor:C.navy,shadowOpacity:.06,shadowRadius:9,elevation:2},jobCard:{padding:17},arrivalCard:{borderColor:'#9ADCB1',backgroundColor:'#FBFFFC'},waitAlert:{borderColor:'#F1C56D',backgroundColor:'#FFF9EA'},done:{backgroundColor:'#EFFAF2',borderColor:'#B9E4C3'},doneText:{color:C.green,fontWeight:'900',fontSize:16},routeCard:{padding:17,borderColor:'#C9E9F4'},collectCard:{backgroundColor:'#FFF9F7',borderColor:'#F2D9D0'},
   sectionHead:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:2},sectionIcon:{width:34,height:34,borderRadius:11,backgroundColor:C.navy,alignItems:'center',justifyContent:'center'},sectionIconText:{color:'#8CE6FF',fontWeight:'900',fontSize:13},kicker:{color:C.cyan,fontWeight:'900',fontSize:9,letterSpacing:1},title:{color:C.ink,fontSize:22,fontWeight:'900'},h2:{color:C.ink,fontSize:18,fontWeight:'900',marginTop:3},contactName:{color:C.navy,fontSize:17,fontWeight:'900',marginTop:12},note:{color:C.muted,fontSize:12,lineHeight:18,marginTop:6},line:{color:C.muted,fontSize:12,lineHeight:19,marginTop:5},bold:{fontWeight:'900',color:C.ink},
   btn:{backgroundColor:C.cyan,borderRadius:14,paddingHorizontal:14,paddingVertical:13,minHeight:50,justifyContent:'center',alignItems:'center',marginTop:9},btnText:{color:C.white,fontWeight:'900',textAlign:'center',fontSize:13},green:{backgroundColor:C.green},danger:{backgroundColor:C.red},outline:{backgroundColor:C.white,borderWidth:1,borderColor:'#BCD4DE'},outlineText:{color:C.navy},disabled:{opacity:.43},row:{flexDirection:'row',gap:8},flex:{flex:1},between:{flexDirection:'row',justifyContent:'space-between',gap:10},
