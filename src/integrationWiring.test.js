@@ -117,11 +117,11 @@ test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesio
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada', () => {
+test('Mensajero 1.5.3 muestra detalle operativo y mantiene alertas', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.2');
-  assert.equal(config.android.versionCode, 17);
+  assert.equal(config.version, '1.5.3');
+  assert.equal(config.android.versionCode, 18);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -154,6 +154,18 @@ test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada',
   assert.match(courier, /depositPricing\?\.checkCount/);
   assert.match(courier, /Indicaciones para el depósito/);
   assert.match(courier, /<DepositInfoCard req=\{req\}\/>/);
+  assert.match(courier, /function ServiceDetailCard/);
+  assert.match(courier, /DETALLE DEL SERVICIO/);
+  assert.match(courier, /INSTRUCCIONES DEL ADMINISTRADOR/);
+  assert.match(courier, /Modalidad:/);
+  assert.match(courier, /Cobro contra entrega:/);
+  assert.match(courier, /Quién paga la entrega:/);
+  assert.match(courier, /Tiempo estimado:/);
+  assert.match(courier, /Tarea a realizar/);
+  assert.match(courier, /Servicio solicitado/);
+  assert.match(courier, /Referencia interna:/);
+  assert.match(courier, /NOTAS PARA OPERACIÓN/);
+  assert.match(courier, /<ServiceDetailCard req=\{req\}\/>/);
   assert.doesNotMatch(courier, /VALOR DEL SERVICIO|TARIFA DEL SERVICIO|serviceCost/);
   assert.match(JSON.stringify(config.plugins), /expo-notifications/);
 });
@@ -200,8 +212,8 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(roles, /CLIENTE-PARCHE-v1\.4\.1\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.2\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.2-ARM64\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.3\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.3-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);

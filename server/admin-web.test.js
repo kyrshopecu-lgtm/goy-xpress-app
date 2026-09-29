@@ -586,3 +586,15 @@ test('Smoke test de producción espera despliegue y exige agente comercial listo
   assert.match(workflow,/Faltan:/);
   assert.match(workflow,/seq 1 36/);
 });
+
+
+test('Nueva orden administrativa conserva detalle operativo para el mensajero en todos los servicios', () => {
+  const publicAdmin=read('public-web/admin/modern-admin.js');
+  const mirrorAdmin=read('admin-web/modern-admin.js');
+  assert.equal(publicAdmin,mirrorAdmin);
+  assert.match(publicAdmin,/Detalle para el mensajero/);
+  assert.match(publicAdmin,/name="serviceDetail"/);
+  assert.match(publicAdmin,/serviceDetail:String\(fd\.get\('serviceDetail'\)/);
+  for(const service of ['package','shipment-scheduled','shipment-express','procedure','deposit-checks','deposit-cash','custom','diverse']) assert.ok(publicAdmin.includes(service));
+  new vm.Script(publicAdmin,{filename:'public-web/admin/modern-admin.js'});
+});

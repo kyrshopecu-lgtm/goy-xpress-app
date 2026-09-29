@@ -114,6 +114,7 @@
       courierId:String(fd.get('courierId') || ''),
       adminNotes:String(fd.get('adminNotes') || ''),
       internalReference:String(fd.get('internalReference') || ''),
+      serviceDetail:String(fd.get('serviceDetail') || '').trim(),
     };
     if (service === 'package') {
       const depthCm=Number(fd.get('depthCm')||0),widthCm=Number(fd.get('widthCm')||0),heightCm=Number(fd.get('heightCm')||0),weightKg=Number(fd.get('weightKg')||0),productValue=Number(fd.get('productValue')||0);
@@ -300,6 +301,7 @@
             <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
           </div>
           <div id="adminServiceFields">${serviceFields('package')}</div>
+          <label>Detalle para el mensajero<textarea name="serviceDetail" rows="3" maxlength="1200" placeholder="Información específica que el mensajero debe conocer para realizar este servicio"></textarea></label>
           <div class="form-grid two">
             <label>Delegar a mensajero<select name="courierId" id="adminCourierSelect"><option value="">Dejar pendiente de asignación</option>${couriers.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.name || c.fullName || 'Mensajero')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
             <label>Referencia interna<input name="internalReference" placeholder="Ej. Pedido #154 / Cliente VIP"></label>
