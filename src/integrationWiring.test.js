@@ -145,6 +145,15 @@ test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada',
   assert.match(courier, /installGoyNotificationResponseListener/);
   assert.match(courier, /VALOR A RECAUDAR/);
   assert.match(courier, /Number\(req\.totalToCollect\|\|0\)>0/);
+  assert.match(courier, /function DepositInfoCard/);
+  assert.match(courier, /DATOS DEL DEPÓSITO/);
+  assert.match(courier, /NÚMERO DE CHEQUES/);
+  assert.match(courier, /BANCO \/ DESTINO/);
+  assert.match(courier, /depositDestination/);
+  assert.match(courier, /req\?\.bank/);
+  assert.match(courier, /depositPricing\?\.checkCount/);
+  assert.match(courier, /Indicaciones para el depósito/);
+  assert.match(courier, /<DepositInfoCard req=\{req\}\/>/);
   assert.doesNotMatch(courier, /VALOR DEL SERVICIO|TARIFA DEL SERVICIO|serviceCost/);
   assert.match(JSON.stringify(config.plugins), /expo-notifications/);
 });
