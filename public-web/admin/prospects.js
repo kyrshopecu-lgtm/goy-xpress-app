@@ -5,6 +5,8 @@
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   let prospects=[];
   let whatsappReady=null;
+  let whatsappMediaReady=false;
+  let serviceIntelligence={services:[],searchQueries:[]};
 
   async function api(path,options={}){
     const headers={'Content-Type':'application/json',...(options.headers||{})};
@@ -16,6 +18,14 @@
   }
 
   function sourceLabel(p){return [p.source,p.city,p.category].filter(Boolean).join(' · ')||'Sin clasificar';}
+  function uniqueMedia(){
+    const seen=new Set(),items=[];
+    for(const s of serviceIntelligence.services||[]){const url=String(s.mediaUrl||'').trim();if(!url||seen.has(url))continue;seen.add(url);items.push({url,label:s.name||'Pieza GOY XPRESS'});}
+    return items;
+  }
+  function mediaPreview(url,label='Imagen publicitaria'){
+    const value=String(url||'').trim();return value?`<div class="map-hint"><strong>${esc(label)}</strong><br><img src="${esc(value)}" alt="Pieza publicitaria GOY XPRESS" style="display:block;max-width:220px;max-height:220px;object-fit:contain;border-radius:12px;margin-top:8px"></div>`:'';
+  }
   function growthSummary(p){
     const parts=[];
     if(p.growthOpportunities)parts.push('Oportunidad: '+String(p.growthOpportunities).slice(0,120));
@@ -68,13 +78,17 @@
     $('prospectMessage').textContent=`${ok} prospecto(s) aprobados para contacto. Ningún mensaje fue enviado.`;await load();
   }
   async function loadWhatsAppStatus(){
-    try{const s=await api('/admin/prospects/whatsapp-status');whatsappReady=Boolean(s.configured);return s;}
-    catch(_){whatsappReady=false;return {configured:false,missing:[]};}
+    try{const s=await api('/admin/prospects/whatsapp-status');whatsappReady=Boolean(s.configured);whatsappMediaReady=Boolean(s.mediaHeaderConfigured);return s;}
+    catch(_){whatsappReady=false;whatsappMediaReady=false;return {configured:false,missing:[]};}
+  }
+  async function loadServiceIntelligence(){
+    try{const data=await api('/admin/prospects/service-intelligence');serviceIntelligence={services:data.services||[],searchQueries:data.searchQueries||[]};return serviceIntelligence;}
+    catch(_){serviceIntelligence={services:[],searchQueries:[]};return serviceIntelligence;}
   }
 
   async function load(){
     if(!token()||!$('prospectsBody'))return;
-    try{const data=await api('/admin/prospects');prospects=data.prospects||[];render();}
+    try{const [data]=await Promise.all([api('/admin/prospects'),loadWhatsAppStatus(),loadServiceIntelligence()]);prospects=data.prospects||[];render();}
     catch(e){$('prospectsBody').innerHTML=`<tr><td colspan="7">${esc(e.message)}</td></tr>`;}
   }
 
