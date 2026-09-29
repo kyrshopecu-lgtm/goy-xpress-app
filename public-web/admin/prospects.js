@@ -36,16 +36,17 @@
     const box=$('readyContactList'),count=$('readyContactCount');if(!box)return;
     const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     if(count)count.textContent=String(ready.length);
-    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Mensaje final</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.approvedMessage)}</td><td>${esc(p.score||0)}/100</td><td><button class="primary compact ready-whatsapp-send" type="button" data-id="${esc(p.id)}">${whatsappReady===true?'Enviar por WhatsApp':'WhatsApp pendiente'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Servicio</th><th>Mensaje final</th><th>Imagen</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.matchedService||'Por validar')}</td><td>${esc(p.approvedMessage)}</td><td>${p.approvedMediaUrl?`<img src="${esc(p.approvedMediaUrl)}" alt="Publicidad" style="width:68px;height:68px;object-fit:cover;border-radius:10px">`:'Sin imagen'}</td><td>${esc(p.score||0)}/100</td><td><button class="primary compact ready-whatsapp-send" type="button" data-id="${esc(p.id)}">${whatsappReady===true?(p.approvedMediaUrl?'Enviar texto + imagen':'Enviar por WhatsApp'):'WhatsApp pendiente'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
   }
 
   async function sendReadyWhatsApp(id){
     if(whatsappReady!==true){$('prospectMessage').textContent='WhatsApp comercial aún no está configurado. Revisa la plantilla y credenciales antes de enviar.';return;}
     const p=prospects.find(x=>x.id===id);if(!p)return;
-    const recipient=p.contact||'sin número registrado',message=String(p.approvedMessage||'').trim();
-    if(!window.confirm(`Confirmar primer contacto por WhatsApp\n\nNegocio: ${p.business}\nDestinatario: ${recipient}\n\nMensaje aprobado:\n${message}\n\n¿Enviar ahora?`))return;
+    const recipient=p.contact||'sin número registrado',message=String(p.approvedMessage||'').trim(),hasMedia=Boolean(String(p.approvedMediaUrl||'').trim());
+    if(hasMedia&&!whatsappMediaReady){$('prospectMessage').textContent='Este prospecto tiene una imagen aprobada, pero la plantilla de WhatsApp aún no tiene habilitada la cabecera multimedia.';return;}
+    if(!window.confirm(`Confirmar primer contacto por WhatsApp\n\nNegocio: ${p.business}\nDestinatario: ${recipient}\nServicio: ${p.matchedService||'por validar'}\nImagen: ${hasMedia?'Sí':'No'}\n\nMensaje aprobado:\n${message}\n\n¿Enviar ahora?`))return;
     $('prospectMessage').textContent=`Enviando a ${p.business}…`;
-    try{await api(`/admin/prospects/${encodeURIComponent(id)}/send-whatsapp`,{method:'POST',body:'{}'});$('prospectMessage').textContent=`WhatsApp confirmado para ${p.business}. El envío quedó registrado en el historial.`;await Promise.all([loadWhatsAppStatus(),load()]);}
+    try{await api(`/admin/prospects/${encodeURIComponent(id)}/send-whatsapp`,{method:'POST',body:'{}'});$('prospectMessage').textContent=`WhatsApp confirmado para ${p.business}. El envío quedó registrado en el historial.`;await load();}
     catch(e){$('prospectMessage').textContent=`No se envió a ${p.business}: ${e.message}`;}
   }
 
