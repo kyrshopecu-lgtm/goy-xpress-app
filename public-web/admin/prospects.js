@@ -145,7 +145,7 @@
     if(mediaSelect)mediaSelect.onchange=()=>{if(mediaCustom)mediaCustom.value='';refreshMedia();};
     if(mediaCustom)mediaCustom.oninput=refreshMedia;
     refreshMedia();
-    const analyze=o.querySelector('#analyzeProspect');if(analyze)analyze.onclick=async()=>{const label=analyze.textContent;analyze.disabled=true;analyze.textContent='Analizando…';$('prospectReviewMessage').textContent='GOY SALES AI está preparando el diagnóstico comercial.';try{const result=await api(`/admin/prospects/${encodeURIComponent(id)}/analyze`,{method:'POST'}),a=result.prospect||{};o.querySelector('#prospectObservedNeeds').value=a.observedNeeds||'';o.querySelector('#prospectGrowthOpportunities').value=a.growthOpportunities||'';o.querySelector('#prospectSuggestedServices').value=a.suggestedServices||'';o.querySelector('#prospectCampaignIdeas').value=a.campaignIdeas||'';o.querySelector('#prospectApprovedMessage').value=a.draftMessage||a.approvedMessage||'';const matched=o.querySelector('#prospectMatchedService');if(matched)matched.value=a.matchedService||'';if(a.recommendedMediaUrl&&mediaSelect&&!mediaCustom?.value){mediaSelect.value=a.recommendedMediaUrl;refreshMedia();}$('prospectReviewMessage').textContent='Análisis generado con el catálogo activo. Revisa servicio, texto e imagen antes de aprobar el contacto.';}catch(e){$('prospectReviewMessage').textContent=e.message;}finally{analyze.disabled=false;analyze.textContent=label;}};
+    const analyze=o.querySelector('#analyzeProspect');if(analyze)analyze.onclick=async()=>{const label=analyze.textContent;analyze.disabled=true;analyze.textContent='Analizando…';$('prospectReviewMessage').textContent='GOY SALES AI está preparando el diagnóstico comercial.';try{const result=await api(`/admin/prospects/${encodeURIComponent(id)}/analyze`,{method:'POST'}),a=result.prospect||{};o.querySelector('#prospectObservedNeeds').value=a.observedNeeds||'';o.querySelector('#prospectGrowthOpportunities').value=a.growthOpportunities||'';o.querySelector('#prospectSuggestedServices').value=a.suggestedServices||'';o.querySelector('#prospectCampaignIdeas').value=a.campaignIdeas||'';o.querySelector('#prospectApprovedMessage').value=a.draftMessage||a.approvedMessage||'';const matched=o.querySelector('#prospectMatchedService');if(matched)matched.value=a.matchedService||'';if(a.recommendedMediaUrl&&mediaSelect&&!mediaCustom?.value){mediaSelect.value=a.recommendedMediaUrl;refreshMedia();}$('prospectReviewMessage').textContent='Análisis generado con el catálogo activo. Revísalo y edítalo antes de aprobar el contacto; valida servicio, texto e imagen.';}catch(e){$('prospectReviewMessage').textContent=e.message;}finally{analyze.disabled=false;analyze.textContent=label;}};
     const followup=o.querySelector('#draftFollowup');if(followup)followup.onclick=async()=>{const label=followup.textContent;followup.disabled=true;followup.textContent='Preparando…';$('prospectReviewMessage').textContent='GOY SALES AI está analizando la conversación.';try{const result=await api(`/admin/prospects/${encodeURIComponent(id)}/draft-followup`,{method:'POST'}),d=result.draft||{};o.querySelector('#prospectApprovedMessage').value=d.draftMessage||'';$('prospectReviewMessage').textContent=d.draftMessage?'Borrador preparado. Revísalo, edítalo y apruébalo antes de cualquier envío.':'La respuesta indica que no corresponde continuar el contacto.';}catch(e){$('prospectReviewMessage').textContent=e.message;}finally{followup.disabled=false;followup.textContent=label;}};
     const sendFollowup=o.querySelector('#sendFollowup');if(sendFollowup)sendFollowup.onclick=async()=>{const message=o.querySelector('#prospectApprovedMessage').value.trim();if(!message){$('prospectReviewMessage').textContent='Escribe o revisa la respuesta antes de enviarla.';return;}if(!confirm('¿Enviar esta respuesta revisada por WhatsApp?'))return;sendFollowup.disabled=true;const label=sendFollowup.textContent;sendFollowup.textContent='Enviando…';try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({followupApprovedMessage:message,observedNeeds:o.querySelector('#prospectObservedNeeds').value.trim(),growthOpportunities:o.querySelector('#prospectGrowthOpportunities').value.trim(),suggestedServices:o.querySelector('#prospectSuggestedServices').value.trim(),campaignIdeas:o.querySelector('#prospectCampaignIdeas').value.trim(),doNotContact:false})});await api(`/admin/prospects/${encodeURIComponent(id)}/send-followup-whatsapp`,{method:'POST',body:'{}'});$('prospectReviewMessage').textContent='Respuesta enviada y registrada en la conversación.';o.remove();await load();}catch(e){$('prospectReviewMessage').textContent=e.message;sendFollowup.disabled=false;sendFollowup.textContent=label;}};
     const dnc=o.querySelector('#prospectDnc'),approve=o.querySelector('#approveProspect');dnc.onchange=()=>{approve.disabled=dnc.checked;if(sendFollowup)sendFollowup.disabled=dnc.checked;};if(sendFollowup)sendFollowup.disabled=dnc.checked;
@@ -176,25 +176,17 @@
 
   function openServiceIntelligence(){
     const services=serviceIntelligence.services||[],queries=serviceIntelligence.searchQueries||[];
-    const o=modal(`<div class="modal-head"><div><span class="eyebrow">Memoria comercial del agente</span><h3>Servicios que GOY SALES AI está usando</h3><p>El agente actualiza esta lista desde los servicios activos del panel y la usa para buscar y analizar prospectos.</p></div><button class="modal-close">×</button></div><div class="admin-order-form"><div class="form-grid">${services.map(s=>`<div class="map-hint">${s.mediaUrl?`<img src="${esc(s.mediaUrl)}" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:10px;float:right;margin-left:10px">`:''}<strong>${esc(s.name)}</strong><br><small>${esc(s.description||'Sin descripción')}${s.price!=null?' · 
-  $('importProspectsBtn')?.addEventListener('click',openImport);
-  $('newProspectBtn')?.addEventListener('click',openNew);
-  $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
-  $('selectTopProspects')?.addEventListener('click',selectTop20);
-  $('analyzeSelectedProspects')?.addEventListener('click',analyzeSelected);
-  $('approveSelectedProspects')?.addEventListener('click',approveSelected);
-  $('prospectFilter')?.addEventListener('change',render);
-  $('prospectPriorityFilter')?.addEventListener('change',render);
-  $('prospectCityFilter')?.addEventListener('input',render);
-  $('prospectCategoryFilter')?.addEventListener('input',render);
-  document.querySelector('[data-view="prospects"]')?.addEventListener('click',()=>setTimeout(load,0));
-  window.addEventListener('goy-admin-authenticated',load);
-  setTimeout(load,800);
-})();
-+Number(s.price).toFixed(2):''}</small></div>`).join('')||'<p class="muted">No se pudo cargar el catálogo.</p>'}</div><div class="map-hint"><strong>Búsquedas que puede usar:</strong><br>${esc(queries.join(' · ')||'Sin consultas preparadas')}</div><div class="modal-actions"><button class="primary modal-close-bottom" type="button">Cerrar</button></div></div>`);
-    o.querySelector('.modal-close').onclick=()=>o.remove();o.querySelector('.modal-close-bottom').onclick=()=>o.remove();
+    const cards=services.map(s=>{
+      const image=s.mediaUrl?'<img src="'+esc(s.mediaUrl)+'" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:10px;float:right;margin-left:10px">':'';
+      const price=s.price!=null?' · $'+Number(s.price).toFixed(2):'';
+      return '<div class="map-hint">'+image+'<strong>'+esc(s.name)+'</strong><br><small>'+esc(s.description||'Sin descripción')+esc(price)+'</small></div>';
+    }).join('')||'<p class="muted">No se pudo cargar el catálogo.</p>';
+    const html='<div class="modal-head"><div><span class="eyebrow">Memoria comercial del agente</span><h3>Servicios que GOY SALES AI está usando</h3><p>El agente actualiza esta lista desde los servicios activos del panel y la usa para buscar y analizar prospectos.</p></div><button class="modal-close">×</button></div>'+
+      '<div class="admin-order-form"><div class="form-grid">'+cards+'</div><div class="map-hint"><strong>Búsquedas que puede usar:</strong><br>'+esc(queries.join(' · ')||'Sin consultas preparadas')+'</div><div class="modal-actions"><button class="primary modal-close-bottom" type="button">Cerrar</button></div></div>';
+    const o=modal(html);
+    o.querySelector('.modal-close').onclick=()=>o.remove();
+    o.querySelector('.modal-close-bottom').onclick=()=>o.remove();
   }
-
   async function sendApprovedBatch(){
     if(whatsappReady!==true){$('prospectMessage').textContent='WhatsApp comercial aún no está configurado.';return;}
     const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()&&String(p.contact||'').trim());
