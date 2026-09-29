@@ -51,7 +51,8 @@ function salesServiceKnowledge(data){
  const custom=(data.customServices||[]).filter(s=>s.active!==false).map(s=>({id:'custom:'+s.id,name:String(s.name||'').trim(),description:String(s.description||'').trim(),price:Number(s.price||0),mediaUrl:'/assets/08_servicios_adicionales.png',queries:[String(s.name||'').trim(),String(s.description||'').trim()].filter(x=>x.length>=3)}));
  const performance=prospectServicePerformance(data),perfMap=new Map(performance.map(x=>[String(x.name||'').toLowerCase(),x]));
  const services=[...SALES_BASE_SERVICES,...custom].map(s=>({...s,performance:perfMap.get(String(s.name||'').toLowerCase())||{analyzed:0,contacted:0,responded:0,interested:0,clients:0,responseRate:0,interestRate:0,conversionRate:0,priorityScore:50}})).sort((a,b)=>Number(b.performance.priorityScore||50)-Number(a.performance.priorityScore||50));
- const queries=[...new Set(services.flatMap(s=>s.queries||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
+ const exploration=services.map(s=>(s.queries||[])[0]).filter(Boolean),performanceQueries=services.flatMap(s=>(s.queries||[]).slice(1));
+ const queries=[...new Set([...exploration,...performanceQueries].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
  return {services,queries,performance};
 }
 function ecuadorDayKey(value=new Date()){
@@ -64,13 +65,15 @@ function sameEcuadorDay(value,key){
 function prospectMetrics(data){
  const day=ecuadorDayKey(),runs=(data.prospectDailyRuns||[]).filter(r=>r.day===day),sum=key=>runs.reduce((n,r)=>n+Number(r[key]||0),0);
  const prospects=data.prospects||[];
- const responded=prospects.filter(p=>sameEcuadorDay(p.responseAt||((p.conversation||[]).filter(x=>x.direction==='inbound').slice(-1)[0]?.sentAt),day)).length;
+ const analyzed=prospects.filter(p=>sameEcuadorDay(p.analysisUpdatedAt,day)).length;
+ const contacted=prospects.filter(p=>sameEcuadorDay(p.firstContactAt,day)||(p.conversation||[]).some(x=>x.direction==='outbound'&&sameEcuadorDay(x.sentAt,day))).length;
+ const responded=prospects.filter(p=>sameEcuadorDay(p.responseAt,day)||(p.conversation||[]).some(x=>x.direction==='inbound'&&sameEcuadorDay(x.sentAt,day))).length;
  const interested=prospects.filter(p=>sameEcuadorDay(p.interestedAt,day)).length;
  const clients=prospects.filter(p=>sameEcuadorDay(p.clientAt,day)).length;
  const knowledge=salesServiceKnowledge(data);
  return {
   day,
-  today:{found:sum('discovered'),imported:sum('imported'),analyzed:sum('analyzed'),contacted:sum('contactSent'),responded,interested,clients},
+  today:{found:sum('discovered'),imported:sum('imported'),analyzed,contacted,responded,interested,clients,autoAnalyzed:sum('analyzed'),autoContacted:sum('contactSent')},
   latestRun:runs.slice().sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')))[0]||null,
   servicePerformance:knowledge.services.map(s=>({id:s.id,name:s.name,priorityScore:Number(s.performance?.priorityScore||50),analyzed:Number(s.performance?.analyzed||0),contacted:Number(s.performance?.contacted||0),responded:Number(s.performance?.responded||0),interested:Number(s.performance?.interested||0),clients:Number(s.performance?.clients||0),responseRate:Number(s.performance?.responseRate||0),interestRate:Number(s.performance?.interestRate||0),conversionRate:Number(s.performance?.conversionRate||0)}))
  };
