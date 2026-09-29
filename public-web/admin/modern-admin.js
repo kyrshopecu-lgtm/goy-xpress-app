@@ -53,6 +53,7 @@
         </div>
         <label class="check-line"><input name="packagePolicy" type="checkbox" required> Confirmo que no es delicado y su valor no supera $1.000.</label>
         <div class="map-hint">Tarifa: $3,50 hasta 4 km + $0,50/km adicional. Sobre 30×30×30 cm: +$0,50. Peso &gt;10–19 kg: +$0,50; 20–25 kg: +$1. Máximo 45×50×60 cm y 25 kg.</div>
+        <div id="packageEstimate" class="map-hint"><strong>Tarifa calculada:</strong> completa cliente, retiro, entrega, medidas y peso.</div>
         <div class="map-hint warning">Si excede las medidas o 25 kg, se creará automáticamente “Servicio de auto · cotización” para revisión del administrador.</div>`;
     }
     if (value === 'shipment-scheduled' || value === 'shipment-express') {
@@ -199,6 +200,56 @@
     };
   }
 
+  function packageEstimatePayload(form) {
+    const fd = new FormData(form);
+    return {
+      estimateOnly:true,
+      clientId:String(fd.get('clientId') || ''),
+      originAddress:String(fd.get('originAddress') || '').trim(),
+      destinationAddress:String(fd.get('destinationAddress') || '').trim(),
+      depthCm:Number(fd.get('depthCm') || 0),
+      widthCm:Number(fd.get('widthCm') || 0),
+      heightCm:Number(fd.get('heightCm') || 0),
+      weightKg:Number(fd.get('weightKg') || 0),
+      productValue:Number(fd.get('productValue') || 0),
+    };
+  }
+
+  function schedulePackageEstimate(form) {
+    clearTimeout(form._packageEstimateTimer);
+    form._packageEstimateTimer = setTimeout(() => refreshPackageEstimate(form), 550);
+  }
+
+  async function refreshPackageEstimate(form) {
+    const service = String(new FormData(form).get('service') || '');
+    const box = form.querySelector('#packageEstimate');
+    if (service !== 'package' || !box) return;
+    const payload = packageEstimatePayload(form);
+    const ready = payload.clientId && payload.originAddress.length >= 4 && payload.destinationAddress.length >= 4 &&
+      payload.depthCm > 0 && payload.widthCm > 0 && payload.heightCm > 0 && payload.weightKg > 0;
+    if (!ready) {
+      box.innerHTML = '<strong>Tarifa calculada:</strong> completa cliente, retiro, entrega, medidas y peso.';
+      return;
+    }
+    box.innerHTML = '<strong>Tarifa calculada:</strong> calculando con Google Maps…';
+    try {
+      const result = await api('/admin-create-request', {method:'POST', body:JSON.stringify(payload)});
+      const pricing = result.pricing || {};
+      const route = result.route || {};
+      if (pricing.policyError) {
+        box.innerHTML = '<strong>Revisar política:</strong> ' + escapeHtml(pricing.policyError);
+        return;
+      }
+      if (pricing.autoRequired) {
+        box.innerHTML = '<strong>Requiere servicio de auto.</strong> El paquete supera el máximo permitido para moto. Distancia estimada: ' + escapeHtml(route.distanceKm || pricing.distanceKm || 0) + ' km.';
+        return;
+      }
+      box.innerHTML = '<strong>Total: ' + money(pricing.total) + '</strong> · Distancia: ' + escapeHtml(route.distanceKm || pricing.distanceKm || 0) + ' km · Base/ruta: ' + money(pricing.distanceCost) + ' · Medidas: +' + money(pricing.dimensionSurcharge) + ' · Peso: +' + money(pricing.weightSurcharge);
+    } catch (error) {
+      box.innerHTML = '<strong>No se pudo calcular todavía:</strong> ' + escapeHtml(error.message || 'Revisa las direcciones.');
+    }
+  }
+
   function renderSummary(result) {
     const request = result.request || {};
     const route = request.route || {};
@@ -248,7 +299,7 @@
             <label>Cliente<select name="clientId" required><option value="">Selecciona un cliente</option>${clients.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.businessName || c.name || c.email || 'Cliente')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
             <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
           </div>
-          <div id="adminServiceFields">${serviceFields('shipment-scheduled')}</div>
+          <div id="adminServiceFields">${serviceFields('package')}</div>
           <div class="form-grid two">
             <label>Delegar a mensajero<select name="courierId" id="adminCourierSelect"><option value="">Dejar pendiente de asignación</option>${couriers.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.name || c.fullName || 'Mensajero')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
             <label>Referencia interna<input name="internalReference" placeholder="Ej. Pedido #154 / Cliente VIP"></label>
@@ -269,7 +320,17 @@
         const quoteOnly = serviceSelect.value === 'diverse';
         courierSelect.disabled = quoteOnly;
         if (quoteOnly) courierSelect.value = '';
+        if (serviceSelect.value === 'package') schedulePackageEstimate(form);
       });
+      form.addEventListener('input', event => {
+        if (serviceSelect.value !== 'package') return;
+        const watched = ['clientId','originAddress','destinationAddress','depthCm','widthCm','heightCm','weightKg','productValue'];
+        if (watched.includes(event.target?.name)) schedulePackageEstimate(form);
+      });
+      form.addEventListener('change', event => {
+        if (serviceSelect.value === 'package' && event.target?.name === 'clientId') schedulePackageEstimate(form);
+      });
+      schedulePackageEstimate(form);
 
       form.addEventListener('submit', async event => {
         event.preventDefault();

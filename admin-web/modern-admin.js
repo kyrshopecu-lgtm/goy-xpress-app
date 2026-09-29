@@ -8,9 +8,9 @@
   async function api(path, options = {}) {
     const headers = {'Content-Type':'application/json', ...(options.headers || {})};
     if (token()) headers.Authorization = `Bearer ${token()}`;
-    const response = await fetch(`${apiBase}${path}`, {...options, headers});
+    const response = await fetch(`${apiBase}${path}`, {...options, headers, cache:'no-store'});
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'No se pudo completar la operación.');
+    if (!response.ok) throw new Error(body.error || `No se pudo completar la operación (HTTP ${response.status}).`);
     return body;
   }
 
@@ -53,6 +53,7 @@
         </div>
         <label class="check-line"><input name="packagePolicy" type="checkbox" required> Confirmo que no es delicado y su valor no supera $1.000.</label>
         <div class="map-hint">Tarifa: $3,50 hasta 4 km + $0,50/km adicional. Sobre 30×30×30 cm: +$0,50. Peso &gt;10–19 kg: +$0,50; 20–25 kg: +$1. Máximo 45×50×60 cm y 25 kg.</div>
+        <div id="packageEstimate" class="map-hint"><strong>Tarifa calculada:</strong> completa cliente, retiro, entrega, medidas y peso.</div>
         <div class="map-hint warning">Si excede las medidas o 25 kg, se creará automáticamente “Servicio de auto · cotización” para revisión del administrador.</div>`;
     }
     if (value === 'shipment-scheduled' || value === 'shipment-express') {
@@ -61,12 +62,11 @@
           <label>Dirección de retiro<input name="originAddress" required placeholder="Ej. Jorge Juan y Mariana de Jesús, Quito"></label>
           <label>Dirección de entrega<input name="destinationAddress" required placeholder="Ej. Av. República y Eloy Alfaro, Quito"></label>
           <label>Persona que recibe<input name="recipient" placeholder="Nombre del destinatario"></label>
-          <label>WhatsApp del destinatario<input name="recipientPhone" type="tel" required inputmode="tel" placeholder="Ej. 0991234567"></label>
           <label>Valor del producto<input name="productValue" type="number" min="0" step="0.01" value="0"></label>
           <label class="check-line"><input name="cashOnDelivery" type="checkbox"> Cobrar producto contra entrega</label>
           <label>¿Quién paga la entrega?<select name="deliveryPayer"><option value="recipient">Destinatario</option><option value="sender">Cliente/remitente</option></select></label>
         </div>
-        <div class="map-hint">La distancia, duración y tarifa se calcularán automáticamente con Google Maps al guardar. El WhatsApp del destinatario quedará disponible para el mensajero.</div>`;
+        <div class="map-hint">La distancia, duración y tarifa se calcularán automáticamente con Google Maps al guardar.</div>`;
     }
     if (value === 'procedure') {
       return `
@@ -91,6 +91,15 @@
           <label>Banco / destino<input name="depositDestination" placeholder="Banco o institución"></label>
         </div>
         <div class="map-hint">El depósito en efectivo tiene un límite operativo de $1.000.</div>`;
+    }
+    if (value === 'custom') {
+      return `
+        <div class="form-grid two">
+          <label>Nombre del servicio<input name="customServiceLabel" required maxlength="80" placeholder="Ej. Apostilla de documentos"></label>
+          <label>Tarifa acordada<input name="customServiceCost" type="number" min="0" step="0.01" required placeholder="0.00"></label>
+        </div>
+        <label>Detalle para el cliente<textarea name="customServiceDetail" rows="4" required maxlength="800" placeholder="Describe el servicio que aparecerá en la app del cliente"></textarea></label>
+        <div class="map-hint">Este servicio se vinculará al cliente seleccionado y aparecerá en su app sin actualizar el APK.</div>`;
     }
     return `
       <label>Servicio solicitado<textarea name="diverseDetail" rows="4" required placeholder="Describe el servicio que deseas cotizar para este cliente"></textarea></label>
@@ -134,7 +143,6 @@
         originAddress:String(fd.get('originAddress') || ''),
         destinationAddress:String(fd.get('destinationAddress') || ''),
         recipient:String(fd.get('recipient') || ''),
-        recipientPhone:String(fd.get('recipientPhone') || '').replace(/\D/g,''),
         productValue:Number(fd.get('productValue') || 0),
         cashOnDelivery:fd.get('cashOnDelivery') === 'on',
         deliveryPayer:String(fd.get('deliveryPayer') || 'recipient'),
@@ -173,6 +181,16 @@
         serviceLabel:'Depósito en efectivo',
       };
     }
+    if (service === 'custom') {
+      return {
+        ...common,
+        customService:true,
+        kind:'diverse',
+        diverseDetail:String(fd.get('customServiceDetail') || ''),
+        serviceLabel:String(fd.get('customServiceLabel') || '').trim(),
+        serviceCost:Number(fd.get('customServiceCost') || 0),
+      };
+    }
     return {
       ...common,
       courierId:'',
@@ -180,6 +198,56 @@
       diverseDetail:String(fd.get('diverseDetail') || ''),
       serviceLabel:'Servicio diverso',
     };
+  }
+
+  function packageEstimatePayload(form) {
+    const fd = new FormData(form);
+    return {
+      estimateOnly:true,
+      clientId:String(fd.get('clientId') || ''),
+      originAddress:String(fd.get('originAddress') || '').trim(),
+      destinationAddress:String(fd.get('destinationAddress') || '').trim(),
+      depthCm:Number(fd.get('depthCm') || 0),
+      widthCm:Number(fd.get('widthCm') || 0),
+      heightCm:Number(fd.get('heightCm') || 0),
+      weightKg:Number(fd.get('weightKg') || 0),
+      productValue:Number(fd.get('productValue') || 0),
+    };
+  }
+
+  function schedulePackageEstimate(form) {
+    clearTimeout(form._packageEstimateTimer);
+    form._packageEstimateTimer = setTimeout(() => refreshPackageEstimate(form), 550);
+  }
+
+  async function refreshPackageEstimate(form) {
+    const service = String(new FormData(form).get('service') || '');
+    const box = form.querySelector('#packageEstimate');
+    if (service !== 'package' || !box) return;
+    const payload = packageEstimatePayload(form);
+    const ready = payload.clientId && payload.originAddress.length >= 4 && payload.destinationAddress.length >= 4 &&
+      payload.depthCm > 0 && payload.widthCm > 0 && payload.heightCm > 0 && payload.weightKg > 0;
+    if (!ready) {
+      box.innerHTML = '<strong>Tarifa calculada:</strong> completa cliente, retiro, entrega, medidas y peso.';
+      return;
+    }
+    box.innerHTML = '<strong>Tarifa calculada:</strong> calculando con Google Maps…';
+    try {
+      const result = await api('/admin-create-request', {method:'POST', body:JSON.stringify(payload)});
+      const pricing = result.pricing || {};
+      const route = result.route || {};
+      if (pricing.policyError) {
+        box.innerHTML = '<strong>Revisar política:</strong> ' + escapeHtml(pricing.policyError);
+        return;
+      }
+      if (pricing.autoRequired) {
+        box.innerHTML = '<strong>Requiere servicio de auto.</strong> El paquete supera el máximo permitido para moto. Distancia estimada: ' + escapeHtml(route.distanceKm || pricing.distanceKm || 0) + ' km.';
+        return;
+      }
+      box.innerHTML = '<strong>Total: ' + money(pricing.total) + '</strong> · Distancia: ' + escapeHtml(route.distanceKm || pricing.distanceKm || 0) + ' km · Base/ruta: ' + money(pricing.distanceCost) + ' · Medidas: +' + money(pricing.dimensionSurcharge) + ' · Peso: +' + money(pricing.weightSurcharge);
+    } catch (error) {
+      box.innerHTML = '<strong>No se pudo calcular todavía:</strong> ' + escapeHtml(error.message || 'Revisa las direcciones.');
+    }
   }
 
   function renderSummary(result) {
@@ -212,7 +280,7 @@
     overlay.addEventListener('click', event => { if (event.target === overlay) closeModal(); });
 
     try {
-      const data = await api('/admin/data');
+      const data = await api('/admin/order-options');
       const clients = (data.clients || []).filter(c => c.active !== false);
       const couriers = (data.couriers || []).filter(c => c.approved && c.active !== false);
       if (!clients.length) {
@@ -229,9 +297,9 @@
         <form id="adminOrderForm" class="admin-order-form">
           <div class="form-grid two">
             <label>Cliente<select name="clientId" required><option value="">Selecciona un cliente</option>${clients.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.businessName || c.name || c.email || 'Cliente')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
-            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="diverse">Servicio diverso / cotización</option></select></label>
+            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
           </div>
-          <div id="adminServiceFields">${serviceFields('shipment-scheduled')}</div>
+          <div id="adminServiceFields">${serviceFields('package')}</div>
           <div class="form-grid two">
             <label>Delegar a mensajero<select name="courierId" id="adminCourierSelect"><option value="">Dejar pendiente de asignación</option>${couriers.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.name || c.fullName || 'Mensajero')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
             <label>Referencia interna<input name="internalReference" placeholder="Ej. Pedido #154 / Cliente VIP"></label>
@@ -249,10 +317,20 @@
       overlay.querySelector('.modal-cancel').onclick = closeModal;
       serviceSelect.addEventListener('change', () => {
         $('adminServiceFields').innerHTML = serviceFields(serviceSelect.value);
-        const diverse = serviceSelect.value === 'diverse';
-        courierSelect.disabled = diverse;
-        if (diverse) courierSelect.value = '';
+        const quoteOnly = serviceSelect.value === 'diverse';
+        courierSelect.disabled = quoteOnly;
+        if (quoteOnly) courierSelect.value = '';
+        if (serviceSelect.value === 'package') schedulePackageEstimate(form);
       });
+      form.addEventListener('input', event => {
+        if (serviceSelect.value !== 'package') return;
+        const watched = ['clientId','originAddress','destinationAddress','depthCm','widthCm','heightCm','weightKg','productValue'];
+        if (watched.includes(event.target?.name)) schedulePackageEstimate(form);
+      });
+      form.addEventListener('change', event => {
+        if (serviceSelect.value === 'package' && event.target?.name === 'clientId') schedulePackageEstimate(form);
+      });
+      schedulePackageEstimate(form);
 
       form.addEventListener('submit', async event => {
         event.preventDefault();

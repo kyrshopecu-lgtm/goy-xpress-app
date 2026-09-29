@@ -44,6 +44,11 @@ test('panel administrativo incluye paquetes, políticas, foto y derivación a au
   assert.match(modern, /name="packagePhoto"/);
   assert.match(modern, /packagePolicy/);
   assert.match(modern, /Servicio de auto · paquete sobredimensionado/);
+  assert.match(modern, /id="packageEstimate"/);
+  assert.match(modern, /estimateOnly:true/);
+  assert.match(modern, /pricing\.dimensionSurcharge/);
+  assert.match(modern, /pricing\.weightSurcharge/);
+  assert.match(modern, /serviceFields\('package'\)/);
   assert.match(quote, /Direcciones \/ paradas del servicio/);
   assert.match(quote, /patch\.stops/);
   assert.match(details, /packageSummary/);

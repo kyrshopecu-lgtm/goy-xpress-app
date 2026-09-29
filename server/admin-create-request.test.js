@@ -85,6 +85,28 @@ test('administrador crea una orden para un cliente y la delega a un mensajero ap
   });
   assert.equal(unauthorized.status, 401);
 
+  const estimated = await call(proxyServer.base, '/api/admin-create-request', {
+    method:'POST',
+    token:login.body.token,
+    body:{
+      estimateOnly:true,
+      clientId:client.body.user.id,
+      originAddress:'Jorge Juan y Mariana de Jesús, Quito',
+      destinationAddress:'La Carolina, Quito',
+      depthCm:35,
+      widthCm:30,
+      heightCm:30,
+      weightKg:15,
+      productValue:100,
+    },
+  });
+  assert.equal(estimated.status, 200);
+  assert.equal(estimated.body.route.distanceKm, 3.2);
+  assert.equal(estimated.body.pricing.distanceCost, 3.5);
+  assert.equal(estimated.body.pricing.dimensionSurcharge, 0.5);
+  assert.equal(estimated.body.pricing.weightSurcharge, 0.5);
+  assert.equal(estimated.body.pricing.total, 4.5);
+
   const created = await call(proxyServer.base, '/api/admin-create-request', {
     method:'POST',
     token:login.body.token,

@@ -100,6 +100,26 @@ function createHandler(options = {}) {
         issuedBy:'admin-order-proxy',
       }, tokenSecret);
 
+      if (body.estimateOnly === true) {
+        const estimate = await invokeBackend(backend, {
+          method:'POST',
+          url:'/api/maps/route',
+          body:{
+            origin:String(body.originAddress || '').trim(),
+            destination:String(body.destinationAddress || '').trim(),
+            mode:'package',
+            depthCm:Number(body.depthCm || 0),
+            widthCm:Number(body.widthCm || 0),
+            heightCm:Number(body.heightCm || 0),
+            weightKg:Number(body.weightKg || 0),
+            productValue:Number(body.productValue || 0),
+            delicate:false,
+          },
+          headers:{authorization:`Bearer ${clientToken}`},
+        });
+        return send(res, estimate.status, estimate.body);
+      }
+
       const requestBody = {
         ...body,
         adminCreated:true,
