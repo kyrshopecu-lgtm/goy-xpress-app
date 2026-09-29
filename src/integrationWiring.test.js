@@ -65,14 +65,17 @@ test('Cloudflare migra cuentas legacy sin ejecutar PBKDF2 de 180000 dentro del W
   assert.match(auth, /username/);
 });
 
-test('catálogo funciona sin red y acciones del mensajero tienen tiempo límite', () => {
+test('catálogo funciona sin red, no se superpone a la app y acciones del mensajero tienen tiempo límite', () => {
   const catalog = read('src/ClientServiceCatalog.js');
+  const clientWrapper = read('src/ClientAppV14.js');
   const courier = read('src/CourierAppV18.js');
   const metro = read('metro.config.js');
   const assetPlugin = require('../scripts/prefix-numeric-assets');
   assert.equal((catalog.match(/require\('\.\.\/0\d_/g) || []).length, 9);
   assert.match(catalog, /Retiro y entrega de paquetes/);
   assert.doesNotMatch(catalog, /workers\.dev\/assets/);
+  assert.doesNotMatch(clientWrapper, /ClientServiceCatalog/);
+  assert.match(clientWrapper, /<ClientAppV13\/>/);
   assert.match(metro, /prefix-numeric-assets/);
   assert.equal(assetPlugin({name:'01_mensajeria_envios'}).name, 'goy_01_mensajeria_envios');
   assert.equal(assetPlugin({name:'goy-logo'}).name, 'goy-logo');
@@ -87,7 +90,10 @@ test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesio
   assert.equal(config.version, '1.4.1');
   assert.equal(config.android.versionCode, 15);
   assert.match(client, /recipientPhone/);
+  assert.match(client, /originMapUrl/);
   assert.match(client, /destinationMapUrl/);
+  assert.match(client, /Pegar ubicación exacta del retiro/);
+  assert.match(client, /Pegar ubicación exacta de entrega/);
   assert.match(client, /Teléfono \/ WhatsApp de quien recibe/);
   assert.doesNotMatch(client, /Elegir punto en Google Maps/);
   assert.match(client, /Dirección escrita de entrega/);
@@ -121,7 +127,9 @@ test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada',
   assert.match(courier, /Abrir retiro en Maps/);
   assert.match(courier, /Abrir entrega en Maps/);
   assert.match(courier, /Lugar del trámite/);
-  assert.match(courier, /destinationMapUrl/);
+  assert.match(courier, /req\?\.originMapUrl/);
+  assert.match(courier, /req\?\.destinationMapUrl/);
+  assert.match(courier, /validMapLink/);
   assert.doesNotMatch(courier, /destinationAddress\|\|'Quito'/);
   assert.match(courier, /height:310/);
   assert.match(courier, /<Modal/);
