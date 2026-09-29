@@ -153,8 +153,51 @@ function hardenResponse(response, request, env) {
   });
 }
 
+function runtimeHealth(env) {
+  const storageReady=Boolean(String(env.DATABASE_URL||'').trim());
+  const tokenReady=Boolean(String(env.TOKEN_SECRET||'').trim());
+  const discoveryReady=Boolean(String(env.GOOGLE_MAPS_API_KEY||'').trim()||String(env.PROSPECT_DISCOVERY_URL||'').trim());
+  const analysisReady=Boolean((env.AI&&typeof env.AI.run==='function')||(String(env.GOY_AI_OPENAI_FALLBACK||'').toLowerCase()==='true'&&String(env.OPENAI_API_KEY||'').trim()));
+  const whatsappReady=Boolean(String(env.WHATSAPP_ACCESS_TOKEN||'').trim()&&String(env.WHATSAPP_PHONE_NUMBER_ID||'').trim());
+  const prospectTemplateReady=Boolean(String(env.GOY_WA_PROSPECT_TEMPLATE||'').trim());
+  const mediaHeaderReady=String(env.GOY_WA_PROSPECT_MEDIA_HEADER||'').toLowerCase()==='true';
+  const contactReady=whatsappReady&&prospectTemplateReady;
+  const dailySalesReady=storageReady&&tokenReady&&discoveryReady&&analysisReady&&contactReady;
+  const missing=[];
+  if(!storageReady)missing.push('DATABASE_URL');
+  if(!tokenReady)missing.push('TOKEN_SECRET');
+  if(!discoveryReady)missing.push('GOOGLE_MAPS_API_KEY_or_PROSPECT_DISCOVERY_URL');
+  if(!analysisReady)missing.push('AI_binding_or_OpenAI_fallback');
+  if(!whatsappReady)missing.push('WHATSAPP_ACCESS_TOKEN_and_PHONE_NUMBER_ID');
+  if(!prospectTemplateReady)missing.push('GOY_WA_PROSPECT_TEMPLATE');
+  return {
+    ok:true,
+    healthVersion:'sales-ai-production-smoke-v1',
+    service:'goy-xpress-app',
+    dailySalesReady,
+    mediaReady:contactReady&&mediaHeaderReady,
+    mediaMode:mediaHeaderReady?'image+text':'text-fallback',
+    missing,
+    checks:{
+      storageReady,
+      tokenReady,
+      discoveryReady,
+      analysisReady,
+      whatsappReady,
+      prospectTemplateReady,
+      mediaHeaderReady,
+      cronConfigured:true,
+      mediaFallbackEnabled:true,
+    },
+  };
+}
+
 async function dispatch(request, env, ctx) {
   const path = new URL(request.url).pathname;
+
+  if (path === '/api/health' && request.method === 'GET') {
+    return json(runtimeHealth(env), 200);
+  }
 
   if (path === '/api/webhooks/whatsapp/prospects' && ['GET','POST'].includes(request.method)) {
     return whatsappProspectWebhook(request, env);
