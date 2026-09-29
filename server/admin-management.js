@@ -213,7 +213,7 @@ function wrap(next,overrides={}){
    }
    if(prospectServiceIntelligence){
     const knowledge=salesServiceKnowledge(data);
-    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||'',priorityScore:Number(s.performance?.priorityScore||50),performance:s.performance||null})),searchQueries:knowledge.queries},config.allowedOrigin);
+    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||'',priorityScore:Number(s.performance?.priorityScore||50),performance:s.performance||null,bestCampaign:s.bestCampaign?{messageAngle:s.bestCampaign.messageAngle||'',mediaUrl:s.bestCampaign.mediaUrl||'',contacted:Number(s.bestCampaign.contacted||0),responseRate:Number(s.bestCampaign.responseRate||0),conversionRate:Number(s.bestCampaign.conversionRate||0),campaignScore:Number(s.bestCampaign.campaignScore||50)}:null})),searchQueries:knowledge.queries},config.allowedOrigin);
    }
    if(prospectMetricsRoute){
     return json(res,200,prospectMetrics(data),config.allowedOrigin);
