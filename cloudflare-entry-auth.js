@@ -226,14 +226,15 @@ async function internalAdminCall(env,ctx,token,path,body) {
 }
 
 async function runDailySalesCycle(env,ctx) {
-  const token=await scheduledAdminToken(env);
-  let discovered=[],imported=[],analyzed=0,analysisFailed=0;
+  const token=await scheduledAdminToken(env),startedAt=new Date().toISOString();
+  let discovered=[],imported=[],analyzed=0,analysisFailed=0,note='';
   const discovery=await internalAdminCall(env,ctx,token,'/api/admin/prospects/discover',{city:'',category:'',limit:60});
   if(discovery.ok) discovered=Array.isArray(discovery.body.prospects)?discovery.body.prospects:[];
-  else if(discovery.status!==429) throw new Error(discovery.body.error||'No se pudo ejecutar la búsqueda diaria de prospectos.');
+  else if(discovery.status===429)note=String(discovery.body?.error||'Cupo de descubrimiento alcanzado.');
+  else throw new Error(discovery.body.error||'No se pudo ejecutar la búsqueda diaria de prospectos.');
 
   if(discovered.length){
-    const importedResult=await internalAdminCall(env,ctx,token,'/api/admin/prospects/import',{prospects:discovered});
+    const importedResult=await internalAdminCall(env,ctx,token,'/api/admin/prospects/import',{prospects:discovered,acquisitionMode:'daily-ai'});
     if(importedResult.ok) imported=Array.isArray(importedResult.body.prospects)?importedResult.body.prospects:[];
     else throw new Error(importedResult.body.error||'No se pudieron importar los prospectos diarios.');
   }
@@ -245,7 +246,8 @@ async function runDailySalesCycle(env,ctx) {
 
   const contacts=await internalAdminCall(env,ctx,token,'/api/admin/prospects/send-approved-batch',{limit:60});
   if(!contacts.ok) console.error('GOY SALES AI contacto diario',contacts.status,contacts.body?.error||'Error de envío');
-  console.log('GOY SALES AI ciclo diario',JSON.stringify({
+  const summary={
+    startedAt,
     discovered:discovered.length,
     imported:imported.length,
     analyzed,
@@ -253,7 +255,11 @@ async function runDailySalesCycle(env,ctx) {
     contactAttempted:Number(contacts.body?.attempted||0),
     contactSent:Number(contacts.body?.sent||0),
     contactFailed:Number(contacts.body?.failed||0),
-  }));
+    note,
+  };
+  const logged=await internalAdminCall(env,ctx,token,'/api/admin/prospects/daily-run-log',summary);
+  if(!logged.ok)console.error('GOY SALES AI registro diario',logged.status,logged.body?.error||'No se pudo guardar el reporte diario');
+  console.log('GOY SALES AI ciclo diario',JSON.stringify(summary));
 }
 export default {
   async fetch(request, env, ctx) {
