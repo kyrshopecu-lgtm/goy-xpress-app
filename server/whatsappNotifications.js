@@ -18,6 +18,7 @@ function config() {
     courierTemplate: String(process.env.GOY_WA_COURIER_ORDER_TEMPLATE || 'goy_nueva_orden_mensajero'),
     clientDeliveredTemplate: String(process.env.GOY_WA_CLIENT_DELIVERED_TEMPLATE || 'goy_entrega_finalizada_cliente'),
     prospectTemplate: String(process.env.GOY_WA_PROSPECT_TEMPLATE || ''),
+    prospectMediaHeader: String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER || '').toLowerCase() === 'true',
   };
 }
 
@@ -25,10 +26,23 @@ function isConfigured(cfg = config()) {
   return Boolean(cfg.accessToken && cfg.phoneNumberId);
 }
 
-async function sendTemplate(to, templateName, parameters = [], cfg = config()) {
+async function sendTemplate(to, templateName, parameters = [], cfg = config(), options = {}) {
   const phone = cleanPhone(to);
   if (!isConfigured(cfg)) return {ok:false, skipped:true, reason:'WHATSAPP_NOT_CONFIGURED'};
   if (!phone || !templateName) return {ok:false, skipped:true, reason:'RECIPIENT_OR_TEMPLATE_MISSING'};
+
+  const components=[];
+  const headerImageUrl=String(options.headerImageUrl||'').trim();
+  if(headerImageUrl){
+    components.push({
+      type:'header',
+      parameters:[{type:'image',image:{link:headerImageUrl}}],
+    });
+  }
+  components.push({
+    type:'body',
+    parameters:parameters.map(value => ({type:'text', text:String(value ?? '-').slice(0,1024)})),
+  });
 
   const url = `https://graph.facebook.com/${cfg.graphVersion}/${cfg.phoneNumberId}/messages`;
   const response = await fetch(url, {
@@ -45,10 +59,7 @@ async function sendTemplate(to, templateName, parameters = [], cfg = config()) {
       template:{
         name:templateName,
         language:{code:cfg.language},
-        components:[{
-          type:'body',
-          parameters:parameters.map(value => ({type:'text', text:String(value ?? '-').slice(0,1024)})),
-        }],
+        components,
       },
     }),
   });
@@ -96,18 +107,23 @@ async function notifyClientDelivered({request, client}) {
   ]);
 }
 
-async function sendProspectFirstContact({phone,business,message}) {
+async function sendProspectFirstContact({phone,business,message,imageUrl=''}) {
   const cfg=config();
   if(!cfg.prospectTemplate)return {ok:false,skipped:true,reason:'PROSPECT_TEMPLATE_MISSING'};
-  return sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg);
+  const media=String(imageUrl||'').trim();
+  if(media&&!cfg.prospectMediaHeader)return {ok:false,skipped:true,reason:'PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'};
+  return sendTemplate(phone,cfg.prospectTemplate,[business||'Negocio',message],cfg,media?{headerImageUrl:media}:{});
 }
 
-async function sendProspectReply({phone,message}) {
-  const cfg=config(),to=cleanPhone(phone),body=String(message||'').trim();
+async function sendProspectReply({phone,message,imageUrl=''}) {
+  const cfg=config(),to=cleanPhone(phone),body=String(message||'').trim(),media=String(imageUrl||'').trim();
   if(!isConfigured(cfg))return {ok:false,skipped:true,reason:'WHATSAPP_NOT_CONFIGURED'};
   if(!to||!body)return {ok:false,skipped:true,reason:'RECIPIENT_OR_MESSAGE_MISSING'};
   const url=`https://graph.facebook.com/${cfg.graphVersion}/${cfg.phoneNumberId}/messages`;
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${cfg.accessToken}`},body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to,type:'text',text:{preview_url:false,body:body.slice(0,4096)}})});
+  const payloadBody=media
+    ?{messaging_product:'whatsapp',recipient_type:'individual',to,type:'image',image:{link:media,caption:body.slice(0,1024)}}
+    :{messaging_product:'whatsapp',recipient_type:'individual',to,type:'text',text:{preview_url:false,body:body.slice(0,4096)}};
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${cfg.accessToken}`},body:JSON.stringify(payloadBody)});
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){console.error('GOY WhatsApp prospect reply error',response.status,JSON.stringify(payload).slice(0,600));return {ok:false,status:response.status,error:payload?.error?.message||'WHATSAPP_SEND_FAILED'};}
   return {ok:true,id:payload?.messages?.[0]?.id||''};
