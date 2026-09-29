@@ -10,7 +10,7 @@ function bearer(req){const a=String(req.headers?.authorization||'');return a.sta
 function pathnameOf(req){const u=new URL(req.url,`http://${req.headers?.host||'localhost'}`);let p=u.pathname.replace(/\/$/,'')||'/';if(p==='/api')p='/';else if(p.startsWith('/api/'))p=p.slice(4);return p;}
 function json(res,status,body,origin='*'){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization, X-Request-Secret');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');res.end(JSON.stringify(body));}
 async function readBody(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>1000000)throw new Error('Payload demasiado grande');}return raw?JSON.parse(raw):{};}
-function cleanData(value){const data=value&&typeof value==='object'?value:{};for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','prospects'])if(!Array.isArray(data[key]))data[key]=[];if(!data.prospectDiscoveryUsage||typeof data.prospectDiscoveryUsage!=='object')data.prospectDiscoveryUsage={};return data;}
+function cleanData(value){const data=value&&typeof value==='object'?value:{};for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','prospects','prospectDailyRuns'])if(!Array.isArray(data[key]))data[key]=[];if(!data.prospectDiscoveryUsage||typeof data.prospectDiscoveryUsage!=='object')data.prospectDiscoveryUsage={};return data;}
 let sqlClient;
 async function readState(config){if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await ensureStateTable(sqlClient,cleanData({}));return readVersionedState(sqlClient,cleanData);}try{if(!fs.existsSync(config.dataFile))return cleanData({});return cleanData(JSON.parse(fs.readFileSync(config.dataFile,'utf8')));}catch{return cleanData({});}}
 async function writeState(config,data){const normalized=cleanData(data);if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await writeVersionedState(sqlClient,data,cleanData);return;}const dir=path.dirname(config.dataFile);if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});const tmp=`${config.dataFile}.tmp`;fs.writeFileSync(tmp,JSON.stringify(normalized,null,2));fs.renameSync(tmp,config.dataFile);}
@@ -28,11 +28,52 @@ const SALES_BASE_SERVICES=[
  {id:'deposits',name:'Depósitos y gestiones de pago',description:'Depósito de cheques, efectivo y gestiones de pago dentro de los límites operativos.',mediaUrl:'/assets/03_cambio_dinero_negocio.png',queries:['distribuidores','mayoristas','comercios','tiendas','empresas de ventas']},
  {id:'additional',name:'Servicios diversos y personalizados',description:'Gestiones especiales cotizadas por administración según la necesidad del cliente.',mediaUrl:'/assets/08_servicios_adicionales.png',queries:['pymes','emprendimientos','servicios profesionales','empresas']},
 ];
+function prospectServicePerformance(data){
+ const byService=new Map();
+ const ensure=name=>{const key=String(name||'').trim();if(!key)return null;if(!byService.has(key))byService.set(key,{name:key,analyzed:0,contacted:0,responded:0,interested:0,clients:0});return byService.get(key);};
+ for(const p of data.prospects||[]){
+  const row=ensure(p.matchedService);if(!row)continue;
+  if(p.analysisUpdatedAt||String(p.matchedService||'').trim())row.analyzed++;
+  const conversation=Array.isArray(p.conversation)?p.conversation:[];
+  const contacted=conversation.some(x=>x.direction==='outbound')||['Contactado','Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||''));
+  const responded=conversation.some(x=>x.direction==='inbound')||['Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||''));
+  const interested=['Interesado','Solicita llamada','Cliente'].includes(String(p.status||''));
+  const client=String(p.status||'')==='Cliente';
+  if(contacted)row.contacted++;if(responded)row.responded++;if(interested)row.interested++;if(client)row.clients++;
+ }
+ return [...byService.values()].map(row=>{
+  const responseRate=row.contacted?row.responded/row.contacted:0,interestRate=row.contacted?row.interested/row.contacted:0,conversionRate=row.contacted?row.clients/row.contacted:0;
+  const priorityScore=row.contacted<3?50:Math.max(20,Math.min(100,Math.round(35+responseRate*30+interestRate*20+conversionRate*15)));
+  return {...row,responseRate,interestRate,conversionRate,priorityScore};
+ });
+}
 function salesServiceKnowledge(data){
  const custom=(data.customServices||[]).filter(s=>s.active!==false).map(s=>({id:'custom:'+s.id,name:String(s.name||'').trim(),description:String(s.description||'').trim(),price:Number(s.price||0),mediaUrl:'/assets/08_servicios_adicionales.png',queries:[String(s.name||'').trim(),String(s.description||'').trim()].filter(x=>x.length>=3)}));
- const services=[...SALES_BASE_SERVICES,...custom];
+ const performance=prospectServicePerformance(data),perfMap=new Map(performance.map(x=>[String(x.name||'').toLowerCase(),x]));
+ const services=[...SALES_BASE_SERVICES,...custom].map(s=>({...s,performance:perfMap.get(String(s.name||'').toLowerCase())||{analyzed:0,contacted:0,responded:0,interested:0,clients:0,responseRate:0,interestRate:0,conversionRate:0,priorityScore:50}})).sort((a,b)=>Number(b.performance.priorityScore||50)-Number(a.performance.priorityScore||50));
  const queries=[...new Set(services.flatMap(s=>s.queries||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
- return {services,queries};
+ return {services,queries,performance};
+}
+function ecuadorDayKey(value=new Date()){
+ const local=new Date(value.toLocaleString('en-US',{timeZone:'America/Guayaquil'}));
+ return `${local.getFullYear()}-${String(local.getMonth()+1).padStart(2,'0')}-${String(local.getDate()).padStart(2,'0')}`;
+}
+function sameEcuadorDay(value,key){
+ const date=new Date(value||0);return Number.isFinite(date.getTime())&&ecuadorDayKey(date)===key;
+}
+function prospectMetrics(data){
+ const day=ecuadorDayKey(),runs=(data.prospectDailyRuns||[]).filter(r=>r.day===day),sum=key=>runs.reduce((n,r)=>n+Number(r[key]||0),0);
+ const prospects=data.prospects||[];
+ const responded=prospects.filter(p=>sameEcuadorDay(p.responseAt||((p.conversation||[]).filter(x=>x.direction==='inbound').slice(-1)[0]?.sentAt),day)).length;
+ const interested=prospects.filter(p=>sameEcuadorDay(p.interestedAt,day)).length;
+ const clients=prospects.filter(p=>sameEcuadorDay(p.clientAt,day)).length;
+ const knowledge=salesServiceKnowledge(data);
+ return {
+  day,
+  today:{found:sum('discovered'),imported:sum('imported'),analyzed:sum('analyzed'),contacted:sum('contactSent'),responded,interested,clients},
+  latestRun:runs.slice().sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')))[0]||null,
+  servicePerformance:knowledge.services.map(s=>({id:s.id,name:s.name,priorityScore:Number(s.performance?.priorityScore||50),analyzed:Number(s.performance?.analyzed||0),contacted:Number(s.performance?.contacted||0),responded:Number(s.performance?.responded||0),interested:Number(s.performance?.interested||0),clients:Number(s.performance?.clients||0),responseRate:Number(s.performance?.responseRate||0),interestRate:Number(s.performance?.interestRate||0),conversionRate:Number(s.performance?.conversionRate||0)}))
+ };
 }
 function serviceMediaForName(knowledge,name){
  const target=String(name||'').trim().toLowerCase();
