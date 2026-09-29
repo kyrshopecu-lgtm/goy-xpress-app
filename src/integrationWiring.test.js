@@ -154,6 +154,18 @@ test('Mensajero 1.5.1 alerta asignación en segundo plano y entrega finalizada',
   assert.match(courier, /depositPricing\?\.checkCount/);
   assert.match(courier, /Indicaciones para el depósito/);
   assert.match(courier, /<DepositInfoCard req=\{req\}\/>/);
+  assert.match(courier, /function ServiceDetailCard/);
+  assert.match(courier, /DETALLE DEL SERVICIO/);
+  assert.match(courier, /INSTRUCCIONES DEL ADMINISTRADOR/);
+  assert.match(courier, /Modalidad:/);
+  assert.match(courier, /Cobro contra entrega:/);
+  assert.match(courier, /Quién paga la entrega:/);
+  assert.match(courier, /Tiempo estimado:/);
+  assert.match(courier, /Tarea a realizar/);
+  assert.match(courier, /Servicio solicitado/);
+  assert.match(courier, /Referencia interna:/);
+  assert.match(courier, /NOTAS PARA OPERACIÓN/);
+  assert.match(courier, /<ServiceDetailCard req=\{req\}\/>/);
   assert.doesNotMatch(courier, /VALOR DEL SERVICIO|TARIFA DEL SERVICIO|serviceCost/);
   assert.match(JSON.stringify(config.plugins), /expo-notifications/);
 });
