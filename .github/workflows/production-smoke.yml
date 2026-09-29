@@ -1,0 +1,50 @@
+name: Verificar producción GOY SALES AI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cloudflare-entry-auth.js'
+      - 'cloudflare-worker-v2.js'
+      - 'server/**'
+      - 'public-web/admin/**'
+      - 'wrangler.jsonc'
+      - '.github/workflows/production-smoke.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goy-sales-production-smoke
+  cancel-in-progress: true
+
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Esperar y verificar Worker de producción
+        env:
+          HEALTH_URL: https://goy-xpress-app.kyrshopecu.workers.dev/api/health
+        run: |
+          set -u
+          for attempt in $(seq 1 36); do
+            echo "Intento ${attempt}/36"
+            BODY="$(curl -fsS --max-time 10 "$HEALTH_URL" || true)"
+            if echo "$BODY" | jq -e '.healthVersion == "sales-ai-production-smoke-v1"' >/dev/null 2>&1; then
+              echo "Health check desplegado:"
+              echo "$BODY" | jq .
+              if echo "$BODY" | jq -e '.dailySalesReady == true' >/dev/null; then
+                echo "GOY SALES AI está listo para búsqueda, análisis y contacto diario."
+                exit 0
+              fi
+              echo "::error::El Worker está desplegado pero faltan configuraciones runtime para GOY SALES AI."
+              echo "$BODY" | jq -r '"Faltan: " + ((.missing // []) | join(", "))'
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::No apareció la versión esperada del health check en producción."
+          exit 1
