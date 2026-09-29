@@ -154,8 +154,10 @@ function wrap(next,overrides={}){
   const prospectFollowupSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-followup-whatsapp$/);
   const prospectWhatsAppStatus=p==='/admin/prospects/whatsapp-status';
   const prospectServiceIntelligence=p==='/admin/prospects/service-intelligence';
+  const prospectMetricsRoute=p==='/admin/prospects/metrics';
+  const prospectDailyRunLog=p==='/admin/prospects/daily-run-log';
   const prospectSendApprovedBatch=p==='/admin/prospects/send-approved-batch';
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectMetricsRoute&&req.method==='GET')||(prospectDailyRunLog&&req.method==='POST')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),workersAiRun:typeof overrides.workersAiRun==='function'?overrides.workersAiRun:null,openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),openaiFallbackEnabled:String(overrides.openaiFallbackEnabled??process.env.GOY_AI_OPENAI_FALLBACK??'').toLowerCase()==='true',googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -177,7 +179,16 @@ function wrap(next,overrides={}){
    }
    if(prospectServiceIntelligence){
     const knowledge=salesServiceKnowledge(data);
-    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||''})),searchQueries:knowledge.queries},config.allowedOrigin);
+    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||'',priorityScore:Number(s.performance?.priorityScore||50),performance:s.performance||null})),searchQueries:knowledge.queries},config.allowedOrigin);
+   }
+   if(prospectMetricsRoute){
+    return json(res,200,prospectMetrics(data),config.allowedOrigin);
+   }
+   if(prospectDailyRunLog){
+    const body=await readBody(req),day=String(body.day||ecuadorDayKey()).trim(),completedAt=new Date().toISOString();
+    const run={id:crypto.randomUUID(),day,startedAt:String(body.startedAt||completedAt),completedAt,discovered:Math.max(0,Number(body.discovered||0)),imported:Math.max(0,Number(body.imported||0)),analyzed:Math.max(0,Number(body.analyzed||0)),analysisFailed:Math.max(0,Number(body.analysisFailed||0)),contactAttempted:Math.max(0,Number(body.contactAttempted||0)),contactSent:Math.max(0,Number(body.contactSent||0)),contactFailed:Math.max(0,Number(body.contactFailed||0)),note:String(body.note||'').slice(0,500)};
+    data.prospectDailyRuns.unshift(run);data.prospectDailyRuns=data.prospectDailyRuns.slice(0,120);
+    await writeState(config,data);return json(res,201,{run,metrics:prospectMetrics(data)},config.allowedOrigin);
    }
    if(prospectDiscover&&req.method==='POST'){
     const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(177,Number(body.limit||50)));
@@ -195,12 +206,12 @@ function wrap(next,overrides={}){
     return json(res,200,{prospects:discovery.prospects,count:discovery.prospects.length,criteria:{city,category,limit,mode:category?'categoría manual':'servicios activos'},servicesLearned:knowledge.services.map(s=>s.name),searchQueries:queries,usage:{daily:daily+used,monthly:monthly+used,requestsUsed:used,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
    }
    if(prospectImport&&req.method==='POST'){
-    const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[];
+    const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[],acquisitionMode=String(body.acquisitionMode||'manual').trim().slice(0,40);
     if(!incoming.length)return json(res,400,{error:'Incluye al menos un prospecto para importar.'},config.allowedOrigin);
     if(incoming.length>500)return json(res,400,{error:'Máximo 500 prospectos por importación.'},config.allowedOrigin);
     const keyOf=x=>{const url=String(x.sourceUrl||'').trim().toLowerCase().replace(/\/$/,'');const contact=String(x.contact||'').trim().toLowerCase().replace(/[\s()+-]/g,'');const business=String(x.business||x.name||'').trim().toLowerCase(),city=String(x.city||'').trim().toLowerCase();return url?'url:'+url:contact?'contact:'+contact:'business:'+business+'|'+city;};
     const known=new Set(data.prospects.map(keyOf)),added=[],duplicates=[],invalid=[];const now=new Date().toISOString();
-    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
+    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',acquisitionMode,discoveredAt:now,doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
     if(added.length)await writeState(config,data);return json(res,200,{imported:added.length,duplicates:duplicates.length,invalid:invalid.length,prospects:added,duplicateItems:duplicates,invalidItems:invalid},config.allowedOrigin);
    }
    if(p==='/admin/prospects'&&req.method==='GET')return json(res,200,{prospects:data.prospects},config.allowedOrigin);
@@ -220,7 +231,7 @@ function wrap(next,overrides={}){
       if(!sent.ok){results.push({id:prospect.id,business:prospect.business,ok:false,error:sent.reason||sent.error||'WHATSAPP_SEND_FAILED'});continue;}
       const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
       prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
-      prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;sentCount++;
+      prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;sentCount++;
       results.push({id:prospect.id,business:prospect.business,ok:true,providerMessageId:sent.id||''});
     }
     if(ready.length)await writeState(config,data);
@@ -238,7 +249,7 @@ function wrap(next,overrides={}){
     if(!sent.ok){const reason=sent.reason==='PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'?'La plantilla de primer contacto no tiene habilitada una cabecera de imagen. Activa GOY_WA_PROSPECT_MEDIA_HEADER o envía sin imagen.':sent.reason||sent.error||'WhatsApp no confirmó el envío.';return json(res,502,{error:reason},config.allowedOrigin);}
     const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
     prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
-    prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;
+    prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;
     await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
    }
    if(prospectFollowupSendMatch){
@@ -317,7 +328,11 @@ function wrap(next,overrides={}){
       const allowed=['Pendiente de revisión','Aprobado para contacto','Contactado','Respondió','Interesado','Solicita llamada','Cliente','Descartado'];
       if(!allowed.includes(String(body.status)))return json(res,400,{error:'Estado de prospecto no válido.'},config.allowedOrigin);
       if(String(body.status)==='Aprobado para contacto'&&item.doNotContact)return json(res,409,{error:'Este prospecto está marcado como no contactar.'},config.allowedOrigin);
-      item.status=String(body.status);
+      const nextStatus=String(body.status),stamp=new Date().toISOString();
+      item.status=nextStatus;
+      if(nextStatus==='Respondió'&&!item.responseAt)item.responseAt=stamp;
+      if(['Interesado','Solicita llamada','Cliente'].includes(nextStatus)&&!item.interestedAt)item.interestedAt=stamp;
+      if(nextStatus==='Cliente'&&!item.clientAt)item.clientAt=stamp;
     }
     if(Object.prototype.hasOwnProperty.call(body,'approvedMessage'))item.approvedMessage=String(body.approvedMessage||'').trim();
     if(Object.prototype.hasOwnProperty.call(body,'followupApprovedMessage'))item.followupApprovedMessage=String(body.followupApprovedMessage||'').trim().slice(0,4096);
