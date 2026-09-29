@@ -37,6 +37,7 @@
     const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     if(count)count.textContent=String(ready.length);
     box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Servicio</th><th>Mensaje final</th><th>Imagen</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.matchedService||'Por validar')}</td><td>${esc(p.approvedMessage)}</td><td>${p.approvedMediaUrl?`<img src="${esc(p.approvedMediaUrl)}" alt="Publicidad" style="width:68px;height:68px;object-fit:cover;border-radius:10px">`:'Sin imagen'}</td><td>${esc(p.score||0)}/100</td><td><button class="primary compact ready-whatsapp-send" type="button" data-id="${esc(p.id)}">${whatsappReady===true?(p.approvedMediaUrl?'Enviar texto + imagen':'Enviar por WhatsApp'):'WhatsApp pendiente'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+    box.querySelectorAll('.ready-whatsapp-send').forEach(btn=>btn.addEventListener('click',()=>sendReadyWhatsApp(btn.dataset.id)));
   }
 
   async function sendReadyWhatsApp(id){
@@ -64,7 +65,7 @@
       <td><button class="ghost prospect-review" data-id="${esc(p.id)}">Revisar contacto</button></td>
     </tr>`).join(''):'<tr><td colspan="7">No hay prospectos en este estado.</td></tr>';
     document.querySelectorAll('.prospect-review').forEach(b=>b.onclick=()=>openReview(b.dataset.id));
-    document.querySelectorAll('.prospect-check').forEach(box=>box.onchange=updateSelection);updateSelection();
+    document.querySelectorAll('.prospect-check').forEach(box=>box.onchange=updateSelection);updateSelection();renderReady();
   }
 
   function selectedIds(){return [...document.querySelectorAll('.prospect-check:checked')].map(x=>x.value);}
@@ -75,7 +76,7 @@
     const blocked=selected.filter(p=>p.doNotContact||!String(p.draftMessage||p.approvedMessage||'').trim());
     if(blocked.length){$('prospectMessage').textContent=`${blocked.length} prospecto(s) requieren revisión individual porque no tienen mensaje o están marcados como no contactar.`;return;}
     if(!confirm(`Aprobar ${selected.length} prospecto(s) para contacto? Esto no enviará mensajes todavía.`))return;
-    let ok=0;for(const p of selected){try{await api(`/admin/prospects/${encodeURIComponent(p.id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:p.approvedMessage||p.draftMessage,status:'Aprobado para contacto'})});ok++;}catch{}}
+    let ok=0;for(const p of selected){try{await api(`/admin/prospects/${encodeURIComponent(p.id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:p.approvedMessage||p.draftMessage,approvedMediaUrl:p.approvedMediaUrl||p.recommendedMediaUrl||'',matchedService:p.matchedService||'',status:'Aprobado para contacto'})});ok++;}catch{}}
     $('prospectMessage').textContent=`${ok} prospecto(s) aprobados para contacto. Ningún mensaje fue enviado.`;await load();
   }
   async function loadWhatsAppStatus(){
@@ -173,7 +174,45 @@
     await load();
   }
 
-  $('discoverProspectsBtn')?.addEventListener('click',openDiscover);
+  function openServiceIntelligence(){
+    const services=serviceIntelligence.services||[],queries=serviceIntelligence.searchQueries||[];
+    const o=modal(`<div class="modal-head"><div><span class="eyebrow">Memoria comercial del agente</span><h3>Servicios que GOY SALES AI está usando</h3><p>El agente actualiza esta lista desde los servicios activos del panel y la usa para buscar y analizar prospectos.</p></div><button class="modal-close">×</button></div><div class="admin-order-form"><div class="form-grid">${services.map(s=>`<div class="map-hint">${s.mediaUrl?`<img src="${esc(s.mediaUrl)}" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:10px;float:right;margin-left:10px">`:''}<strong>${esc(s.name)}</strong><br><small>${esc(s.description||'Sin descripción')}${s.price!=null?' · 
+  $('importProspectsBtn')?.addEventListener('click',openImport);
+  $('newProspectBtn')?.addEventListener('click',openNew);
+  $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
+  $('selectTopProspects')?.addEventListener('click',selectTop20);
+  $('analyzeSelectedProspects')?.addEventListener('click',analyzeSelected);
+  $('approveSelectedProspects')?.addEventListener('click',approveSelected);
+  $('prospectFilter')?.addEventListener('change',render);
+  $('prospectPriorityFilter')?.addEventListener('change',render);
+  $('prospectCityFilter')?.addEventListener('input',render);
+  $('prospectCategoryFilter')?.addEventListener('input',render);
+  document.querySelector('[data-view="prospects"]')?.addEventListener('click',()=>setTimeout(load,0));
+  window.addEventListener('goy-admin-authenticated',load);
+  setTimeout(load,800);
+})();
++Number(s.price).toFixed(2):''}</small></div>`).join('')||'<p class="muted">No se pudo cargar el catálogo.</p>'}</div><div class="map-hint"><strong>Búsquedas que puede usar:</strong><br>${esc(queries.join(' · ')||'Sin consultas preparadas')}</div><div class="modal-actions"><button class="primary modal-close-bottom" type="button">Cerrar</button></div></div>`);
+    o.querySelector('.modal-close').onclick=()=>o.remove();o.querySelector('.modal-close-bottom').onclick=()=>o.remove();
+  }
+
+  async function sendApprovedBatch(){
+    if(whatsappReady!==true){$('prospectMessage').textContent='WhatsApp comercial aún no está configurado.';return;}
+    const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()&&String(p.contact||'').trim());
+    if(!ready.length){$('prospectMessage').textContent='No hay prospectos aprobados con contacto público para enviar hoy.';return;}
+    const withMedia=ready.filter(p=>p.approvedMediaUrl).length;
+    if(withMedia&&!whatsappMediaReady){$('prospectMessage').textContent='Hay prospectos con imagen aprobada, pero la plantilla multimedia de WhatsApp todavía no está habilitada.';return;}
+    const limit=Math.min(30,ready.length);
+    if(!confirm(`¿Contactar ahora hasta ${limit} prospecto(s) aprobados?\n\nSolo se enviarán contactos ya aprobados y nunca los marcados como “No contactar”.`))return;
+    const button=$('sendApprovedBatchBtn');if(button){button.disabled=true;button.textContent='Contactando…';}
+    try{const result=await api('/admin/prospects/send-approved-batch',{method:'POST',body:JSON.stringify({limit})});$('prospectMessage').textContent=`Jornada de contacto: ${result.sent||0} enviados · ${result.failed||0} con error · ${result.attempted||0} intentados.`;await load();}
+    catch(e){$('prospectMessage').textContent=e.message;}
+    finally{if(button){button.disabled=false;button.textContent='Contactar aprobados hoy';}}
+  }
+
+  $('dailyProspectRunBtn')?.addEventListener('click',()=>openDiscover(true));
+  $('serviceIntelligenceBtn')?.addEventListener('click',openServiceIntelligence);
+  $('sendApprovedBatchBtn')?.addEventListener('click',sendApprovedBatch);
+  $('discoverProspectsBtn')?.addEventListener('click',()=>openDiscover(false));
   $('importProspectsBtn')?.addEventListener('click',openImport);
   $('newProspectBtn')?.addEventListener('click',openNew);
   $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});
