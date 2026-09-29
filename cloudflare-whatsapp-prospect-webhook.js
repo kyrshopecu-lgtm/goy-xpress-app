@@ -23,7 +23,7 @@ async function mutate(env,incoming){
    if(p.conversation.some(x=>String(x.providerMessageId||'')===m.id))continue;
    const at=m.timestamp?new Date(Number(m.timestamp)*1000).toISOString():new Date().toISOString();
    p.conversation.push({direction:'inbound',channel:'WhatsApp',message:m.text,providerMessageId:m.id,sentAt:at});
-   p.lastContact=at;p.updatedAt=new Date().toISOString();
+   p.lastContact=at;p.responseAt=p.responseAt||at;p.updatedAt=new Date().toISOString();
    if(optOut(m.text)){p.doNotContact=true;p.status='Descartado';}else if(p.status!=='Cliente'&&p.status!=='Descartado')p.status='Respondió';
    changed++;
   }
