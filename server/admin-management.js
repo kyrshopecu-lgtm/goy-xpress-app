@@ -169,18 +169,34 @@ function wrap(next,overrides={}){
     const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
     data.prospects.unshift(item);await writeState(config,data);return json(res,201,{prospect:item},config.allowedOrigin);
    }
+   if(prospectSendApprovedBatch){
+    const body=await readBody(req),limit=Math.max(1,Math.min(30,Number(body.limit||10)));
+    const ready=data.prospects.filter(x=>x.status==='Aprobado para contacto'&&!x.doNotContact&&String(x.approvedMessage||'').trim()&&cleanPhone(x.contact).length>=11).sort((a,b)=>Number(b.score||0)-Number(a.score||0)).slice(0,limit);
+    const results=[];let sentCount=0;
+    for(const prospect of ready){
+      const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),media=absoluteMediaUrl(req,prospect.approvedMediaUrl||'');
+      const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
+      if(!sent.ok){results.push({id:prospect.id,business:prospect.business,ok:false,error:sent.reason||sent.error||'WHATSAPP_SEND_FAILED'});continue;}
+      const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
+      prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
+      prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;sentCount++;
+      results.push({id:prospect.id,business:prospect.business,ok:true,providerMessageId:sent.id||''});
+    }
+    if(ready.length)await writeState(config,data);
+    return json(res,200,{ok:true,attempted:ready.length,sent:sentCount,failed:ready.length-sentCount,results},config.allowedOrigin);
+   }
    if(prospectSendMatch){
     const id=decodeURIComponent(prospectSendMatch[1]),prospect=data.prospects.find(x=>x.id===id);
     if(!prospect)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
     if(prospect.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea contacto.'},config.allowedOrigin);
     if(prospect.status!=='Aprobado para contacto')return json(res,409,{error:'El contacto debe estar aprobado antes de enviar.'},config.allowedOrigin);
-    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact);
+    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),media=absoluteMediaUrl(req,prospect.approvedMediaUrl||'');
     if(!message)return json(res,409,{error:'No existe un mensaje final aprobado.'},config.allowedOrigin);
     if(phone.length<11)return json(res,409,{error:'No existe un WhatsApp público válido registrado.'},config.allowedOrigin);
-    const sent=await sendProspectFirstContact({phone,business:prospect.business,message});
-    if(!sent.ok)return json(res,502,{error:sent.reason||sent.error||'WhatsApp no confirmó el envío.'},config.allowedOrigin);
+    const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
+    if(!sent.ok){const reason=sent.reason==='PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'?'La plantilla de primer contacto no tiene habilitada una cabecera de imagen. Activa GOY_WA_PROSPECT_MEDIA_HEADER o envía sin imagen.':sent.reason||sent.error||'WhatsApp no confirmó el envío.';return json(res,502,{error:reason},config.allowedOrigin);}
     const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
-    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,providerMessageId:sent.id||'',sentAt:now});
+    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
     prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;
     await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
    }
@@ -242,6 +258,7 @@ function wrap(next,overrides={}){
     if(!raw)return json(res,502,{error:'No se pudo completar el análisis con IA. Workers AI no respondió. El respaldo opcional de OpenAI está desactivado o no disponible.'},config.allowedOrigin);
     let analysis;try{analysis=JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,''));}catch{return json(res,502,{error:'La IA devolvió un análisis no válido.'},config.allowedOrigin);}
     for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);
+    if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}
     if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));
     item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider});
    }
@@ -250,7 +267,9 @@ function wrap(next,overrides={}){
     if(req.method==='GET')return json(res,200,{prospect:item},config.allowedOrigin);
     if(req.method==='DELETE'){data.prospects=data.prospects.filter(x=>x.id!==id);await writeState(config,data);return json(res,200,{ok:true},config.allowedOrigin);}
     const body=await readBody(req);
-    for(const key of ['business','city','category','source','sourceUrl','channel','contact','fitReason','observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','draftMessage'])if(Object.prototype.hasOwnProperty.call(body,key))item[key]=String(body[key]||'').trim();
+    for(const key of ['business','city','category','source','sourceUrl','channel','contact','fitReason','observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','draftMessage','matchedService'])if(Object.prototype.hasOwnProperty.call(body,key))item[key]=String(body[key]||'').trim();
+    if(Object.prototype.hasOwnProperty.call(body,'approvedMediaUrl')){const media=String(body.approvedMediaUrl||'').trim();if(!validMediaUrl(media))return json(res,400,{error:'La imagen publicitaria debe usar un recurso /assets/ o una URL HTTPS pública.'},config.allowedOrigin);item.approvedMediaUrl=media;}
+    if(Object.prototype.hasOwnProperty.call(body,'recommendedMediaUrl')){const media=String(body.recommendedMediaUrl||'').trim();if(!validMediaUrl(media))return json(res,400,{error:'La imagen recomendada no es válida.'},config.allowedOrigin);item.recommendedMediaUrl=media;}
     if(Object.prototype.hasOwnProperty.call(body,'score'))item.score=Math.max(0,Math.min(100,Number(body.score||0)));
     if(Object.prototype.hasOwnProperty.call(body,'doNotContact'))item.doNotContact=Boolean(body.doNotContact);
     if(Object.prototype.hasOwnProperty.call(body,'status')){
