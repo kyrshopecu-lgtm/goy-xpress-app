@@ -28,6 +28,29 @@ const SALES_BASE_SERVICES=[
  {id:'deposits',name:'Depósitos y gestiones de pago',description:'Depósito de cheques, efectivo y gestiones de pago dentro de los límites operativos.',mediaUrl:'/assets/03_cambio_dinero_negocio.png',queries:['distribuidores','mayoristas','comercios','tiendas','empresas de ventas']},
  {id:'additional',name:'Servicios diversos y personalizados',description:'Gestiones especiales cotizadas por administración según la necesidad del cliente.',mediaUrl:'/assets/08_servicios_adicionales.png',queries:['pymes','emprendimientos','servicios profesionales','empresas']},
 ];
+const SALES_MESSAGE_ANGLES=['Rapidez','Ahorro de tiempo','Conveniencia','Entrega y logística','Gestión experta','Presencia en Quito','Seguridad y control','Otro'];
+function normalizeMessageAngle(value){
+ const raw=String(value||'').trim();
+ return SALES_MESSAGE_ANGLES.includes(raw)?raw:(raw?'Otro':'');
+}
+function prospectCampaignPerformance(data){
+ const rows=new Map();
+ for(const p of data.prospects||[]){
+  const service=String(p.matchedService||'').trim(),angle=normalizeMessageAngle(p.messageAngle)||'Sin clasificar',mediaUrl=String(p.approvedMediaUrl||'').trim();
+  const conversation=Array.isArray(p.conversation)?p.conversation:[];
+  const contacted=Boolean(p.firstContactAt)||conversation.some(x=>x.direction==='outbound')||['Contactado','Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||''));
+  if(!service||!contacted)continue;
+  const key=service+'|'+angle+'|'+mediaUrl;
+  if(!rows.has(key))rows.set(key,{service,messageAngle:angle,mediaUrl,contacted:0,responded:0,interested:0,clients:0});
+  const row=rows.get(key),responded=conversation.some(x=>x.direction==='inbound')||['Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||'')),interested=['Interesado','Solicita llamada','Cliente'].includes(String(p.status||'')),client=String(p.status||'')==='Cliente';
+  row.contacted++;if(responded)row.responded++;if(interested)row.interested++;if(client)row.clients++;
+ }
+ return [...rows.values()].map(row=>{
+  const responseRate=row.contacted?row.responded/row.contacted:0,interestRate=row.contacted?row.interested/row.contacted:0,conversionRate=row.contacted?row.clients/row.contacted:0;
+  const campaignScore=row.contacted<3?50:Math.max(20,Math.min(100,Math.round(35+responseRate*30+interestRate*20+conversionRate*15)));
+  return {...row,responseRate,interestRate,conversionRate,campaignScore};
+ }).sort((a,b)=>Number(b.campaignScore||50)-Number(a.campaignScore||50)||Number(b.contacted||0)-Number(a.contacted||0));
+}
 function prospectServicePerformance(data){
  const byService=new Map();
  const ensure=name=>{const key=String(name||'').trim();if(!key)return null;if(!byService.has(key))byService.set(key,{name:key,analyzed:0,contacted:0,responded:0,interested:0,clients:0});return byService.get(key);};
@@ -49,11 +72,16 @@ function prospectServicePerformance(data){
 }
 function salesServiceKnowledge(data){
  const custom=(data.customServices||[]).filter(s=>s.active!==false).map(s=>({id:'custom:'+s.id,name:String(s.name||'').trim(),description:String(s.description||'').trim(),price:Number(s.price||0),mediaUrl:'/assets/08_servicios_adicionales.png',queries:[String(s.name||'').trim(),String(s.description||'').trim()].filter(x=>x.length>=3)}));
- const performance=prospectServicePerformance(data),perfMap=new Map(performance.map(x=>[String(x.name||'').toLowerCase(),x]));
- const services=[...SALES_BASE_SERVICES,...custom].map(s=>({...s,performance:perfMap.get(String(s.name||'').toLowerCase())||{analyzed:0,contacted:0,responded:0,interested:0,clients:0,responseRate:0,interestRate:0,conversionRate:0,priorityScore:50}})).sort((a,b)=>Number(b.performance.priorityScore||50)-Number(a.performance.priorityScore||50));
+ const performance=prospectServicePerformance(data),campaignPerformance=prospectCampaignPerformance(data),perfMap=new Map(performance.map(x=>[String(x.name||'').toLowerCase(),x]));
+ const services=[...SALES_BASE_SERVICES,...custom].map(s=>{
+  const servicePerf=perfMap.get(String(s.name||'').toLowerCase())||{analyzed:0,contacted:0,responded:0,interested:0,clients:0,responseRate:0,interestRate:0,conversionRate:0,priorityScore:50};
+  const campaigns=campaignPerformance.filter(x=>String(x.service||'').toLowerCase()===String(s.name||'').toLowerCase());
+  const bestCampaign=campaigns[0]||null;
+  return {...s,performance:servicePerf,bestCampaign};
+ }).sort((a,b)=>Number(b.performance.priorityScore||50)-Number(a.performance.priorityScore||50));
  const exploration=services.map(s=>(s.queries||[])[0]).filter(Boolean),performanceQueries=services.flatMap(s=>(s.queries||[]).slice(1));
  const queries=[...new Set([...exploration,...performanceQueries].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
- return {services,queries,performance};
+ return {services,queries,performance,campaignPerformance};
 }
 function ecuadorDayKey(value=new Date()){
  const local=new Date(value.toLocaleString('en-US',{timeZone:'America/Guayaquil'}));
@@ -75,13 +103,16 @@ function prospectMetrics(data){
   day,
   today:{found:sum('discovered'),imported:sum('imported'),analyzed,contacted,responded,interested,clients,autoAnalyzed:sum('analyzed'),autoContacted:sum('contactSent')},
   latestRun:runs.slice().sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')))[0]||null,
-  servicePerformance:knowledge.services.map(s=>({id:s.id,name:s.name,priorityScore:Number(s.performance?.priorityScore||50),analyzed:Number(s.performance?.analyzed||0),contacted:Number(s.performance?.contacted||0),responded:Number(s.performance?.responded||0),interested:Number(s.performance?.interested||0),clients:Number(s.performance?.clients||0),responseRate:Number(s.performance?.responseRate||0),interestRate:Number(s.performance?.interestRate||0),conversionRate:Number(s.performance?.conversionRate||0)}))
+  servicePerformance:knowledge.services.map(s=>({id:s.id,name:s.name,priorityScore:Number(s.performance?.priorityScore||50),analyzed:Number(s.performance?.analyzed||0),contacted:Number(s.performance?.contacted||0),responded:Number(s.performance?.responded||0),interested:Number(s.performance?.interested||0),clients:Number(s.performance?.clients||0),responseRate:Number(s.performance?.responseRate||0),interestRate:Number(s.performance?.interestRate||0),conversionRate:Number(s.performance?.conversionRate||0),bestMessageAngle:s.bestCampaign?.messageAngle||'',bestMediaUrl:s.bestCampaign?.mediaUrl||'',campaignContacts:Number(s.bestCampaign?.contacted||0),campaignScore:Number(s.bestCampaign?.campaignScore||50)})),
+  campaignPerformance:knowledge.campaignPerformance.slice(0,40)
  };
 }
 function serviceMediaForName(knowledge,name){
  const target=String(name||'').trim().toLowerCase();
  if(!target)return '';
  const match=(knowledge.services||[]).find(s=>String(s.name||'').trim().toLowerCase()===target)|| (knowledge.services||[]).find(s=>target.includes(String(s.name||'').trim().toLowerCase())||String(s.name||'').trim().toLowerCase().includes(target));
+ const learned=match?.bestCampaign;
+ if(learned&&Number(learned.contacted||0)>=3)return String(learned.mediaUrl||'');
  return match?.mediaUrl||'';
 }
 function validMediaUrl(value){
