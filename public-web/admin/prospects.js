@@ -5,6 +5,8 @@
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   let prospects=[];
   let whatsappReady=null;
+  let whatsappMediaReady=false;
+  let serviceIntelligence={services:[],searchQueries:[]};
 
   async function api(path,options={}){
     const headers={'Content-Type':'application/json',...(options.headers||{})};
@@ -16,6 +18,14 @@
   }
 
   function sourceLabel(p){return [p.source,p.city,p.category].filter(Boolean).join(' · ')||'Sin clasificar';}
+  function uniqueMedia(){
+    const seen=new Set(),items=[];
+    for(const s of serviceIntelligence.services||[]){const url=String(s.mediaUrl||'').trim();if(!url||seen.has(url))continue;seen.add(url);items.push({url,label:s.name||'Pieza GOY XPRESS'});}
+    return items;
+  }
+  function mediaPreview(url,label='Imagen publicitaria'){
+    const value=String(url||'').trim();return value?`<div class="map-hint"><strong>${esc(label)}</strong><br><img src="${esc(value)}" alt="Pieza publicitaria GOY XPRESS" style="display:block;max-width:220px;max-height:220px;object-fit:contain;border-radius:12px;margin-top:8px"></div>`:'';
+  }
   function growthSummary(p){
     const parts=[];
     if(p.growthOpportunities)parts.push('Oportunidad: '+String(p.growthOpportunities).slice(0,120));
@@ -26,16 +36,18 @@
     const box=$('readyContactList'),count=$('readyContactCount');if(!box)return;
     const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     if(count)count.textContent=String(ready.length);
-    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Mensaje final</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.approvedMessage)}</td><td>${esc(p.score||0)}/100</td><td><button class="primary compact ready-whatsapp-send" type="button" data-id="${esc(p.id)}">${whatsappReady===true?'Enviar por WhatsApp':'WhatsApp pendiente'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+    box.innerHTML=ready.length?`<table><thead><tr><th>Prospecto</th><th>Canal</th><th>Servicio</th><th>Mensaje final</th><th>Imagen</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>${ready.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.city||'')}</small></td><td>${esc(p.channel||'—')}<br><small>${esc(p.contact||'Sin contacto público registrado')}</small></td><td>${esc(p.matchedService||'Por validar')}</td><td>${esc(p.approvedMessage)}</td><td>${p.approvedMediaUrl?`<img src="${esc(p.approvedMediaUrl)}" alt="Publicidad" style="width:68px;height:68px;object-fit:cover;border-radius:10px">`:'Sin imagen'}</td><td>${esc(p.score||0)}/100</td><td><button class="primary compact ready-whatsapp-send" type="button" data-id="${esc(p.id)}">${whatsappReady===true?(p.approvedMediaUrl?'Enviar texto + imagen':'Enviar por WhatsApp'):'WhatsApp pendiente'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aún no hay prospectos aprobados y listos para contacto.</div>';
+    box.querySelectorAll('.ready-whatsapp-send').forEach(btn=>btn.addEventListener('click',()=>sendReadyWhatsApp(btn.dataset.id)));
   }
 
   async function sendReadyWhatsApp(id){
     if(whatsappReady!==true){$('prospectMessage').textContent='WhatsApp comercial aún no está configurado. Revisa la plantilla y credenciales antes de enviar.';return;}
     const p=prospects.find(x=>x.id===id);if(!p)return;
-    const recipient=p.contact||'sin número registrado',message=String(p.approvedMessage||'').trim();
-    if(!window.confirm(`Confirmar primer contacto por WhatsApp\n\nNegocio: ${p.business}\nDestinatario: ${recipient}\n\nMensaje aprobado:\n${message}\n\n¿Enviar ahora?`))return;
+    const recipient=p.contact||'sin número registrado',message=String(p.approvedMessage||'').trim(),hasMedia=Boolean(String(p.approvedMediaUrl||'').trim());
+    if(hasMedia&&!whatsappMediaReady){$('prospectMessage').textContent='Este prospecto tiene una imagen aprobada, pero la plantilla de WhatsApp aún no tiene habilitada la cabecera multimedia.';return;}
+    if(!window.confirm(`Confirmar primer contacto por WhatsApp\n\nNegocio: ${p.business}\nDestinatario: ${recipient}\nServicio: ${p.matchedService||'por validar'}\nImagen: ${hasMedia?'Sí':'No'}\n\nMensaje aprobado:\n${message}\n\n¿Enviar ahora?`))return;
     $('prospectMessage').textContent=`Enviando a ${p.business}…`;
-    try{await api(`/admin/prospects/${encodeURIComponent(id)}/send-whatsapp`,{method:'POST',body:'{}'});$('prospectMessage').textContent=`WhatsApp confirmado para ${p.business}. El envío quedó registrado en el historial.`;await Promise.all([loadWhatsAppStatus(),load()]);}
+    try{await api(`/admin/prospects/${encodeURIComponent(id)}/send-whatsapp`,{method:'POST',body:'{}'});$('prospectMessage').textContent=`WhatsApp confirmado para ${p.business}. El envío quedó registrado en el historial.`;await load();}
     catch(e){$('prospectMessage').textContent=`No se envió a ${p.business}: ${e.message}`;}
   }
 
@@ -53,7 +65,7 @@
       <td><button class="ghost prospect-review" data-id="${esc(p.id)}">Revisar contacto</button></td>
     </tr>`).join(''):'<tr><td colspan="7">No hay prospectos en este estado.</td></tr>';
     document.querySelectorAll('.prospect-review').forEach(b=>b.onclick=()=>openReview(b.dataset.id));
-    document.querySelectorAll('.prospect-check').forEach(box=>box.onchange=updateSelection);updateSelection();
+    document.querySelectorAll('.prospect-check').forEach(box=>box.onchange=updateSelection);updateSelection();renderReady();
   }
 
   function selectedIds(){return [...document.querySelectorAll('.prospect-check:checked')].map(x=>x.value);}
@@ -64,17 +76,21 @@
     const blocked=selected.filter(p=>p.doNotContact||!String(p.draftMessage||p.approvedMessage||'').trim());
     if(blocked.length){$('prospectMessage').textContent=`${blocked.length} prospecto(s) requieren revisión individual porque no tienen mensaje o están marcados como no contactar.`;return;}
     if(!confirm(`Aprobar ${selected.length} prospecto(s) para contacto? Esto no enviará mensajes todavía.`))return;
-    let ok=0;for(const p of selected){try{await api(`/admin/prospects/${encodeURIComponent(p.id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:p.approvedMessage||p.draftMessage,status:'Aprobado para contacto'})});ok++;}catch{}}
+    let ok=0;for(const p of selected){try{await api(`/admin/prospects/${encodeURIComponent(p.id)}`,{method:'PATCH',body:JSON.stringify({approvedMessage:p.approvedMessage||p.draftMessage,approvedMediaUrl:p.approvedMediaUrl||p.recommendedMediaUrl||'',matchedService:p.matchedService||'',status:'Aprobado para contacto'})});ok++;}catch{}}
     $('prospectMessage').textContent=`${ok} prospecto(s) aprobados para contacto. Ningún mensaje fue enviado.`;await load();
   }
   async function loadWhatsAppStatus(){
-    try{const s=await api('/admin/prospects/whatsapp-status');whatsappReady=Boolean(s.configured);return s;}
-    catch(_){whatsappReady=false;return {configured:false,missing:[]};}
+    try{const s=await api('/admin/prospects/whatsapp-status');whatsappReady=Boolean(s.configured);whatsappMediaReady=Boolean(s.mediaHeaderConfigured);return s;}
+    catch(_){whatsappReady=false;whatsappMediaReady=false;return {configured:false,missing:[]};}
+  }
+  async function loadServiceIntelligence(){
+    try{const data=await api('/admin/prospects/service-intelligence');serviceIntelligence={services:data.services||[],searchQueries:data.searchQueries||[]};return serviceIntelligence;}
+    catch(_){serviceIntelligence={services:[],searchQueries:[]};return serviceIntelligence;}
   }
 
   async function load(){
     if(!token()||!$('prospectsBody'))return;
-    try{const data=await api('/admin/prospects');prospects=data.prospects||[];render();}
+    try{const [data]=await Promise.all([api('/admin/prospects'),loadWhatsAppStatus(),loadServiceIntelligence()]);prospects=data.prospects||[];render();}
     catch(e){$('prospectsBody').innerHTML=`<tr><td colspan="7">${esc(e.message)}</td></tr>`;}
   }
 
@@ -94,10 +110,10 @@
     o.querySelector('#prospectForm').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const payload=Object.fromEntries(fd.entries());payload.score=Number(payload.score||0);try{await api('/admin/prospects',{method:'POST',body:JSON.stringify(payload)});o.remove();await load();}catch(err){$('prospectFormMessage').textContent=err.message;}};
   }
 
-  function openDiscover(){
-    const o=modal(`<div class="modal-head"><div><span class="eyebrow">GOY SALES AI</span><h3>Buscar prospectos públicos</h3><p>Busca candidatos y revísalos antes de importarlos.</p></div><button class="modal-close">×</button></div><div class="admin-order-form"><div class="form-grid two"><label>Ciudad<input id="discoverCity" placeholder="Ej. Cuenca"></label><label>Categoría<input id="discoverCategory" placeholder="Tecnología, ropa, accesorios…"></label><label>Cantidad máxima<input id="discoverLimit" type="number" min="1" max="177" value="50"></label></div><div id="discoverMessage" class="form-message"></div><div id="discoverResults"></div><div class="modal-actions"><button class="ghost modal-cancel">Cerrar</button><button class="primary action-primary" id="runDiscover">Buscar</button></div></div>`);
+  function openDiscover(serviceMode=false){
+    const o=modal(`<div class="modal-head"><div><span class="eyebrow">GOY SALES AI</span><h3>${serviceMode?'Búsqueda según servicios activos':'Buscar prospectos públicos'}</h3><p>${serviceMode?'El agente usará automáticamente lo que aprendió de los servicios activos para decidir qué negocios buscar.':'Puedes indicar una categoría manual o dejarla vacía para usar los servicios activos.'}</p></div><button class="modal-close">×</button></div><div class="admin-order-form">${serviceMode?'<div class="map-hint"><strong>Servicios aprendidos:</strong> '+esc((serviceIntelligence.services||[]).map(s=>s.name).join(' · ')||'Cargando catálogo…')+'</div>':''}<div class="form-grid two"><label>Ciudad<input id="discoverCity" placeholder="Ej. Quito, Cuenca o Guayaquil"></label><label>Categoría<input id="discoverCategory" ${serviceMode?'disabled':''} placeholder="Vacío = servicios activos"></label><label>Cantidad máxima<input id="discoverLimit" type="number" min="1" max="177" value="${serviceMode?'60':'50'}"></label></div><div id="discoverMessage" class="form-message"></div><div id="discoverResults"></div><div class="modal-actions"><button class="ghost modal-cancel">Cerrar</button><button class="primary action-primary" id="runDiscover">Buscar</button></div></div>`);
     o.querySelector('.modal-close').onclick=()=>o.remove();o.querySelector('.modal-cancel').onclick=()=>o.remove();
-    o.querySelector('#runDiscover').onclick=async()=>{const button=o.querySelector('#runDiscover'),message=o.querySelector('#discoverMessage'),results=o.querySelector('#discoverResults');button.disabled=true;button.textContent='Buscando…';message.textContent='';try{const result=await api('/admin/prospects/discover',{method:'POST',body:JSON.stringify({city:o.querySelector('#discoverCity').value.trim(),category:o.querySelector('#discoverCategory').value.trim(),limit:Math.min(177,Number(o.querySelector('#discoverLimit').value||50))})}),items=result.prospects||[];const usage=result.usage||{};message.textContent=`Encontrados: ${items.length}. Hoy: ${usage.daily??'—'}/${usage.dailyLimit??177} · Mes: ${usage.monthly??'—'}/${usage.monthlyLimit??4800} · Esta búsqueda: ${usage.requestsUsed??'—'} llamada(s). Selecciona cuáles deseas importar.`;results.innerHTML=items.length?`<div class="discover-results-scroll"><div class="table-wrap"><table><thead><tr><th></th><th>Negocio</th><th>Ciudad</th><th>Categoría</th><th>Fuente</th></tr></thead><tbody>${items.map((p,i)=>`<tr><td><input type="checkbox" class="discover-check" value="${i}" checked></td><td><strong>${esc(p.business)}</strong></td><td>${esc(p.city||'')}</td><td>${esc(p.category||'')}</td><td>${esc(p.source||'')}</td></tr>`).join('')}</tbody></table></div></div><div class="discover-import-bar"><strong id="discoverSelectedCount">${items.length} seleccionados</strong><button class="primary compact" id="importDiscovered" type="button">Importar seleccionados</button></div>`:'<p class="muted">No se encontraron candidatos.</p>';const updateDiscoverCount=()=>{const count=o.querySelectorAll('.discover-check:checked').length,label=o.querySelector('#discoverSelectedCount');if(label)label.textContent=`${count} seleccionado${count===1?'':'s'}`;};o.querySelectorAll('.discover-check').forEach(box=>box.onchange=updateDiscoverCount);updateDiscoverCount();const importButton=o.querySelector('#importDiscovered');if(importButton)importButton.onclick=async()=>{const selected=[...o.querySelectorAll('.discover-check:checked')].map(x=>items[Number(x.value)]).filter(Boolean);if(!selected.length){message.textContent='Selecciona al menos un prospecto.';return;}importButton.disabled=true;try{const imported=await api('/admin/prospects/import',{method:'POST',body:JSON.stringify({prospects:selected})});message.textContent=`Importados: ${imported.imported}. Duplicados: ${imported.duplicates}. Inválidos: ${imported.invalid}. Todos quedaron pendientes de revisión.`;await load();if(imported.imported>0){setTimeout(()=>o.remove(),650);}}catch(e){message.textContent=e.message;}finally{importButton.disabled=false;}};}catch(e){message.textContent=e.message;results.innerHTML='';}finally{button.disabled=false;button.textContent='Buscar';}};
+    o.querySelector('#runDiscover').onclick=async()=>{const button=o.querySelector('#runDiscover'),message=o.querySelector('#discoverMessage'),results=o.querySelector('#discoverResults');button.disabled=true;button.textContent='Buscando…';message.textContent='';try{const result=await api('/admin/prospects/discover',{method:'POST',body:JSON.stringify({city:o.querySelector('#discoverCity').value.trim(),category:serviceMode?'':o.querySelector('#discoverCategory').value.trim(),limit:Math.min(177,Number(o.querySelector('#discoverLimit').value||(serviceMode?60:50)))})}),items=result.prospects||[];const usage=result.usage||{};message.textContent=`Encontrados: ${items.length}. Modo: ${result.criteria?.mode||'manual'}. Hoy: ${usage.daily??'—'}/${usage.dailyLimit??177} · Mes: ${usage.monthly??'—'}/${usage.monthlyLimit??4800} · Esta búsqueda: ${usage.requestsUsed??'—'} llamada(s). Selecciona cuáles deseas importar.`;results.innerHTML=items.length?`<div class="discover-results-scroll"><div class="table-wrap"><table><thead><tr><th></th><th>Negocio</th><th>Ciudad</th><th>Categoría</th><th>Fuente</th></tr></thead><tbody>${items.map((p,i)=>`<tr><td><input type="checkbox" class="discover-check" value="${i}" checked></td><td><strong>${esc(p.business)}</strong></td><td>${esc(p.city||'')}</td><td>${esc(p.category||'')}</td><td>${esc(p.source||'')}</td></tr>`).join('')}</tbody></table></div></div><div class="discover-import-bar"><strong id="discoverSelectedCount">${items.length} seleccionados</strong><button class="primary compact" id="importDiscovered" type="button">Importar seleccionados</button></div>`:'<p class="muted">No se encontraron candidatos.</p>';const updateDiscoverCount=()=>{const count=o.querySelectorAll('.discover-check:checked').length,label=o.querySelector('#discoverSelectedCount');if(label)label.textContent=`${count} seleccionado${count===1?'':'s'}`;};o.querySelectorAll('.discover-check').forEach(box=>box.onchange=updateDiscoverCount);updateDiscoverCount();const importButton=o.querySelector('#importDiscovered');if(importButton)importButton.onclick=async()=>{const selected=[...o.querySelectorAll('.discover-check:checked')].map(x=>items[Number(x.value)]).filter(Boolean);if(!selected.length){message.textContent='Selecciona al menos un prospecto.';return;}importButton.disabled=true;try{const imported=await api('/admin/prospects/import',{method:'POST',body:JSON.stringify({prospects:selected})});message.textContent=`Importados: ${imported.imported}. Duplicados: ${imported.duplicates}. Inválidos: ${imported.invalid}. Todos quedaron pendientes de revisión.`;await load();if(imported.imported>0){setTimeout(()=>o.remove(),650);}}catch(e){message.textContent=e.message;}finally{importButton.disabled=false;}};}catch(e){message.textContent=e.message;results.innerHTML='';}finally{button.disabled=false;button.textContent='Buscar';}};
   }
 
   function openImport(){
@@ -111,19 +127,30 @@
     const p=prospects.find(x=>x.id===id);if(!p)return;
     const isFollowup=['Respondió','Interesado','Solicita llamada'].includes(p.status);
     const proposed=isFollowup?(p.followupApprovedMessage||p.followupDraft||''):(p.approvedMessage||p.draftMessage||'');
+    const selectedMedia=String(p.approvedMediaUrl||p.recommendedMediaUrl||'').trim();
+    const mediaChoices=uniqueMedia();
+    const mediaOptions='<option value="">Sin imagen</option>'+mediaChoices.map(x=>`<option value="${esc(x.url)}" ${selectedMedia===x.url?'selected':''}>${esc(x.label)}</option>`).join('');
+    const customMedia=/^https:\/\//i.test(selectedMedia)?selectedMedia:'';
     const o=modal(`<div class="modal-head"><div><span class="eyebrow">Revisión humana obligatoria</span><h3>${esc(p.business)}</h3><p>${esc(sourceLabel(p))}</p></div><button class="modal-close">×</button></div>
       <div class="admin-order-form"><div class="form-grid"><label>Señales / necesidades observadas<textarea id="prospectObservedNeeds" rows="4" placeholder="Hechos o señales observables; evita asumir necesidades no confirmadas.">${esc(p.observedNeeds||'')}</textarea></label><label>Oportunidades de crecimiento<textarea id="prospectGrowthOpportunities" rows="4" placeholder="Oportunidades que el negocio podría evaluar.">${esc(p.growthOpportunities||'')}</textarea></label><label>Nuevos servicios sugeridos<textarea id="prospectSuggestedServices" rows="4" placeholder="Servicios complementarios que podrían tener sentido.">${esc(p.suggestedServices||'')}</textarea></label><label>Ideas de campañas<textarea id="prospectCampaignIdeas" rows="4" placeholder="Conceptos de campaña, oferta, público y canal sugerido.">${esc(p.campaignIdeas||'')}</textarea></label></div><label>Mensaje que GOY XPRESS utilizará<textarea id="prospectApprovedMessage" rows="8">${esc(proposed)}</textarea></label>
+      ${!isFollowup?`<div class="form-grid two"><label>Servicio detectado por la IA<input id="prospectMatchedService" value="${esc(p.matchedService||'')}" readonly placeholder="Se completa al analizar"></label><label>Imagen publicitaria<select id="prospectMediaSelect">${mediaOptions}</select></label><label>URL HTTPS de imagen propia (opcional)<input id="prospectMediaCustom" type="url" value="${esc(customMedia)}" placeholder="https://.../publicidad.jpg"></label><div><strong>Vista previa</strong><div id="prospectMediaPreview">${mediaPreview(selectedMedia,'Pieza que acompañará el WhatsApp')}</div></div></div><p class="map-hint">La imagen se envía junto al primer contacto solo si la plantilla de WhatsApp tiene cabecera multimedia habilitada.</p>`:''}
       ${isFollowup?'<div class="form-grid"><div><strong>Conversación reciente</strong><div class="map-hint">'+((p.conversation||[]).slice(-6).map(x=>(x.direction==='inbound'?'Prospecto: ':'GOY XPRESS: ')+esc(x.message||'')).join('<br>')||'Sin mensajes registrados')+'</div></div><div><strong>Seguimiento GOY SALES AI</strong><div class="map-hint">'+esc(p.followupIntent||'Pendiente de analizar la respuesta')+'</div><button class="ghost" type="button" id="draftFollowup">Preparar respuesta con IA</button><button class="primary compact" type="button" id="sendFollowup">Enviar respuesta revisada</button></div></div>':''}
       <label class="check-line"><input id="prospectDnc" type="checkbox" ${p.doNotContact?'checked':''}> No contactar a este prospecto</label>
       <p class="map-hint">${isFollowup?'Guardar la respuesta no la envía. “Enviar respuesta revisada” usa WhatsApp solo si la ventana de atención de 24 horas sigue abierta.':'Aprobar no envía todavía el mensaje. Solo deja autorizado el texto para el primer contacto.'}</p>
       <div id="prospectReviewMessage" class="form-message"></div><div class="modal-actions">${isFollowup?'':'<button class="ghost" id="analyzeProspect">Analizar con GOY SALES AI</button>'}<button class="ghost" id="discardProspect">Descartar</button><button class="primary action-primary" id="approveProspect" ${p.doNotContact?'disabled':''}>${isFollowup?'Guardar respuesta revisada':'Aprobar para contacto'}</button></div></div>`);
     o.querySelector('.modal-close').onclick=()=>o.remove();
-    const analyze=o.querySelector('#analyzeProspect');if(analyze)analyze.onclick=async()=>{const label=analyze.textContent;analyze.disabled=true;analyze.textContent='Analizando…';$('prospectReviewMessage').textContent='GOY SALES AI está preparando el diagnóstico comercial.';try{const result=await api(`/admin/prospects/${encodeURIComponent(id)}/analyze`,{method:'POST'}),a=result.prospect||{};o.querySelector('#prospectObservedNeeds').value=a.observedNeeds||'';o.querySelector('#prospectGrowthOpportunities').value=a.growthOpportunities||'';o.querySelector('#prospectSuggestedServices').value=a.suggestedServices||'';o.querySelector('#prospectCampaignIdeas').value=a.campaignIdeas||'';o.querySelector('#prospectApprovedMessage').value=a.draftMessage||a.approvedMessage||'';$('prospectReviewMessage').textContent='Análisis generado. Revísalo y edítalo antes de aprobar el contacto.';}catch(e){$('prospectReviewMessage').textContent=e.message;}finally{analyze.disabled=false;analyze.textContent=label;}};
+    const mediaSelect=o.querySelector('#prospectMediaSelect'),mediaCustom=o.querySelector('#prospectMediaCustom'),mediaBox=o.querySelector('#prospectMediaPreview');
+    const chosenMedia=()=>String(mediaCustom?.value||'').trim()||String(mediaSelect?.value||'').trim();
+    const refreshMedia=()=>{if(mediaBox)mediaBox.innerHTML=mediaPreview(chosenMedia(),'Pieza que acompañará el WhatsApp')+(chosenMedia()&&!whatsappMediaReady?'<div class="warning-text">La plantilla multimedia de WhatsApp todavía no está habilitada.</div>':'');};
+    if(mediaSelect)mediaSelect.onchange=()=>{if(mediaCustom)mediaCustom.value='';refreshMedia();};
+    if(mediaCustom)mediaCustom.oninput=refreshMedia;
+    refreshMedia();
+    const analyze=o.querySelector('#analyzeProspect');if(analyze)analyze.onclick=async()=>{const label=analyze.textContent;analyze.disabled=true;analyze.textContent='Analizando…';$('prospectReviewMessage').textContent='GOY SALES AI está preparando el diagnóstico comercial.';try{const result=await api(`/admin/prospects/${encodeURIComponent(id)}/analyze`,{method:'POST'}),a=result.prospect||{};o.querySelector('#prospectObservedNeeds').value=a.observedNeeds||'';o.querySelector('#prospectGrowthOpportunities').value=a.growthOpportunities||'';o.querySelector('#prospectSuggestedServices').value=a.suggestedServices||'';o.querySelector('#prospectCampaignIdeas').value=a.campaignIdeas||'';o.querySelector('#prospectApprovedMessage').value=a.draftMessage||a.approvedMessage||'';const matched=o.querySelector('#prospectMatchedService');if(matched)matched.value=a.matchedService||'';if(a.recommendedMediaUrl&&mediaSelect&&!mediaCustom?.value){mediaSelect.value=a.recommendedMediaUrl;refreshMedia();}$('prospectReviewMessage').textContent='Análisis generado con el catálogo activo. Revísalo y edítalo antes de aprobar el contacto; valida servicio, texto e imagen.';}catch(e){$('prospectReviewMessage').textContent=e.message;}finally{analyze.disabled=false;analyze.textContent=label;}};
     const followup=o.querySelector('#draftFollowup');if(followup)followup.onclick=async()=>{const label=followup.textContent;followup.disabled=true;followup.textContent='Preparando…';$('prospectReviewMessage').textContent='GOY SALES AI está analizando la conversación.';try{const result=await api(`/admin/prospects/${encodeURIComponent(id)}/draft-followup`,{method:'POST'}),d=result.draft||{};o.querySelector('#prospectApprovedMessage').value=d.draftMessage||'';$('prospectReviewMessage').textContent=d.draftMessage?'Borrador preparado. Revísalo, edítalo y apruébalo antes de cualquier envío.':'La respuesta indica que no corresponde continuar el contacto.';}catch(e){$('prospectReviewMessage').textContent=e.message;}finally{followup.disabled=false;followup.textContent=label;}};
     const sendFollowup=o.querySelector('#sendFollowup');if(sendFollowup)sendFollowup.onclick=async()=>{const message=o.querySelector('#prospectApprovedMessage').value.trim();if(!message){$('prospectReviewMessage').textContent='Escribe o revisa la respuesta antes de enviarla.';return;}if(!confirm('¿Enviar esta respuesta revisada por WhatsApp?'))return;sendFollowup.disabled=true;const label=sendFollowup.textContent;sendFollowup.textContent='Enviando…';try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({followupApprovedMessage:message,observedNeeds:o.querySelector('#prospectObservedNeeds').value.trim(),growthOpportunities:o.querySelector('#prospectGrowthOpportunities').value.trim(),suggestedServices:o.querySelector('#prospectSuggestedServices').value.trim(),campaignIdeas:o.querySelector('#prospectCampaignIdeas').value.trim(),doNotContact:false})});await api(`/admin/prospects/${encodeURIComponent(id)}/send-followup-whatsapp`,{method:'POST',body:'{}'});$('prospectReviewMessage').textContent='Respuesta enviada y registrada en la conversación.';o.remove();await load();}catch(e){$('prospectReviewMessage').textContent=e.message;sendFollowup.disabled=false;sendFollowup.textContent=label;}};
     const dnc=o.querySelector('#prospectDnc'),approve=o.querySelector('#approveProspect');dnc.onchange=()=>{approve.disabled=dnc.checked;if(sendFollowup)sendFollowup.disabled=dnc.checked;};if(sendFollowup)sendFollowup.disabled=dnc.checked;
     o.querySelector('#discardProspect').onclick=async()=>{try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({status:'Descartado',doNotContact:true})});o.remove();await load();}catch(e){$('prospectReviewMessage').textContent=e.message;}};
-    approve.onclick=async()=>{const message=o.querySelector('#prospectApprovedMessage').value.trim();if(!message){$('prospectReviewMessage').textContent='Escribe o revisa el mensaje antes de aprobar.';return;}try{const payload={observedNeeds:o.querySelector('#prospectObservedNeeds').value.trim(),growthOpportunities:o.querySelector('#prospectGrowthOpportunities').value.trim(),suggestedServices:o.querySelector('#prospectSuggestedServices').value.trim(),campaignIdeas:o.querySelector('#prospectCampaignIdeas').value.trim(),doNotContact:false};if(isFollowup){payload.followupApprovedMessage=message;await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(payload)});$('prospectReviewMessage').textContent='Respuesta revisada guardada. Puedes enviarla con el botón de seguimiento.';await load();}else{payload.approvedMessage=message;payload.status='Aprobado para contacto';await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(payload)});o.remove();await load();}}catch(e){$('prospectReviewMessage').textContent=e.message;}};
+    approve.onclick=async()=>{const message=o.querySelector('#prospectApprovedMessage').value.trim();if(!message){$('prospectReviewMessage').textContent='Escribe o revisa el mensaje antes de aprobar.';return;}try{const payload={observedNeeds:o.querySelector('#prospectObservedNeeds').value.trim(),growthOpportunities:o.querySelector('#prospectGrowthOpportunities').value.trim(),suggestedServices:o.querySelector('#prospectSuggestedServices').value.trim(),campaignIdeas:o.querySelector('#prospectCampaignIdeas').value.trim(),matchedService:o.querySelector('#prospectMatchedService')?.value.trim()||p.matchedService||'',doNotContact:false};if(isFollowup){payload.followupApprovedMessage=message;await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(payload)});$('prospectReviewMessage').textContent='Respuesta revisada guardada. Puedes enviarla con el botón de seguimiento.';await load();}else{payload.approvedMessage=message;payload.approvedMediaUrl=chosenMedia();payload.status='Aprobado para contacto';await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(payload)});o.remove();await load();}}catch(e){$('prospectReviewMessage').textContent=e.message;}};
   }
 
   function selectedIds(){return [...document.querySelectorAll('.prospect-check:checked')].map(x=>x.value);}
@@ -147,7 +174,37 @@
     await load();
   }
 
-  $('discoverProspectsBtn')?.addEventListener('click',openDiscover);
+  function openServiceIntelligence(){
+    const services=serviceIntelligence.services||[],queries=serviceIntelligence.searchQueries||[];
+    const cards=services.map(s=>{
+      const image=s.mediaUrl?'<img src="'+esc(s.mediaUrl)+'" alt="" style="width:70px;height:70px;object-fit:cover;border-radius:10px;float:right;margin-left:10px">':'';
+      const price=s.price!=null?' · $'+Number(s.price).toFixed(2):'';
+      return '<div class="map-hint">'+image+'<strong>'+esc(s.name)+'</strong><br><small>'+esc(s.description||'Sin descripción')+esc(price)+'</small></div>';
+    }).join('')||'<p class="muted">No se pudo cargar el catálogo.</p>';
+    const html='<div class="modal-head"><div><span class="eyebrow">Memoria comercial del agente</span><h3>Servicios que GOY SALES AI está usando</h3><p>El agente actualiza esta lista desde los servicios activos del panel y la usa para buscar y analizar prospectos.</p></div><button class="modal-close">×</button></div>'+
+      '<div class="admin-order-form"><div class="form-grid">'+cards+'</div><div class="map-hint"><strong>Búsquedas que puede usar:</strong><br>'+esc(queries.join(' · ')||'Sin consultas preparadas')+'</div><div class="modal-actions"><button class="primary modal-close-bottom" type="button">Cerrar</button></div></div>';
+    const o=modal(html);
+    o.querySelector('.modal-close').onclick=()=>o.remove();
+    o.querySelector('.modal-close-bottom').onclick=()=>o.remove();
+  }
+  async function sendApprovedBatch(){
+    if(whatsappReady!==true){$('prospectMessage').textContent='WhatsApp comercial aún no está configurado.';return;}
+    const ready=prospects.filter(p=>p.status==='Aprobado para contacto'&&!p.doNotContact&&String(p.approvedMessage||'').trim()&&String(p.contact||'').trim());
+    if(!ready.length){$('prospectMessage').textContent='No hay prospectos aprobados con contacto público para enviar hoy.';return;}
+    const withMedia=ready.filter(p=>p.approvedMediaUrl).length;
+    if(withMedia&&!whatsappMediaReady){$('prospectMessage').textContent='Hay prospectos con imagen aprobada, pero la plantilla multimedia de WhatsApp todavía no está habilitada.';return;}
+    const limit=Math.min(30,ready.length);
+    if(!confirm(`¿Contactar ahora hasta ${limit} prospecto(s) aprobados?\n\nSolo se enviarán contactos ya aprobados y nunca los marcados como “No contactar”.`))return;
+    const button=$('sendApprovedBatchBtn');if(button){button.disabled=true;button.textContent='Contactando…';}
+    try{const result=await api('/admin/prospects/send-approved-batch',{method:'POST',body:JSON.stringify({limit})});$('prospectMessage').textContent=`Jornada de contacto: ${result.sent||0} enviados · ${result.failed||0} con error · ${result.attempted||0} intentados.`;await load();}
+    catch(e){$('prospectMessage').textContent=e.message;}
+    finally{if(button){button.disabled=false;button.textContent='Contactar aprobados hoy';}}
+  }
+
+  $('dailyProspectRunBtn')?.addEventListener('click',()=>openDiscover(true));
+  $('serviceIntelligenceBtn')?.addEventListener('click',openServiceIntelligence);
+  $('sendApprovedBatchBtn')?.addEventListener('click',sendApprovedBatch);
+  $('discoverProspectsBtn')?.addEventListener('click',()=>openDiscover(false));
   $('importProspectsBtn')?.addEventListener('click',openImport);
   $('newProspectBtn')?.addEventListener('click',openNew);
   $('selectAllProspects')?.addEventListener('click',()=>{document.querySelectorAll('.prospect-check').forEach(x=>x.checked=true);updateSelection();});

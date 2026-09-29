@@ -17,6 +17,42 @@ async function writeState(config,data){const normalized=cleanData(data);if(confi
 function activeStatus(value){return !['Entrega finalizada','Cancelado','Entregado','Finalizado'].includes(String(value||''));}
 function cleanMoney(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;}
 function publicService(item){return {id:item.id,name:item.name,price:Number(item.price||0),description:item.description||'',active:item.active!==false,createdAt:item.createdAt,updatedAt:item.updatedAt};}
+
+const SALES_BASE_SERVICES=[
+ {id:'packages',name:'Retiro y/o entrega de paquetes',description:'Retiro y entrega de paquetes en Quito con tarifa por distancia, medidas y peso.',mediaUrl:'/assets/01_mensajeria_envios.png',queries:['tiendas online','ecommerce','boutiques','tecnología','accesorios','repuestos','regalos','juguetes y coleccionables']},
+ {id:'messaging',name:'Mensajería y Envíos',description:'Mensajería programada y express para negocios y personas.',mediaUrl:'/assets/01_mensajeria_envios.png',queries:['tiendas online','emprendimientos','distribuidores','oficinas','floristerías']},
+ {id:'procedures',name:'Trámites Generales y Mensajería Ejecutiva',description:'Ingreso y retiro de documentos, gestiones institucionales y trámites en Quito.',mediaUrl:'/assets/02_tramites_generales.png',queries:['estudios jurídicos','abogados','contadores','consultoras','inmobiliarias','agencias de viajes']},
+ {id:'legal',name:'Apoyo Legal y Judicial',description:'Gestiones e ingreso de documentos para abogados y estudios jurídicos.',mediaUrl:'/assets/04_apoyo_legal_judicial.png',queries:['abogados','estudios jurídicos','bufetes','notarías','consultores legales']},
+ {id:'vehicle',name:'Trámites Vehiculares',description:'Apoyo operativo para matriculación, revisión y gestiones vehiculares.',mediaUrl:'/assets/05_tramites_vehiculares.png',queries:['concesionarios','patios de autos','talleres automotrices','rent a car','venta de vehículos']},
+ {id:'apostille',name:'Apostilla de Documentos',description:'Gestión de apostilla y documentación para clientes en Quito o de otras ciudades.',mediaUrl:'/assets/06_apostilla_documentos.png',queries:['agencias migratorias','abogados','traductores','agencias de estudios en el exterior','consultoras']},
+ {id:'deposits',name:'Depósitos y gestiones de pago',description:'Depósito de cheques, efectivo y gestiones de pago dentro de los límites operativos.',mediaUrl:'/assets/03_cambio_dinero_negocio.png',queries:['distribuidores','mayoristas','comercios','tiendas','empresas de ventas']},
+ {id:'additional',name:'Servicios diversos y personalizados',description:'Gestiones especiales cotizadas por administración según la necesidad del cliente.',mediaUrl:'/assets/08_servicios_adicionales.png',queries:['pymes','emprendimientos','servicios profesionales','empresas']},
+];
+function salesServiceKnowledge(data){
+ const custom=(data.customServices||[]).filter(s=>s.active!==false).map(s=>({id:'custom:'+s.id,name:String(s.name||'').trim(),description:String(s.description||'').trim(),price:Number(s.price||0),mediaUrl:'/assets/08_servicios_adicionales.png',queries:[String(s.name||'').trim(),String(s.description||'').trim()].filter(x=>x.length>=3)}));
+ const services=[...SALES_BASE_SERVICES,...custom];
+ const queries=[...new Set(services.flatMap(s=>s.queries||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
+ return {services,queries};
+}
+function serviceMediaForName(knowledge,name){
+ const target=String(name||'').trim().toLowerCase();
+ if(!target)return '';
+ const match=(knowledge.services||[]).find(s=>String(s.name||'').trim().toLowerCase()===target)|| (knowledge.services||[]).find(s=>target.includes(String(s.name||'').trim().toLowerCase())||String(s.name||'').trim().toLowerCase().includes(target));
+ return match?.mediaUrl||'';
+}
+function validMediaUrl(value){
+ const v=String(value||'').trim();
+ return !v||/^\/assets\/[A-Za-z0-9._/-]+$/.test(v)||/^https:\/\/[^\s]+$/i.test(v);
+}
+function absoluteMediaUrl(req,value){
+ const v=String(value||'').trim();if(!v)return '';
+ if(/^https:\/\//i.test(v))return v;
+ if(!v.startsWith('/'))return '';
+ const host=String(req.headers?.['x-forwarded-host']||req.headers?.host||'').trim();
+ if(!host)return '';
+ const proto=String(req.headers?.['x-forwarded-proto']||'https').split(',')[0].trim()||'https';
+ return `${proto}://${host}${v}`;
+}
 function preliminaryFitScore({category='',city='',website=false}={}){
  const text=String(category).toLowerCase();let score=35;
  if(/tecnolog|accesor|ropa|juguete|coleccion|tienda|emprend|repuesto/.test(text))score+=25;
@@ -31,7 +67,8 @@ async function discoverProspects(config,criteria){
   const results=[],seen=new Set();let requestsUsed=0;
   const requestBudget=Math.max(0,Number(criteria.requestBudget||0));
   const defaultCategories=['tecnología','accesorios','ropa','juguetes y coleccionables','emprendimientos','tiendas online','repuestos','servicios profesionales'];
-  const queries=String(criteria.category||'').trim()?[String(criteria.category).trim()]:defaultCategories;
+  const learned=Array.isArray(criteria.queries)?criteria.queries.map(x=>String(x||'').trim()).filter(Boolean):[];
+  const queries=String(criteria.category||'').trim()?[String(criteria.category).trim()]:(learned.length?learned:defaultCategories);
   for(const query of queries){
    let pageToken='';
    while(results.length<criteria.limit&&requestsUsed<requestBudget){
@@ -75,7 +112,9 @@ function wrap(next,overrides={}){
   const prospectFollowupMatch=p.match(/^\/admin\/prospects\/([^/]+)\/draft-followup$/);
   const prospectFollowupSendMatch=p.match(/^\/admin\/prospects\/([^/]+)\/send-followup-whatsapp$/);
   const prospectWhatsAppStatus=p==='/admin/prospects/whatsapp-status';
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const prospectServiceIntelligence=p==='/admin/prospects/service-intelligence';
+  const prospectSendApprovedBatch=p==='/admin/prospects/send-approved-batch';
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),workersAiRun:typeof overrides.workersAiRun==='function'?overrides.workersAiRun:null,openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),openaiFallbackEnabled:String(overrides.openaiFallbackEnabled??process.env.GOY_AI_OPENAI_FALLBACK??'').toLowerCase()==='true',googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -91,9 +130,13 @@ function wrap(next,overrides={}){
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
    }
    if(prospectWhatsAppStatus){
-    const accessToken=String(process.env.WHATSAPP_ACCESS_TOKEN||''),phoneNumberId=String(process.env.WHATSAPP_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_PROSPECT_TEMPLATE||'');
+    const accessToken=String(process.env.WHATSAPP_ACCESS_TOKEN||''),phoneNumberId=String(process.env.WHATSAPP_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_PROSPECT_TEMPLATE||''),mediaHeader=String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER||'').toLowerCase()==='true';
     const missing=[];if(!accessToken)missing.push('WHATSAPP_ACCESS_TOKEN');if(!phoneNumberId)missing.push('WHATSAPP_PHONE_NUMBER_ID');if(!template)missing.push('GOY_WA_PROSPECT_TEMPLATE');
-    return json(res,200,{configured:missing.length===0,missing,templateConfigured:Boolean(template)},config.allowedOrigin);
+    return json(res,200,{configured:missing.length===0,missing,templateConfigured:Boolean(template),mediaHeaderConfigured:mediaHeader},config.allowedOrigin);
+   }
+   if(prospectServiceIntelligence){
+    const knowledge=salesServiceKnowledge(data);
+    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||''})),searchQueries:knowledge.queries},config.allowedOrigin);
    }
    if(prospectDiscover&&req.method==='POST'){
     const body=await readBody(req),city=String(body.city||'').trim(),category=String(body.category||'').trim(),limit=Math.max(1,Math.min(177,Number(body.limit||50)));
@@ -104,10 +147,11 @@ function wrap(next,overrides={}){
     if(monthly>=4800)return json(res,429,{error:'Se alcanzó el límite mensual de 4.800 búsquedas.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
     const requestBudget=Math.min(177-daily,4800-monthly);
     if(requestBudget<=0)return json(res,429,{error:'No quedan llamadas disponibles dentro del cupo configurado.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
-    const discovery=await discoverProspects(config,{city,category,limit,publicOnly:true,requestBudget}),used=Math.max(1,Number(discovery.requestsUsed||1));
+    const knowledge=salesServiceKnowledge(data),queries=category?[category]:knowledge.queries;
+    const discovery=await discoverProspects(config,{city,category,limit,queries,publicOnly:true,requestBudget}),used=Math.max(1,Number(discovery.requestsUsed||1));
     if(daily+used>177||monthly+used>4800)return json(res,429,{error:'La búsqueda requiere más llamadas que el cupo restante.',usage:{daily,monthly,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
     data.prospectDiscoveryUsage[dayKey]=daily+used;await writeState(config,data);
-    return json(res,200,{prospects:discovery.prospects,count:discovery.prospects.length,criteria:{city,category,limit},usage:{daily:daily+used,monthly:monthly+used,requestsUsed:used,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
+    return json(res,200,{prospects:discovery.prospects,count:discovery.prospects.length,criteria:{city,category,limit,mode:category?'categoría manual':'servicios activos'},servicesLearned:knowledge.services.map(s=>s.name),searchQueries:queries,usage:{daily:daily+used,monthly:monthly+used,requestsUsed:used,dailyLimit:177,monthlyLimit:4800}},config.allowedOrigin);
    }
    if(prospectImport&&req.method==='POST'){
     const body=await readBody(req),incoming=Array.isArray(body.prospects)?body.prospects:[];
@@ -115,28 +159,44 @@ function wrap(next,overrides={}){
     if(incoming.length>500)return json(res,400,{error:'Máximo 500 prospectos por importación.'},config.allowedOrigin);
     const keyOf=x=>{const url=String(x.sourceUrl||'').trim().toLowerCase().replace(/\/$/,'');const contact=String(x.contact||'').trim().toLowerCase().replace(/[\s()+-]/g,'');const business=String(x.business||x.name||'').trim().toLowerCase(),city=String(x.city||'').trim().toLowerCase();return url?'url:'+url:contact?'contact:'+contact:'business:'+business+'|'+city;};
     const known=new Set(data.prospects.map(keyOf)),added=[],duplicates=[],invalid=[];const now=new Date().toISOString();
-    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
+    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
     if(added.length)await writeState(config,data);return json(res,200,{imported:added.length,duplicates:duplicates.length,invalid:invalid.length,prospects:added,duplicateItems:duplicates,invalidItems:invalid},config.allowedOrigin);
    }
    if(p==='/admin/prospects'&&req.method==='GET')return json(res,200,{prospects:data.prospects},config.allowedOrigin);
    if(p==='/admin/prospects'&&req.method==='POST'){
     const body=await readBody(req),business=String(body.business||body.name||'').trim(),sourceUrl=String(body.sourceUrl||'').trim(),channel=String(body.channel||'').trim(),contact=String(body.contact||'').trim();
     if(business.length<2)return json(res,400,{error:'Ingresa el nombre del negocio o prospecto.'},config.allowedOrigin);
-    const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
+    const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
     data.prospects.unshift(item);await writeState(config,data);return json(res,201,{prospect:item},config.allowedOrigin);
+   }
+   if(prospectSendApprovedBatch){
+    const body=await readBody(req),limit=Math.max(1,Math.min(30,Number(body.limit||10)));
+    const ready=data.prospects.filter(x=>x.status==='Aprobado para contacto'&&!x.doNotContact&&String(x.approvedMessage||'').trim()&&cleanPhone(x.contact).length>=11).sort((a,b)=>Number(b.score||0)-Number(a.score||0)).slice(0,limit);
+    const results=[];let sentCount=0;
+    for(const prospect of ready){
+      const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),media=absoluteMediaUrl(req,prospect.approvedMediaUrl||'');
+      const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
+      if(!sent.ok){results.push({id:prospect.id,business:prospect.business,ok:false,error:sent.reason||sent.error||'WHATSAPP_SEND_FAILED'});continue;}
+      const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
+      prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
+      prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;sentCount++;
+      results.push({id:prospect.id,business:prospect.business,ok:true,providerMessageId:sent.id||''});
+    }
+    if(ready.length)await writeState(config,data);
+    return json(res,200,{ok:true,attempted:ready.length,sent:sentCount,failed:ready.length-sentCount,results},config.allowedOrigin);
    }
    if(prospectSendMatch){
     const id=decodeURIComponent(prospectSendMatch[1]),prospect=data.prospects.find(x=>x.id===id);
     if(!prospect)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
     if(prospect.doNotContact)return json(res,409,{error:'Este prospecto indicó que no desea contacto.'},config.allowedOrigin);
     if(prospect.status!=='Aprobado para contacto')return json(res,409,{error:'El contacto debe estar aprobado antes de enviar.'},config.allowedOrigin);
-    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact);
+    const message=String(prospect.approvedMessage||'').trim(),phone=cleanPhone(prospect.contact),media=absoluteMediaUrl(req,prospect.approvedMediaUrl||'');
     if(!message)return json(res,409,{error:'No existe un mensaje final aprobado.'},config.allowedOrigin);
     if(phone.length<11)return json(res,409,{error:'No existe un WhatsApp público válido registrado.'},config.allowedOrigin);
-    const sent=await sendProspectFirstContact({phone,business:prospect.business,message});
-    if(!sent.ok)return json(res,502,{error:sent.reason||sent.error||'WhatsApp no confirmó el envío.'},config.allowedOrigin);
+    const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
+    if(!sent.ok){const reason=sent.reason==='PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'?'La plantilla de primer contacto no tiene habilitada una cabecera de imagen. Activa GOY_WA_PROSPECT_MEDIA_HEADER o envía sin imagen.':sent.reason||sent.error||'WhatsApp no confirmó el envío.';return json(res,502,{error:reason},config.allowedOrigin);}
     const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
-    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,providerMessageId:sent.id||'',sentAt:now});
+    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
     prospect.status='Contactado';prospect.lastContact=now;prospect.updatedAt=now;
     await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
    }
@@ -176,8 +236,9 @@ function wrap(next,overrides={}){
    if(prospectAnalyzeMatch){
     const id=decodeURIComponent(prospectAnalyzeMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
     if(!config.workersAiRun&&!(config.openaiFallbackEnabled&&config.openaiApiKey))return json(res,503,{error:'El análisis con IA no está configurado.'},config.allowedOrigin);
-    const evidence={business:item.business,city:item.city,category:item.category,source:item.source,sourceUrl:item.sourceUrl,fitReason:item.fitReason,contactChannel:item.channel};
-    const prompt='Analiza este prospecto comercial para GOY XPRESS en Quito. Usa únicamente los datos proporcionados como evidencia. Distingue hechos observados de hipótesis/recomendaciones. Devuelve JSON válido sin markdown con las claves observedNeeds, growthOpportunities, suggestedServices, campaignIdeas, fitReason, score y draftMessage. observedNeeds debe expresar señales observables y, cuando falte evidencia, decir que requiere validación. growthOpportunities debe proponer oportunidades concretas. suggestedServices puede incluir servicios actuales de GOY XPRESS o ideas de nuevos servicios útiles para ese negocio. campaignIdeas debe proponer campañas concretas con concepto, público y canal. score debe ser entero 0-100 según afinidad con GOY XPRESS. draftMessage debe ser breve, personalizado, identificarse como asistente virtual de GOY XPRESS y no afirmar necesidades no confirmadas. Datos: '+JSON.stringify(evidence);
+    const knowledge=salesServiceKnowledge(data);
+    const evidence={business:item.business,city:item.city,category:item.category,source:item.source,sourceUrl:item.sourceUrl,fitReason:item.fitReason,contactChannel:item.channel,activeServices:knowledge.services.map(s=>({name:s.name,description:s.description,price:s.price??null}))};
+    const prompt='Analiza este prospecto comercial para GOY XPRESS. Usa únicamente los datos proporcionados como evidencia y el catálogo activo incluido en activeServices. No afirmes que el prospecto tiene una necesidad si no hay evidencia; expresa esas conclusiones como hipótesis que requieren validación. Devuelve JSON válido sin markdown con las claves observedNeeds, growthOpportunities, suggestedServices, matchedService, campaignIdeas, fitReason, score y draftMessage. matchedService debe ser exactamente el nombre de uno de activeServices o vacío. suggestedServices debe priorizar únicamente servicios actuales de activeServices. campaignIdeas debe proponer campañas concretas con concepto, público y canal. score debe ser entero 0-100 según afinidad con los servicios activos de GOY XPRESS. draftMessage debe ser breve, personalizado, identificarse como asistente virtual de GOY XPRESS, mencionar solo el servicio que tenga mejor relación con la evidencia y no inventar necesidades. Datos: '+JSON.stringify(evidence);
     const messages=[{role:'system',content:'Eres GOY SALES AI, analista comercial responsable. No inventes datos ni uses información sensible. Responde exclusivamente con JSON válido.'},{role:'user',content:prompt}];
     let raw='',provider='';
     if(config.workersAiRun){
@@ -190,13 +251,14 @@ function wrap(next,overrides={}){
       }
     }
     if(!raw&&config.openaiFallbackEnabled&&config.openaiApiKey){
-      if(config.workersAiRun){try{const ai=await config.workersAiRun('@cf/zai-org/glm-4.7-flash',{temperature:0.3,response_format:{type:'json_object'},messages:[{role:'system',content:'Eres GOY SALES AI. No inventes datos. Responde exclusivamente JSON válido.'},{role:'user',content:prompt}]});const raw=String(ai?.choices?.[0]?.message?.content||ai?.response||'').trim();if(raw){const analysis=JSON.parse(raw);for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider:'cloudflare-workers-ai'},config.allowedOrigin);}}catch(error){console.error('GOY SALES AI Workers AI',error);}}
+      if(config.workersAiRun){try{const ai=await config.workersAiRun('@cf/zai-org/glm-4.7-flash',{temperature:0.3,response_format:{type:'json_object'},messages:[{role:'system',content:'Eres GOY SALES AI. No inventes datos. Responde exclusivamente JSON válido.'},{role:'user',content:prompt}]});const raw=String(ai?.choices?.[0]?.message?.content||ai?.response||'').trim();if(raw){const analysis=JSON.parse(raw);for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider:'cloudflare-workers-ai'},config.allowedOrigin);}}catch(error){console.error('GOY SALES AI Workers AI',error);}}
     const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.openaiApiKey},body:JSON.stringify({model:'gpt-4o-mini',temperature:0.3,response_format:{type:'json_object'},messages})});
       if(response.ok){const ai=await response.json();raw=String(ai?.choices?.[0]?.message?.content||'').trim();provider='openai';}
     }
     if(!raw)return json(res,502,{error:'No se pudo completar el análisis con IA. Workers AI no respondió. El respaldo opcional de OpenAI está desactivado o no disponible.'},config.allowedOrigin);
     let analysis;try{analysis=JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,''));}catch{return json(res,502,{error:'La IA devolvió un análisis no válido.'},config.allowedOrigin);}
     for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);
+    if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}
     if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));
     item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider});
    }
@@ -205,7 +267,9 @@ function wrap(next,overrides={}){
     if(req.method==='GET')return json(res,200,{prospect:item},config.allowedOrigin);
     if(req.method==='DELETE'){data.prospects=data.prospects.filter(x=>x.id!==id);await writeState(config,data);return json(res,200,{ok:true},config.allowedOrigin);}
     const body=await readBody(req);
-    for(const key of ['business','city','category','source','sourceUrl','channel','contact','fitReason','observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','draftMessage'])if(Object.prototype.hasOwnProperty.call(body,key))item[key]=String(body[key]||'').trim();
+    for(const key of ['business','city','category','source','sourceUrl','channel','contact','fitReason','observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','draftMessage','matchedService'])if(Object.prototype.hasOwnProperty.call(body,key))item[key]=String(body[key]||'').trim();
+    if(Object.prototype.hasOwnProperty.call(body,'approvedMediaUrl')){const media=String(body.approvedMediaUrl||'').trim();if(!validMediaUrl(media))return json(res,400,{error:'La imagen publicitaria debe usar un recurso /assets/ o una URL HTTPS pública.'},config.allowedOrigin);item.approvedMediaUrl=media;}
+    if(Object.prototype.hasOwnProperty.call(body,'recommendedMediaUrl')){const media=String(body.recommendedMediaUrl||'').trim();if(!validMediaUrl(media))return json(res,400,{error:'La imagen recomendada no es válida.'},config.allowedOrigin);item.recommendedMediaUrl=media;}
     if(Object.prototype.hasOwnProperty.call(body,'score'))item.score=Math.max(0,Math.min(100,Number(body.score||0)));
     if(Object.prototype.hasOwnProperty.call(body,'doNotContact'))item.doNotContact=Boolean(body.doNotContact);
     if(Object.prototype.hasOwnProperty.call(body,'status')){
