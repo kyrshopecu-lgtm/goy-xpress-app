@@ -383,3 +383,46 @@ test('Seguimiento WhatsApp queda separado del primer contacto y exige ventana ac
  assert.match(js,/const proposed=isFollowup\?\(p\.followupApprovedMessage\|\|p\.followupDraft\|\|''\)/);
  assert.doesNotMatch(js,/followupDraft\|\|p\.approvedMessage/);
 });
+
+
+test('GOY SALES AI aprende servicios activos y prepara búsqueda por necesidad', () => {
+  const html=read('public-web/admin/index.html');
+  const js=read('public-web/admin/prospects.js');
+  const management=read('server/admin-management.js');
+  assert.match(html,/dailyProspectRunBtn/);
+  assert.match(html,/serviceIntelligenceBtn/);
+  assert.match(js,/service-intelligence/);
+  assert.match(js,/openDiscover\(true\)/);
+  assert.match(management,/SALES_BASE_SERVICES/);
+  assert.match(management,/salesServiceKnowledge\(data\)/);
+  assert.match(management,/customServices/);
+  assert.match(management,/servicesLearned/);
+  assert.match(management,/matchedService/);
+  assert.match(management,/serviceMediaForName/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+});
+
+test('GOY SALES AI permite texto más imagen y contacto diario solo de aprobados', () => {
+  const html=read('public-web/admin/index.html');
+  const js=read('public-web/admin/prospects.js');
+  const management=read('server/admin-management.js');
+  const whatsapp=read('server/whatsappNotifications.js');
+  const worker=read('cloudflare-worker-v2.js');
+  assert.match(html,/sendApprovedBatchBtn/);
+  assert.match(js,/prospectMediaSelect/);
+  assert.match(js,/approvedMediaUrl/);
+  assert.match(js,/send-approved-batch/);
+  assert.match(js,/Contactar aprobados hoy/);
+  assert.match(management,/status==='Aprobado para contacto'/);
+  assert.match(management,/prospectSendApprovedBatch/);
+  assert.match(management,/approvedMediaUrl/);
+  assert.match(management,/absoluteMediaUrl/);
+  assert.match(whatsapp,/prospectMediaHeader/);
+  assert.match(whatsapp,/type:'header'/);
+  assert.match(whatsapp,/type:'image'/);
+  assert.match(whatsapp,/headerImageUrl/);
+  assert.match(worker,/GOY_WA_PROSPECT_MEDIA_HEADER/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+  new vm.Script(management,{filename:'server/admin-management.js'});
+  new vm.Script(whatsapp,{filename:'server/whatsappNotifications.js'});
+});
