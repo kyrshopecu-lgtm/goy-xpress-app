@@ -153,7 +153,7 @@ function ServiceDetailCard({req}){
       {procedureDetail?<View style={s.noticeBox}><Text style={s.noticeTitle}>Tarea a realizar</Text><Text style={s.note}>{procedureDetail}</Text></View>:null}
     </>:null}
     {hasDiverse&&diverseDetail?<View style={s.noticeBox}><Text style={s.noticeTitle}>{req.customService?'Detalle del servicio personalizado':'Servicio solicitado'}</Text><Text style={s.note}>{diverseDetail}</Text></View>:null}
-    {reference?<Text style={s.line}>Referencia interna: <Text style={s.bold}>{reference}</Text></Text>:null}
+    {kind!=='deposit'&&reference?<Text style={s.line}>Referencia interna: <Text style={s.bold}>{reference}</Text></Text>:null}
     {adminNotes?<View style={s.adminNotesBox}><Text style={s.adminNotesTitle}>NOTAS PARA OPERACIÓN</Text><Text style={s.adminNotesText}>{adminNotes}</Text></View>:null}
   </Card>
 }
