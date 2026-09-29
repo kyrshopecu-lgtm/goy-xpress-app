@@ -8,6 +8,9 @@
   "ai": {
     "binding": "AI"
   },
+  "triggers": {
+    "crons": ["0 15 * * 1-6"]
+  },
   "assets": {
     "directory": "./public-web",
     "binding": "ASSETS",

@@ -193,7 +193,7 @@
     if(!ready.length){$('prospectMessage').textContent='No hay prospectos aprobados con contacto público para enviar hoy.';return;}
     const withMedia=ready.filter(p=>p.approvedMediaUrl).length;
     if(withMedia&&!whatsappMediaReady){$('prospectMessage').textContent='Hay prospectos con imagen aprobada, pero la plantilla multimedia de WhatsApp todavía no está habilitada.';return;}
-    const limit=Math.min(30,ready.length);
+    const limit=Math.min(60,ready.length);
     if(!confirm(`¿Contactar ahora hasta ${limit} prospecto(s) aprobados?\n\nSolo se enviarán contactos ya aprobados y nunca los marcados como “No contactar”.`))return;
     const button=$('sendApprovedBatchBtn');if(button){button.disabled=true;button.textContent='Contactando…';}
     try{const result=await api('/admin/prospects/send-approved-batch',{method:'POST',body:JSON.stringify({limit})});$('prospectMessage').textContent=`Jornada de contacto: ${result.sent||0} enviados · ${result.failed||0} con error · ${result.attempted||0} intentados.`;await load();}

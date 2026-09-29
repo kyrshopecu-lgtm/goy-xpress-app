@@ -170,7 +170,7 @@ function wrap(next,overrides={}){
     data.prospects.unshift(item);await writeState(config,data);return json(res,201,{prospect:item},config.allowedOrigin);
    }
    if(prospectSendApprovedBatch){
-    const body=await readBody(req),limit=Math.max(1,Math.min(30,Number(body.limit||10)));
+    const body=await readBody(req),limit=Math.max(1,Math.min(60,Number(body.limit||60)));
     const ready=data.prospects.filter(x=>x.status==='Aprobado para contacto'&&!x.doNotContact&&String(x.approvedMessage||'').trim()&&cleanPhone(x.contact).length>=11).sort((a,b)=>Number(b.score||0)-Number(a.score||0)).slice(0,limit);
     const results=[];let sentCount=0;
     for(const prospect of ready){
