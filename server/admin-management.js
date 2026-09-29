@@ -28,6 +28,29 @@ const SALES_BASE_SERVICES=[
  {id:'deposits',name:'Depósitos y gestiones de pago',description:'Depósito de cheques, efectivo y gestiones de pago dentro de los límites operativos.',mediaUrl:'/assets/03_cambio_dinero_negocio.png',queries:['distribuidores','mayoristas','comercios','tiendas','empresas de ventas']},
  {id:'additional',name:'Servicios diversos y personalizados',description:'Gestiones especiales cotizadas por administración según la necesidad del cliente.',mediaUrl:'/assets/08_servicios_adicionales.png',queries:['pymes','emprendimientos','servicios profesionales','empresas']},
 ];
+const SALES_MESSAGE_ANGLES=['Rapidez','Ahorro de tiempo','Conveniencia','Entrega y logística','Gestión experta','Presencia en Quito','Seguridad y control','Otro'];
+function normalizeMessageAngle(value){
+ const raw=String(value||'').trim();
+ return SALES_MESSAGE_ANGLES.includes(raw)?raw:(raw?'Otro':'');
+}
+function prospectCampaignPerformance(data){
+ const rows=new Map();
+ for(const p of data.prospects||[]){
+  const service=String(p.matchedService||'').trim(),angle=normalizeMessageAngle(p.messageAngle)||'Sin clasificar',mediaUrl=String(p.approvedMediaUrl||'').trim();
+  const conversation=Array.isArray(p.conversation)?p.conversation:[];
+  const contacted=Boolean(p.firstContactAt)||conversation.some(x=>x.direction==='outbound')||['Contactado','Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||''));
+  if(!service||!contacted)continue;
+  const key=service+'|'+angle+'|'+mediaUrl;
+  if(!rows.has(key))rows.set(key,{service,messageAngle:angle,mediaUrl,contacted:0,responded:0,interested:0,clients:0});
+  const row=rows.get(key),responded=conversation.some(x=>x.direction==='inbound')||['Respondió','Interesado','Solicita llamada','Cliente'].includes(String(p.status||'')),interested=['Interesado','Solicita llamada','Cliente'].includes(String(p.status||'')),client=String(p.status||'')==='Cliente';
+  row.contacted++;if(responded)row.responded++;if(interested)row.interested++;if(client)row.clients++;
+ }
+ return [...rows.values()].map(row=>{
+  const responseRate=row.contacted?row.responded/row.contacted:0,interestRate=row.contacted?row.interested/row.contacted:0,conversionRate=row.contacted?row.clients/row.contacted:0;
+  const campaignScore=row.contacted<3?50:Math.max(20,Math.min(100,Math.round(35+responseRate*30+interestRate*20+conversionRate*15)));
+  return {...row,responseRate,interestRate,conversionRate,campaignScore};
+ }).sort((a,b)=>Number(b.campaignScore||50)-Number(a.campaignScore||50)||Number(b.contacted||0)-Number(a.contacted||0));
+}
 function prospectServicePerformance(data){
  const byService=new Map();
  const ensure=name=>{const key=String(name||'').trim();if(!key)return null;if(!byService.has(key))byService.set(key,{name:key,analyzed:0,contacted:0,responded:0,interested:0,clients:0});return byService.get(key);};
@@ -49,11 +72,16 @@ function prospectServicePerformance(data){
 }
 function salesServiceKnowledge(data){
  const custom=(data.customServices||[]).filter(s=>s.active!==false).map(s=>({id:'custom:'+s.id,name:String(s.name||'').trim(),description:String(s.description||'').trim(),price:Number(s.price||0),mediaUrl:'/assets/08_servicios_adicionales.png',queries:[String(s.name||'').trim(),String(s.description||'').trim()].filter(x=>x.length>=3)}));
- const performance=prospectServicePerformance(data),perfMap=new Map(performance.map(x=>[String(x.name||'').toLowerCase(),x]));
- const services=[...SALES_BASE_SERVICES,...custom].map(s=>({...s,performance:perfMap.get(String(s.name||'').toLowerCase())||{analyzed:0,contacted:0,responded:0,interested:0,clients:0,responseRate:0,interestRate:0,conversionRate:0,priorityScore:50}})).sort((a,b)=>Number(b.performance.priorityScore||50)-Number(a.performance.priorityScore||50));
+ const performance=prospectServicePerformance(data),campaignPerformance=prospectCampaignPerformance(data),perfMap=new Map(performance.map(x=>[String(x.name||'').toLowerCase(),x]));
+ const services=[...SALES_BASE_SERVICES,...custom].map(s=>{
+  const servicePerf=perfMap.get(String(s.name||'').toLowerCase())||{analyzed:0,contacted:0,responded:0,interested:0,clients:0,responseRate:0,interestRate:0,conversionRate:0,priorityScore:50};
+  const campaigns=campaignPerformance.filter(x=>String(x.service||'').toLowerCase()===String(s.name||'').toLowerCase());
+  const bestCampaign=campaigns[0]||null;
+  return {...s,performance:servicePerf,bestCampaign};
+ }).sort((a,b)=>Number(b.performance.priorityScore||50)-Number(a.performance.priorityScore||50));
  const exploration=services.map(s=>(s.queries||[])[0]).filter(Boolean),performanceQueries=services.flatMap(s=>(s.queries||[]).slice(1));
  const queries=[...new Set([...exploration,...performanceQueries].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);
- return {services,queries,performance};
+ return {services,queries,performance,campaignPerformance};
 }
 function ecuadorDayKey(value=new Date()){
  const local=new Date(value.toLocaleString('en-US',{timeZone:'America/Guayaquil'}));
@@ -75,13 +103,16 @@ function prospectMetrics(data){
   day,
   today:{found:sum('discovered'),imported:sum('imported'),analyzed,contacted,responded,interested,clients,autoAnalyzed:sum('analyzed'),autoContacted:sum('contactSent')},
   latestRun:runs.slice().sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')))[0]||null,
-  servicePerformance:knowledge.services.map(s=>({id:s.id,name:s.name,priorityScore:Number(s.performance?.priorityScore||50),analyzed:Number(s.performance?.analyzed||0),contacted:Number(s.performance?.contacted||0),responded:Number(s.performance?.responded||0),interested:Number(s.performance?.interested||0),clients:Number(s.performance?.clients||0),responseRate:Number(s.performance?.responseRate||0),interestRate:Number(s.performance?.interestRate||0),conversionRate:Number(s.performance?.conversionRate||0)}))
+  servicePerformance:knowledge.services.map(s=>({id:s.id,name:s.name,priorityScore:Number(s.performance?.priorityScore||50),analyzed:Number(s.performance?.analyzed||0),contacted:Number(s.performance?.contacted||0),responded:Number(s.performance?.responded||0),interested:Number(s.performance?.interested||0),clients:Number(s.performance?.clients||0),responseRate:Number(s.performance?.responseRate||0),interestRate:Number(s.performance?.interestRate||0),conversionRate:Number(s.performance?.conversionRate||0),bestMessageAngle:s.bestCampaign?.messageAngle||'',bestMediaUrl:s.bestCampaign?.mediaUrl||'',campaignContacts:Number(s.bestCampaign?.contacted||0),campaignScore:Number(s.bestCampaign?.campaignScore||50)})),
+  campaignPerformance:knowledge.campaignPerformance.slice(0,40)
  };
 }
 function serviceMediaForName(knowledge,name){
  const target=String(name||'').trim().toLowerCase();
  if(!target)return '';
  const match=(knowledge.services||[]).find(s=>String(s.name||'').trim().toLowerCase()===target)|| (knowledge.services||[]).find(s=>target.includes(String(s.name||'').trim().toLowerCase())||String(s.name||'').trim().toLowerCase().includes(target));
+ const learned=match?.bestCampaign;
+ if(learned&&Number(learned.contacted||0)>=3)return String(learned.mediaUrl||'');
  return match?.mediaUrl||'';
 }
 function validMediaUrl(value){
@@ -182,7 +213,7 @@ function wrap(next,overrides={}){
    }
    if(prospectServiceIntelligence){
     const knowledge=salesServiceKnowledge(data);
-    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||'',priorityScore:Number(s.performance?.priorityScore||50),performance:s.performance||null})),searchQueries:knowledge.queries},config.allowedOrigin);
+    return json(res,200,{services:knowledge.services.map(s=>({id:s.id,name:s.name,description:s.description,price:s.price??null,mediaUrl:s.mediaUrl||'',priorityScore:Number(s.performance?.priorityScore||50),performance:s.performance||null,bestCampaign:s.bestCampaign?{messageAngle:s.bestCampaign.messageAngle||'',mediaUrl:s.bestCampaign.mediaUrl||'',contacted:Number(s.bestCampaign.contacted||0),responseRate:Number(s.bestCampaign.responseRate||0),conversionRate:Number(s.bestCampaign.conversionRate||0),campaignScore:Number(s.bestCampaign.campaignScore||50)}:null})),searchQueries:knowledge.queries},config.allowedOrigin);
    }
    if(prospectMetricsRoute){
     return json(res,200,prospectMetrics(data),config.allowedOrigin);
@@ -214,14 +245,14 @@ function wrap(next,overrides={}){
     if(incoming.length>500)return json(res,400,{error:'Máximo 500 prospectos por importación.'},config.allowedOrigin);
     const keyOf=x=>{const url=String(x.sourceUrl||'').trim().toLowerCase().replace(/\/$/,'');const contact=String(x.contact||'').trim().toLowerCase().replace(/[\s()+-]/g,'');const business=String(x.business||x.name||'').trim().toLowerCase(),city=String(x.city||'').trim().toLowerCase();return url?'url:'+url:contact?'contact:'+contact:'business:'+business+'|'+city;};
     const known=new Set(data.prospects.map(keyOf)),added=[],duplicates=[],invalid=[];const now=new Date().toISOString();
-    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',acquisitionMode,discoveredAt:now,doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
+    incoming.forEach((raw,index)=>{const business=String(raw?.business||raw?.name||'').trim();if(business.length<2){invalid.push({index,reason:'Nombre de negocio inválido'});return;}const key=keyOf(raw);if(known.has(key)){duplicates.push({index,business});return;}known.add(key);const item={id:crypto.randomUUID(),business,city:String(raw.city||'').trim(),category:String(raw.category||'').trim(),source:String(raw.source||'importación').trim(),sourceUrl:String(raw.sourceUrl||'').trim(),channel:String(raw.channel||'').trim(),contact:String(raw.contact||'').trim(),fitReason:String(raw.fitReason||'').trim(),observedNeeds:'',growthOpportunities:'',suggestedServices:'',campaignIdeas:'',matchedService:'',messageAngle:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(raw.score||0))),status:'Pendiente de revisión',draftMessage:String(raw.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',acquisitionMode,discoveredAt:now,doNotContact:Boolean(raw.doNotContact),conversation:[],createdAt:now,updatedAt:now};data.prospects.unshift(item);added.push(item);});
     if(added.length)await writeState(config,data);return json(res,200,{imported:added.length,duplicates:duplicates.length,invalid:invalid.length,prospects:added,duplicateItems:duplicates,invalidItems:invalid},config.allowedOrigin);
    }
    if(p==='/admin/prospects'&&req.method==='GET')return json(res,200,{prospects:data.prospects},config.allowedOrigin);
    if(p==='/admin/prospects'&&req.method==='POST'){
     const body=await readBody(req),business=String(body.business||body.name||'').trim(),sourceUrl=String(body.sourceUrl||'').trim(),channel=String(body.channel||'').trim(),contact=String(body.contact||'').trim();
     if(business.length<2)return json(res,400,{error:'Ingresa el nombre del negocio o prospecto.'},config.allowedOrigin);
-    const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),matchedService:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
+    const now=new Date().toISOString(),item={id:crypto.randomUUID(),business,city:String(body.city||'').trim(),category:String(body.category||'').trim(),source:String(body.source||'web').trim(),sourceUrl,channel,contact,fitReason:String(body.fitReason||'').trim(),observedNeeds:String(body.observedNeeds||'').trim(),growthOpportunities:String(body.growthOpportunities||'').trim(),suggestedServices:String(body.suggestedServices||'').trim(),campaignIdeas:String(body.campaignIdeas||'').trim(),matchedService:'',messageAngle:'',recommendedMediaUrl:'',score:Math.max(0,Math.min(100,Number(body.score||0))),status:'Pendiente de revisión',draftMessage:String(body.draftMessage||'').trim(),approvedMessage:'',approvedMediaUrl:'',doNotContact:false,conversation:[],createdAt:now,updatedAt:now};
     data.prospects.unshift(item);await writeState(config,data);return json(res,201,{prospect:item},config.allowedOrigin);
    }
    if(prospectSendApprovedBatch){
@@ -233,7 +264,7 @@ function wrap(next,overrides={}){
       const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
       if(!sent.ok){results.push({id:prospect.id,business:prospect.business,ok:false,error:sent.reason||sent.error||'WHATSAPP_SEND_FAILED'});continue;}
       const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
-      prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
+      prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,messageAngle:prospect.messageAngle||'',mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
       prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;sentCount++;
       results.push({id:prospect.id,business:prospect.business,ok:true,providerMessageId:sent.id||''});
     }
@@ -251,7 +282,7 @@ function wrap(next,overrides={}){
     const sent=await sendProspectFirstContact({phone,business:prospect.business,message,imageUrl:media});
     if(!sent.ok){const reason=sent.reason==='PROSPECT_MEDIA_TEMPLATE_NOT_ENABLED'?'La plantilla de primer contacto no tiene habilitada una cabecera de imagen. Activa GOY_WA_PROSPECT_MEDIA_HEADER o envía sin imagen.':sent.reason||sent.error||'WhatsApp no confirmó el envío.';return json(res,502,{error:reason},config.allowedOrigin);}
     const now=new Date().toISOString();prospect.conversation=Array.isArray(prospect.conversation)?prospect.conversation:[];
-    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
+    prospect.conversation.push({direction:'outbound',channel:'WhatsApp',message,messageAngle:prospect.messageAngle||'',mediaUrl:prospect.approvedMediaUrl||'',providerMessageId:sent.id||'',sentAt:now});
     prospect.status='Contactado';prospect.firstContactAt=prospect.firstContactAt||now;prospect.lastContact=now;prospect.updatedAt=now;
     await writeState(config,data);return json(res,200,{ok:true,prospect,providerMessageId:sent.id||''},config.allowedOrigin);
    }
@@ -292,8 +323,8 @@ function wrap(next,overrides={}){
     const id=decodeURIComponent(prospectAnalyzeMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
     if(!config.workersAiRun&&!(config.openaiFallbackEnabled&&config.openaiApiKey))return json(res,503,{error:'El análisis con IA no está configurado.'},config.allowedOrigin);
     const knowledge=salesServiceKnowledge(data);
-    const evidence={business:item.business,city:item.city,category:item.category,source:item.source,sourceUrl:item.sourceUrl,fitReason:item.fitReason,contactChannel:item.channel,activeServices:knowledge.services.map(s=>({name:s.name,description:s.description,price:s.price??null}))};
-    const prompt='Analiza este prospecto comercial para GOY XPRESS. Usa únicamente los datos proporcionados como evidencia y el catálogo activo incluido en activeServices. No afirmes que el prospecto tiene una necesidad si no hay evidencia; expresa esas conclusiones como hipótesis que requieren validación. Devuelve JSON válido sin markdown con las claves observedNeeds, growthOpportunities, suggestedServices, matchedService, campaignIdeas, fitReason, score y draftMessage. matchedService debe ser exactamente el nombre de uno de activeServices o vacío. suggestedServices debe priorizar únicamente servicios actuales de activeServices. campaignIdeas debe proponer campañas concretas con concepto, público y canal. score debe ser entero 0-100 según afinidad con los servicios activos de GOY XPRESS. draftMessage debe ser breve, personalizado, identificarse como asistente virtual de GOY XPRESS, mencionar solo el servicio que tenga mejor relación con la evidencia y no inventar necesidades. Datos: '+JSON.stringify(evidence);
+    const evidence={business:item.business,city:item.city,category:item.category,source:item.source,sourceUrl:item.sourceUrl,fitReason:item.fitReason,contactChannel:item.channel,activeServices:knowledge.services.map(s=>({name:s.name,description:s.description,price:s.price??null,topMessageAngle:s.bestCampaign?.contacted>=3?s.bestCampaign.messageAngle:'',topCampaignContacts:Number(s.bestCampaign?.contacted||0)}))};
+    const prompt='Analiza este prospecto comercial para GOY XPRESS. Usa únicamente los datos proporcionados como evidencia y el catálogo activo incluido en activeServices. No afirmes que el prospecto tiene una necesidad si no hay evidencia; expresa esas conclusiones como hipótesis que requieren validación. Devuelve JSON válido sin markdown con las claves observedNeeds, growthOpportunities, suggestedServices, matchedService, messageAngle, campaignIdeas, fitReason, score y draftMessage. matchedService debe ser exactamente el nombre de uno de activeServices o vacío. messageAngle debe ser uno de: Rapidez, Ahorro de tiempo, Conveniencia, Entrega y logística, Gestión experta, Presencia en Quito, Seguridad y control, Otro. Si el servicio tiene topMessageAngle con al menos 3 contactos puedes tomarlo como señal histórica, pero no lo uses si contradice la evidencia del prospecto. suggestedServices debe priorizar únicamente servicios actuales de activeServices. campaignIdeas debe proponer campañas concretas con concepto, público y canal. score debe ser entero 0-100 según afinidad con los servicios activos de GOY XPRESS. draftMessage debe ser breve, personalizado, identificarse como asistente virtual de GOY XPRESS, mencionar solo el servicio que tenga mejor relación con la evidencia y no inventar necesidades. Datos: '+JSON.stringify(evidence);
     const messages=[{role:'system',content:'Eres GOY SALES AI, analista comercial responsable. No inventes datos ni uses información sensible. Responde exclusivamente con JSON válido.'},{role:'user',content:prompt}];
     let raw='',provider='';
     if(config.workersAiRun){
@@ -306,13 +337,13 @@ function wrap(next,overrides={}){
       }
     }
     if(!raw&&config.openaiFallbackEnabled&&config.openaiApiKey){
-      if(config.workersAiRun){try{const ai=await config.workersAiRun('@cf/zai-org/glm-4.7-flash',{temperature:0.3,response_format:{type:'json_object'},messages:[{role:'system',content:'Eres GOY SALES AI. No inventes datos. Responde exclusivamente JSON válido.'},{role:'user',content:prompt}]});const raw=String(ai?.choices?.[0]?.message?.content||ai?.response||'').trim();if(raw){const analysis=JSON.parse(raw);for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider:'cloudflare-workers-ai'},config.allowedOrigin);}}catch(error){console.error('GOY SALES AI Workers AI',error);}}
+      if(config.workersAiRun){try{const ai=await config.workersAiRun('@cf/zai-org/glm-4.7-flash',{temperature:0.3,response_format:{type:'json_object'},messages:[{role:'system',content:'Eres GOY SALES AI. No inventes datos. Responde exclusivamente JSON válido.'},{role:'user',content:prompt}]});const raw=String(ai?.choices?.[0]?.message?.content||ai?.response||'').trim();if(raw){const analysis=JSON.parse(raw);for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);if(Object.prototype.hasOwnProperty.call(analysis,'messageAngle'))item.messageAngle=normalizeMessageAngle(analysis.messageAngle);if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider:'cloudflare-workers-ai'},config.allowedOrigin);}}catch(error){console.error('GOY SALES AI Workers AI',error);}}
     const response=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.openaiApiKey},body:JSON.stringify({model:'gpt-4o-mini',temperature:0.3,response_format:{type:'json_object'},messages})});
       if(response.ok){const ai=await response.json();raw=String(ai?.choices?.[0]?.message?.content||'').trim();provider='openai';}
     }
     if(!raw)return json(res,502,{error:'No se pudo completar el análisis con IA. Workers AI no respondió. El respaldo opcional de OpenAI está desactivado o no disponible.'},config.allowedOrigin);
     let analysis;try{analysis=JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,''));}catch{return json(res,502,{error:'La IA devolvió un análisis no válido.'},config.allowedOrigin);}
-    for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);
+    for(const key of ['observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','fitReason','draftMessage'])if(Object.prototype.hasOwnProperty.call(analysis,key))item[key]=String(analysis[key]||'').trim().slice(0,6000);if(Object.prototype.hasOwnProperty.call(analysis,'messageAngle'))item.messageAngle=normalizeMessageAngle(analysis.messageAngle);
     if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}
     if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));
     item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider});
@@ -322,7 +353,7 @@ function wrap(next,overrides={}){
     if(req.method==='GET')return json(res,200,{prospect:item},config.allowedOrigin);
     if(req.method==='DELETE'){data.prospects=data.prospects.filter(x=>x.id!==id);await writeState(config,data);return json(res,200,{ok:true},config.allowedOrigin);}
     const body=await readBody(req);
-    for(const key of ['business','city','category','source','sourceUrl','channel','contact','fitReason','observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','draftMessage','matchedService'])if(Object.prototype.hasOwnProperty.call(body,key))item[key]=String(body[key]||'').trim();
+    for(const key of ['business','city','category','source','sourceUrl','channel','contact','fitReason','observedNeeds','growthOpportunities','suggestedServices','campaignIdeas','draftMessage','matchedService'])if(Object.prototype.hasOwnProperty.call(body,key))item[key]=String(body[key]||'').trim();if(Object.prototype.hasOwnProperty.call(body,'messageAngle'))item.messageAngle=normalizeMessageAngle(body.messageAngle);
     if(Object.prototype.hasOwnProperty.call(body,'approvedMediaUrl')){const media=String(body.approvedMediaUrl||'').trim();if(!validMediaUrl(media))return json(res,400,{error:'La imagen publicitaria debe usar un recurso /assets/ o una URL HTTPS pública.'},config.allowedOrigin);item.approvedMediaUrl=media;}
     if(Object.prototype.hasOwnProperty.call(body,'recommendedMediaUrl')){const media=String(body.recommendedMediaUrl||'').trim();if(!validMediaUrl(media))return json(res,400,{error:'La imagen recomendada no es válida.'},config.allowedOrigin);item.recommendedMediaUrl=media;}
     if(Object.prototype.hasOwnProperty.call(body,'score'))item.score=Math.max(0,Math.min(100,Number(body.score||0)));

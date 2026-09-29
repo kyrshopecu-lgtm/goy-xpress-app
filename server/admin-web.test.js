@@ -499,3 +499,41 @@ test('Estado comercial sugerido por IA requiere validación humana', () => {
   assert.match(hook,/p\.responseAt=p\.responseAt\|\|at/);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
+
+
+test('GOY SALES AI aprende qué enfoque e imagen funcionan mejor', () => {
+  const management=read('server/admin-management.js'),html=read('public-web/admin/index.html'),js=read('public-web/admin/prospects.js');
+  assert.match(management,/SALES_MESSAGE_ANGLES/);
+  assert.match(management,/prospectCampaignPerformance/);
+  assert.match(management,/messageAngle/);
+  assert.match(management,/campaignScore/);
+  assert.match(management,/bestCampaign/);
+  assert.match(management,/topMessageAngle/);
+  assert.match(management,/messageAngle:prospect\.messageAngle/);
+  assert.match(html,/Mejor enfoque/);
+  assert.match(html,/Pieza aprendida/);
+  assert.match(js,/prospectMessageAngle/);
+  assert.match(js,/messageAngles/);
+  assert.match(js,/bestMessageAngle/);
+  assert.match(js,/bestMediaUrl/);
+  new vm.Script(js,{filename:'public-web/admin/prospects.js'});
+  new vm.Script(management,{filename:'server/admin-management.js'});
+});
+
+test('Aprendizaje de campañas necesita muestra mínima antes de cambiar la recomendación', () => {
+  const management=read('server/admin-management.js');
+  assert.match(management,/row\.contacted<3\?50/);
+  assert.match(management,/learned&&Number\(learned\.contacted\|\|0\)>=3/);
+  assert.match(management,/return String\(learned\.mediaUrl\|\|''\)/);
+  assert.match(management,/Si el servicio tiene topMessageAngle con al menos 3 contactos/);
+});
+
+test('Memoria comercial expone campaña aprendida sin sustituir la revisión humana', () => {
+  const management=read('server/admin-management.js'),js=read('public-web/admin/prospects.js');
+  assert.match(management,/bestCampaign:s\.bestCampaign/);
+  assert.match(management,/campaignScore:Number/);
+  assert.match(js,/Enfoque comercial/);
+  assert.match(js,/Análisis generado con el catálogo activo y el historial de campañas/);
+  assert.match(js,/messageAngle:o\.querySelector\('#prospectMessageAngle'\)/);
+  assert.match(js,/Aprobar para contacto/);
+});
