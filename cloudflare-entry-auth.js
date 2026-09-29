@@ -198,6 +198,63 @@ async function dispatch(request, env, ctx) {
   return base.fetch(request, env, ctx);
 }
 
+function bytesToBase64Url(bytes) {
+  let binary='';
+  for (const value of bytes) binary += String.fromCharCode(value);
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function scheduledAdminToken(env) {
+  const secret=String(env.TOKEN_SECRET||'');
+  if(!secret) throw new Error('TOKEN_SECRET no configurado para GOY SALES AI diario.');
+  const payload={role:'admin',exp:Date.now()+30*60_000,issuedBy:'goy-sales-daily-cron'};
+  const body=bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const signature=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(body)));
+  return body+'.'+bytesToBase64Url(signature);
+}
+
+async function internalAdminCall(env,ctx,token,path,body) {
+  const request=new Request('https://internal.goy-xpress'+path,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify(body||{}),
+  });
+  const response=await base.fetch(request,env,ctx);
+  const payload=await response.json().catch(()=>({}));
+  return {ok:response.ok,status:response.status,body:payload};
+}
+
+async function runDailySalesCycle(env,ctx) {
+  const token=await scheduledAdminToken(env);
+  let discovered=[],imported=[],analyzed=0,analysisFailed=0;
+  const discovery=await internalAdminCall(env,ctx,token,'/api/admin/prospects/discover',{city:'',category:'',limit:60});
+  if(discovery.ok) discovered=Array.isArray(discovery.body.prospects)?discovery.body.prospects:[];
+  else if(discovery.status!==429) throw new Error(discovery.body.error||'No se pudo ejecutar la búsqueda diaria de prospectos.');
+
+  if(discovered.length){
+    const importedResult=await internalAdminCall(env,ctx,token,'/api/admin/prospects/import',{prospects:discovered});
+    if(importedResult.ok) imported=Array.isArray(importedResult.body.prospects)?importedResult.body.prospects:[];
+    else throw new Error(importedResult.body.error||'No se pudieron importar los prospectos diarios.');
+  }
+
+  for(const prospect of imported.slice(0,20)){
+    const result=await internalAdminCall(env,ctx,token,'/api/admin/prospects/'+encodeURIComponent(prospect.id)+'/analyze',{});
+    if(result.ok) analyzed++; else analysisFailed++;
+  }
+
+  const contacts=await internalAdminCall(env,ctx,token,'/api/admin/prospects/send-approved-batch',{limit:60});
+  if(!contacts.ok) console.error('GOY SALES AI contacto diario',contacts.status,contacts.body?.error||'Error de envío');
+  console.log('GOY SALES AI ciclo diario',JSON.stringify({
+    discovered:discovered.length,
+    imported:imported.length,
+    analyzed,
+    analysisFailed,
+    contactAttempted:Number(contacts.body?.attempted||0),
+    contactSent:Number(contacts.body?.sent||0),
+    contactFailed:Number(contacts.body?.failed||0),
+  }));
+}
 export default {
   async fetch(request, env, ctx) {
     try {
@@ -211,5 +268,8 @@ export default {
         env,
       );
     }
+  },
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(runDailySalesCycle(env,ctx).catch(error=>console.error('GOY SALES AI ciclo diario',error)));
   },
 };
