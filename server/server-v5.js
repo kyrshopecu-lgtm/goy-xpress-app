@@ -610,6 +610,9 @@ function createHandler(options = {}) {
       if(req.method==='POST'&&approveMatch){
         if(!requireAdmin(req,res,config))return;const courierId=decodeURIComponent(approveMatch[1]);const body=await readBody(req);const data=await store.read();const user=data.users.find(u=>u.id===courierId&&u.role==='courier');if(!user)return json(res,404,{error:'Mensajero no encontrado.'},config.allowedOrigin);user.approved=body.approved!==false;if(Object.prototype.hasOwnProperty.call(body,'active'))user.active=Boolean(body.active);user.updatedAt=new Date().toISOString();syncUserMirror(data,user);await store.write(data);return json(res,200,{user:courierSummary(data,user)},config.allowedOrigin);
       }
+      if(req.method==='DELETE'&&pathname.startsWith('/admin/requests/')){
+        if(!requireAdmin(req,res,config))return;const code=decodeURIComponent(pathname.slice('/admin/requests/'.length));const data=await store.read();const index=findRequest(data,code);if(index<0)return json(res,404,{error:'Solicitud no encontrada.'},config.allowedOrigin);const removed=data.requests[index];data.requests.splice(index,1);if(Array.isArray(data.walletEntries))data.walletEntries=data.walletEntries.filter(item=>String(item.requestCode||item.code||item.order||'')!==String(code));await store.write(data);return json(res,200,{ok:true,deleted:String(removed.code||removed.id||code)},config.allowedOrigin);
+      }
       if(req.method==='PATCH'&&pathname.startsWith('/admin/requests/')){
         if(!requireAdmin(req,res,config))return;const code=decodeURIComponent(pathname.slice('/admin/requests/'.length));const body=await readBody(req);const data=await store.read();const index=findRequest(data,code);if(index<0)return json(res,404,{error:'Solicitud no encontrada.'},config.allowedOrigin);const current=data.requests[index],patch={};let legacyCourierAccess=null;
         if(body.status)patch.status=normalizeStatus(body.status);
