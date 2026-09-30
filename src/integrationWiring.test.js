@@ -264,3 +264,10 @@ test('Asignación administrativa avisa al mensajero por push y WhatsApp una sola
   assert.match(edge, /newlyAssigned/); assert.match(edge, /current\.courierId/);
   assert.match(edge, /Ingresa a la app para revisar los detalles/);
 });
+
+test('Mensajero registra novedades y Cliente las visualiza sin identidad personal', () => {
+  const courier=read('src/CourierAppV18.js'),client=read('src/ClientAppV12.js'),api=read('src/goyApiV5.js'),backend=read('server/server-v5.js');
+  assert.match(courier,/Registrar novedad/);assert.match(courier,/\/novelty/);assert.match(courier,/Novedades de la orden/);
+  assert.match(client,/NOVEDADES DE LA ORDEN/);assert.match(client,/item\.message/);
+  assert.match(api,/registerCourierNovelty/);assert.match(backend,/authorLabel:'Mensajero GOY XPRESS'/);assert.match(backend,/courier_novelty/);
+});
