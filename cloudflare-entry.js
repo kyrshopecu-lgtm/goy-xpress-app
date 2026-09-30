@@ -1,3 +1,5 @@
+import process from 'node:process';
+import {notifyCourierAssigned, safeNotify} from './server/whatsappNotifications.js';
 import { neon } from '@neondatabase/serverless';
 import worker from './cloudflare-worker-v2.js';
 import {ensureStateTable, readVersionedState, writeVersionedState} from './cloudflare-versioned-state.js';
@@ -335,9 +337,17 @@ async function adminData(request, env, optionsOnly = false) {
   }
 }
 
+function syncWhatsAppEnv(env) {
+  for (const key of ['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_GRAPH_VERSION','GOY_WA_TEMPLATE_LANG','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_ORDER_LOGO_URL']) {
+    if (env[key] === undefined || env[key] === null) delete process.env[key];
+    else process.env[key] = String(env[key]);
+  }
+}
+
 async function adminUpdateRequest(request, env, code, ctx) {
   if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
   try {
+    syncWhatsAppEnv(env);
     const body = await request.json().catch(() => ({}));
     const state = await readState(env);
     const index = state.requests.findIndex(item => String(item.code || item.id) === String(code));
@@ -415,18 +425,30 @@ async function adminUpdateRequest(request, env, code, ctx) {
     state.requests[index] = updated;
     await writeState(env, state);
 
+    let courierWhatsapp = null;
     if (assignedCourier) {
-      const task = sendExpoPush(assignedCourier, {
+      const newlyAssigned = String(current.courierId || '') !== String(assignedCourier.id || '');
+      const pushTask = sendExpoPush(assignedCourier, {
         title:'Nueva entrega asignada',
-        body:`Tienes una nueva operación GOY XPRESS: ${updated.code || updated.id || code}.`,
+        body:`Tienes una nueva operación GOY XPRESS: ${updated.code || updated.id || code}. Ingresa a la app para revisar los detalles.`,
         type:'courier_assignment',
         code:updated.code || updated.id || code,
       });
-      if (ctx?.waitUntil) ctx.waitUntil(task);
-      else await task;
+      if (newlyAssigned) {
+        const whatsappTask = safeNotify('courier-assigned', () => notifyCourierAssigned({request:updated, courier:assignedCourier}));
+        if (ctx?.waitUntil) {
+          ctx.waitUntil(pushTask);
+          ctx.waitUntil(whatsappTask);
+          courierWhatsapp = {queued:true};
+        } else {
+          await pushTask;
+          courierWhatsapp = await whatsappTask;
+        }
+      } else if (ctx?.waitUntil) ctx.waitUntil(pushTask);
+      else await pushTask;
     }
 
-    return json({request:sanitizeRequest(updated)}, 200);
+    return json({request:sanitizeRequest(updated), ...(courierWhatsapp ? {whatsapp:{courier:courierWhatsapp}} : {})}, 200);
   } catch (error) {
     console.error('GOY XPRESS native admin update', error);
     return json({error:error.message || 'No se pudo actualizar la solicitud.'}, 503);
