@@ -645,3 +645,21 @@ test('Ecosistema conserva detalle operativo y programación entre administració
   assert.match(courier,/serviceDetail/);
   assert.match(courier,/recipientPhone/);
 });
+
+test('Administración puede eliminar una orden y retirarla del ecosistema', () => {
+  const publicAdmin=read('public-web/admin/app.js');
+  const mirrorAdmin=read('admin-web/app.js');
+  const edge=read('cloudflare-entry.js');
+  const backend=read('server/server-v5.js');
+  assert.equal(publicAdmin,mirrorAdmin);
+  assert.match(publicAdmin,/data-delete-order/);
+  assert.match(publicAdmin,/method:'DELETE'/);
+  assert.match(publicAdmin,/Eliminar definitivamente la orden/);
+  assert.match(publicAdmin,/apps Cliente y Mensajero/);
+  assert.match(edge,/requestMatch && request\.method === 'DELETE'/);
+  assert.match(edge,/verifyAdminToken/);
+  assert.match(edge,/state\.requests\.splice\(index, 1\)/);
+  assert.match(backend,/req\.method==='DELETE'&&pathname\.startsWith\('\/admin\/requests\/'\)/);
+  assert.match(backend,/data\.requests\.splice\(index,1\)/);
+  new vm.Script(publicAdmin,{filename:'public-web/admin/app.js'});
+});
