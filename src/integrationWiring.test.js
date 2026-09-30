@@ -83,12 +83,12 @@ test('catálogo funciona sin red, no se superpone a la app y acciones del mensaj
   assert.match(courier, /timeoutMs=30000/);
 });
 
-test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados', () => {
+test('Cliente 1.4.3 muestra detalle sin identidad del mensajero, evidencias y trámites programados', () => {
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.4.2');
-  assert.equal(config.android.versionCode, 16);
+  assert.equal(config.version, '1.4.3');
+  assert.equal(config.android.versionCode, 17);
   assert.match(client, /recipientPhone/);
   assert.match(client, /originMapUrl/);
   assert.match(client, /destinationMapUrl/);
@@ -121,6 +121,8 @@ test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados
   assert.match(client, /function OrderDetailModal/);
   assert.match(client, /Ver detalle completo/);
   assert.match(client, /FOTOS DEL MENSAJERO/);
+  assert.doesNotMatch(client, /<DetailRow label="Mensajero" value=\{request\.courier\}\/>/);
+  assert.doesNotMatch(client, /Mensajero: \{r\.courier\}/);
   assert.match(client, /Foto de retiro/);
   assert.match(client, /Foto de entrega/);
   assert.match(api, /WhatsApp destinatario/);
@@ -237,7 +239,7 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.2\.apk/);
+  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.3\.apk/);
   assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.7\.apk/);
   assert.match(roles, /MENSAJERO-v1\.5\.7-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
