@@ -181,11 +181,13 @@ test('Mensajero 1.5.6 adjunta logo por WhatsApp como JPG físico y muestra progr
   assert.match(courier, /FileSystem\.cacheDirectory/);
   assert.match(courier, /FileSystem\.copyAsync/);
   assert.match(courier, /goy-xpress-logo\.jpg/);
-  assert.match(courier, /No se adjuntó el logo/);
+  assert.match(courier, /No se pudo adjuntar el logo/);
   assert.doesNotMatch(courier, /await openWhatsApp\(phone,message,label\)/);
   assert.match(courier, /Share\.isPackageInstalled/);
   assert.match(courier, /com\.whatsapp\.w4b/);
-  assert.match(courier, /whatsappbusiness/);
+  assert.match(courier, /Share\.Social\.WHATSAPPBUSINESS/);
+  assert.doesNotMatch(courier, /whatsAppNumber:number/);
+  assert.match(courier, /no abrirá un mensaje de solo texto/);
   assert.match(courier, /Share\.open/);
   assert.match(courier, /TRÁMITE PROGRAMADO/);
   assert.match(courier, /scheduledDate/);
