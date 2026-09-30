@@ -69,7 +69,7 @@ async function shareBrandedWhatsApp(phone,message,label='WhatsApp'){
     }catch{}
     Alert.alert(
       'No se pudo adjuntar el logo',
-      'Para conservar la imagen no se abrirá el mensaje de solo texto. Verifica que WhatsApp esté instalado y vuelve a intentar.',
+      'Para conservar la imagen no abrirá un mensaje de solo texto. Verifica que WhatsApp esté instalado y vuelve a intentar.',
     );
   }
 }
