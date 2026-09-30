@@ -663,3 +663,11 @@ test('Administración puede eliminar una orden y retirarla del ecosistema', () =
   assert.match(backend,/data\.requests\.splice\(index,1\)/);
   new vm.Script(publicAdmin,{filename:'public-web/admin/app.js'});
 });
+
+test('Agenda administrativa guarda seguimientos de trámites y pagos programados', () => {
+  const html=read('public-web/admin/index.html'),admin=read('public-web/admin/app.js'),edge=read('cloudflare-entry.js');
+  assert.match(html,/id="agenda"/);assert.match(html,/Seguimiento de trámite/);assert.match(html,/Pago programado/);assert.match(html,/Documentos pendientes/);
+  assert.match(admin,/\/admin\/agenda/);assert.match(admin,/data-agenda-status/);assert.match(admin,/Completado/);assert.match(admin,/VENCIDO/);
+  assert.match(edge,/agendaItems/);assert.match(edge,/procedure_followup/);assert.match(edge,/scheduled_payment/);assert.match(edge,/pendingDocuments/);
+  new vm.Script(admin,{filename:'public-web/admin/app.js'});
+});
