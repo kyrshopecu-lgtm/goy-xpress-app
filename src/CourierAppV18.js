@@ -33,7 +33,7 @@ async function shareBrandedWhatsApp(phone,message,label='WhatsApp'){
     const base={title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',whatsAppNumber:number,useInternalStorage:true};
     try{await Share.shareSingle({...base,social:Share.Social.WHATSAPP});return}
     catch(firstError){
-      try{await Share.shareSingle({...base,social:Share.Social.WHATSAPPBUSINESS});return}
+      try{await Share.open({title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',failOnCancel:false,useInternalStorage:true});return}
       catch(secondError){throw secondError||firstError}
     }
   }catch{
