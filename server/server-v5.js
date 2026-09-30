@@ -550,6 +550,21 @@ async function buildClientRequest(body, user, config, mapsFetch) {
     request.totalToCollect=calculateCollectTotal({productValue:request.productValue,deliveryCost:request.serviceCost,cashOnDelivery:request.cashOnDelivery,deliveryPayer:request.deliveryPayer});
     request.wallet={collected:Number(request.totalToCollect||0),depositPhoto:null,released:Number(request.totalToCollect||0)===0};
   } else if (kind === 'procedure') {
+    const scheduled=String(body.procedureMode||'')==='scheduled';
+    const procedureAddress=String(body.procedureAddress||body.destinationAddress||'').trim();
+    const procedureDetail=String(body.procedureDetail||body.details||'').trim();
+    if(scheduled){
+      const scheduleType=body.scheduleType==='delivery'?'delivery':'pickup';
+      const scheduledDate=String(body.scheduledDate||'').trim();
+      const scheduledTime=String(body.scheduledTime||'').trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)){const error=new Error('Selecciona una fecha válida para el trámite programado.');error.status=422;throw error;}
+      if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(scheduledTime)){const error=new Error('Selecciona una hora válida para el trámite programado.');error.status=422;throw error;}
+      request.procedureMode='scheduled';request.scheduleType=scheduleType;request.scheduledDate=scheduledDate;request.scheduledTime=scheduledTime;request.serviceLabel='Trámites programados';
+    }else{
+      request.procedureMode=String(body.procedureMode||'standard')||'standard';
+      request.serviceLabel=String(body.serviceLabel||'Trámite ejecutivo');
+    }
+    request.procedureAddress=procedureAddress;request.destinationAddress=String(body.destinationAddress||procedureAddress).trim();request.procedureDetail=procedureDetail;
     const pricing=calculateExecutivePrice(body.waitMinutes||40); request.waitMinutes=pricing.requestedMinutes; request.baseServiceCost=Number(pricing.total||0); request.serviceCost=Number(pricing.total||0); request.totalToCollect=0;
   } else if (kind === 'deposit') {
     const deposit=calculateDepositPrice({checkCount:body.checkCount,cashAmount:body.cashAmount,method:body.depositMethod});
@@ -605,7 +620,7 @@ function createHandler(options = {}) {
         else if(Object.prototype.hasOwnProperty.call(body,'courier')){patch.courier=String(body.courier||'').trim()||null;if(!patch.courier){patch.courierId=null;patch.courierPhoto='';patch.courierAccessHash=null;}}
         if(body.issueCourierAccess&&!body.courierId){if(!(patch.courier||current.courier))return json(res,400,{error:'Selecciona un mensajero antes de emitir acceso.'},config.allowedOrigin);legacyCourierAccess=makeSecret();patch.courierAccessHash=hashSecret(legacyCourierAccess);patch.status='Asignado';}
         if(body.kind)patch.kind=String(body.kind);if(body.serviceLabel)patch.serviceLabel=String(body.serviceLabel).trim();
-        for(const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone']){if(Object.prototype.hasOwnProperty.call(body,field))patch[field]=String(body[field]||'').trim();}
+        for(const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone','procedureMode','scheduleType','scheduledDate','scheduledTime','procedureAddress','procedureDetail','serviceDetail','internalReference']){if(Object.prototype.hasOwnProperty.call(body,field))patch[field]=String(body[field]||'').trim();}
         if(Array.isArray(body.stops))patch.stops=body.stops.slice(0,20).map((stop,index)=>({order:index+1,address:String(stop?.address||'').trim(),description:String(stop?.description||'').trim(),serviceType:String(stop?.serviceType||'Otro').trim()})).filter(stop=>stop.address);
         if(body.serviceCost!==undefined){const newCost=Math.max(0,Number(body.serviceCost||0));patch.serviceCost=Math.round(newCost*100)/100;patch.tariffAdjustment={previousCost:Number(current.serviceCost||0),newCost:patch.serviceCost,reason:String(body.reason||'Reajuste administrativo').trim(),adjustedAt:new Date().toISOString()};}
         if(body.quote)patch.quote={...(current.quote||{}),...body.quote,updatedAt:new Date().toISOString()};if(body.wallet)patch.wallet={...(current.wallet||{}),...body.wallet,updatedAt:new Date().toISOString()};if(body.adminNotes!==undefined)patch.adminNotes=String(body.adminNotes||'').trim();

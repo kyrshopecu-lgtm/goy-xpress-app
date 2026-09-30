@@ -83,12 +83,12 @@ test('catálogo funciona sin red, no se superpone a la app y acciones del mensaj
   assert.match(courier, /timeoutMs=30000/);
 });
 
-test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesional', () => {
+test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados', () => {
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.4.1');
-  assert.equal(config.android.versionCode, 15);
+  assert.equal(config.version, '1.4.2');
+  assert.equal(config.android.versionCode, 16);
   assert.match(client, /recipientPhone/);
   assert.match(client, /originMapUrl/);
   assert.match(client, /destinationMapUrl/);
@@ -113,15 +113,25 @@ test('Cliente 1.4.0 agrega push, sonido, vibración y mantiene interfaz profesio
   assert.match(client, /installGoyNotificationReceivedListener/);
   assert.match(client, /installGoyNotificationResponseListener/);
   assert.match(client, /Entrega finalizada/);
+  assert.match(client, /function ScheduledProcedureForm/);
+  assert.match(client, /Trámites programados/);
+  assert.match(client, /procedureMode:'scheduled'/);
+  assert.match(client, /scheduledDate/);
+  assert.match(client, /scheduledTime/);
+  assert.match(client, /function OrderDetailModal/);
+  assert.match(client, /Ver detalle completo/);
+  assert.match(client, /FOTOS DEL MENSAJERO/);
+  assert.match(client, /Foto de retiro/);
+  assert.match(client, /Foto de entrega/);
   assert.match(api, /WhatsApp destinatario/);
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.3 muestra detalle operativo y mantiene alertas', () => {
+test('Mensajero 1.5.4 comparte logo por WhatsApp y muestra programación', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.3');
-  assert.equal(config.android.versionCode, 18);
+  assert.equal(config.version, '1.5.4');
+  assert.equal(config.android.versionCode, 19);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -166,8 +176,17 @@ test('Mensajero 1.5.3 muestra detalle operativo y mantiene alertas', () => {
   assert.match(courier, /Referencia interna:/);
   assert.match(courier, /NOTAS PARA OPERACIÓN/);
   assert.match(courier, /<ServiceDetailCard req=\{req\}\/>/);
+  assert.match(courier, /shareBrandedWhatsApp/);
+  assert.match(courier, /Asset\.fromModule\(require\('\.\.\/assets\/goy-logo\.jpg'\)\)/);
+  assert.match(courier, /Share\.Social\.WHATSAPP/);
+  assert.match(courier, /Share\.open/);
+  assert.match(courier, /TRÁMITE PROGRAMADO/);
+  assert.match(courier, /scheduledDate/);
+  assert.match(courier, /scheduledTime/);
+  assert.doesNotMatch(courier, /WHATSAPPBUSINESS/);
   assert.doesNotMatch(courier, /VALOR DEL SERVICIO|TARIFA DEL SERVICIO|serviceCost/);
   assert.match(JSON.stringify(config.plugins), /expo-notifications/);
+  assert.match(JSON.stringify(config.plugins), /react-native-share/);
 });
 
 test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', () => {
@@ -180,6 +199,7 @@ test('sonido oficial GOY XPRESS está conectado a apps y panel administrativo', 
   assert.equal(pkg.dependencies['expo-av'], '~15.1.7');
   assert.equal(pkg.dependencies['expo-notifications'], '~0.31.4');
   assert.equal(pkg.dependencies['expo-device'], '~7.1.4');
+  assert.equal(pkg.dependencies['react-native-share'], '12.3.1');
   const push = read('src/goyPushNotifications.js');
   assert.match(push, /getExpoPushTokenAsync/);
   assert.match(push, /device\/push-token/);
@@ -211,9 +231,9 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.1\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.3\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.3-ARM64\.apk/);
+  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.2\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.4\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.4-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);

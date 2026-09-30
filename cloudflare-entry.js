@@ -385,7 +385,7 @@ async function adminUpdateRequest(request, env, code, ctx) {
 
     if (body.kind) patch.kind = String(body.kind);
     if (body.serviceLabel) patch.serviceLabel = String(body.serviceLabel).trim();
-    for (const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone']) {
+    for (const field of ['details','diverseDetail','originAddress','pickupAddress','destinationAddress','deliveryAddress','address','institution','reference','instructions','recipient','recipientPhone','procedureMode','scheduleType','scheduledDate','scheduledTime','procedureAddress','procedureDetail','serviceDetail','internalReference']) {
       if (Object.prototype.hasOwnProperty.call(body, field)) patch[field] = String(body[field] || '').trim();
     }
     if (Array.isArray(body.stops)) {

@@ -193,6 +193,39 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
   assert.equal(diverseStops.status, 201);
   assert.equal(diverseStops.body.request.stops.length, 2);
 
+  const scheduledProcedure = await call(base, '/api/client/requests', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{
+      code:'TRA-PROG-001',
+      kind:'procedure',
+      procedureMode:'scheduled',
+      serviceLabel:'Trámites programados',
+      scheduleType:'pickup',
+      scheduledDate:'2026-10-05',
+      scheduledTime:'09:30',
+      procedureType:'Ingreso de documentos',
+      institution:'Consejo de la Judicatura',
+      procedureAddress:'Av. Amazonas, Quito',
+      procedureDetail:'Retirar documentos y entregarlos en ventanilla.',
+      waitMinutes:40,
+    },
+  });
+  assert.equal(scheduledProcedure.status, 201);
+  assert.equal(scheduledProcedure.body.request.serviceLabel, 'Trámites programados');
+  assert.equal(scheduledProcedure.body.request.procedureMode, 'scheduled');
+  assert.equal(scheduledProcedure.body.request.scheduleType, 'pickup');
+  assert.equal(scheduledProcedure.body.request.scheduledDate, '2026-10-05');
+  assert.equal(scheduledProcedure.body.request.scheduledTime, '09:30');
+  assert.equal(scheduledProcedure.body.request.procedureAddress, 'Av. Amazonas, Quito');
+
+  const invalidScheduledProcedure = await call(base, '/api/client/requests', {
+    method:'POST',
+    token:clientReg.body.token,
+    body:{code:'TRA-PROG-BAD',kind:'procedure',procedureMode:'scheduled',scheduleType:'delivery',scheduledDate:'05/10/2026',scheduledTime:'9:30',procedureAddress:'Quito'},
+  });
+  assert.equal(invalidScheduledProcedure.status, 422);
+
   const created = await call(base, '/api/client/requests', {
     method:'POST',
     token:clientReg.body.token,

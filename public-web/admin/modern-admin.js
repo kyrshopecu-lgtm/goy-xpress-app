@@ -68,6 +68,18 @@
         </div>
         <div class="map-hint">La distancia, duración y tarifa se calcularán automáticamente con Google Maps al guardar.</div>`;
     }
+    if (value === 'procedure-scheduled') {
+      return `
+        <div class="form-grid two">
+          <label>Tipo de programación<select name="scheduleType" required><option value="pickup">Retiro programado</option><option value="delivery">Entrega programada</option></select></label>
+          <label>Fecha programada<input name="scheduledDate" type="date" required></label>
+          <label>Hora programada<input name="scheduledTime" type="time" required></label>
+          <label>Lugar del trámite<input name="procedureAddress" required placeholder="Institución o dirección"></label>
+          <label>Tiempo estimado (minutos)<input name="waitMinutes" type="number" min="1" value="40"></label>
+        </div>
+        <label>Detalle del trámite<textarea name="procedureDetail" rows="3" required placeholder="Describe lo que debe realizar el mensajero"></textarea></label>
+        <div class="map-hint"><strong>Trámite programado:</strong> el mensajero verá claramente si debe retirar o entregar, junto con la fecha y hora indicadas.</div>`;
+    }
     if (value === 'procedure') {
       return `
         <div class="form-grid two">
@@ -148,6 +160,21 @@
         cashOnDelivery:fd.get('cashOnDelivery') === 'on',
         deliveryPayer:String(fd.get('deliveryPayer') || 'recipient'),
         serviceLabel:service === 'shipment-express' ? 'Envío Express' : 'Entrega programada',
+      };
+    }
+    if (service === 'procedure-scheduled') {
+      return {
+        ...common,
+        kind:'procedure',
+        procedureMode:'scheduled',
+        scheduleType:String(fd.get('scheduleType') || 'pickup'),
+        scheduledDate:String(fd.get('scheduledDate') || ''),
+        scheduledTime:String(fd.get('scheduledTime') || ''),
+        procedureAddress:String(fd.get('procedureAddress') || ''),
+        destinationAddress:String(fd.get('procedureAddress') || ''),
+        procedureDetail:String(fd.get('procedureDetail') || ''),
+        waitMinutes:Number(fd.get('waitMinutes') || 40),
+        serviceLabel:'Trámites programados',
       };
     }
     if (service === 'procedure') {
@@ -298,7 +325,7 @@
         <form id="adminOrderForm" class="admin-order-form">
           <div class="form-grid two">
             <label>Cliente<select name="clientId" required><option value="">Selecciona un cliente</option>${clients.map(c => `<option value="${escapeHtml(c.id || c.userId)}">${escapeHtml(c.businessName || c.name || c.email || 'Cliente')} · ${escapeHtml(c.phone || '')}</option>`).join('')}</select></label>
-            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
+            <label>Tipo de servicio<select name="service" id="adminServiceSelect" required><option value="package">Retiro y/o entrega de paquetes</option><option value="shipment-scheduled">Entrega programada</option><option value="shipment-express">Envío Express</option><option value="procedure">Trámite ejecutivo</option><option value="procedure-scheduled">Trámites programados</option><option value="deposit-checks">Depósito de cheques</option><option value="deposit-cash">Depósito en efectivo</option><option value="custom">Servicio personalizado</option><option value="diverse">Servicio diverso / cotización</option></select></label>
           </div>
           <div id="adminServiceFields">${serviceFields('package')}</div>
           <label>Detalle para el mensajero<textarea name="serviceDetail" rows="3" maxlength="1200" placeholder="Información específica que el mensajero debe conocer para realizar este servicio"></textarea></label>
