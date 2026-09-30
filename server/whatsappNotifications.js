@@ -19,6 +19,9 @@ function config() {
     clientDeliveredTemplate: String(process.env.GOY_WA_CLIENT_DELIVERED_TEMPLATE || 'goy_entrega_finalizada_cliente'),
     prospectTemplate: String(process.env.GOY_WA_PROSPECT_TEMPLATE || ''),
     prospectMediaHeader: String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER || '').toLowerCase() === 'true',
+    orderLogoUrl: String(process.env.GOY_WA_ORDER_LOGO_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/assets/goy-logo.jpg').trim(),
+    clientOrderTemplate: String(process.env.GOY_WA_CLIENT_ORDER_TEMPLATE || 'goy_nueva_orden_cliente'),
+    recipientOrderTemplate: String(process.env.GOY_WA_RECIPIENT_ORDER_TEMPLATE || 'goy_nueva_orden_destinatario'),
   };
 }
 
@@ -87,24 +90,45 @@ async function notifyAdminNewOrder({request, client}) {
     serviceName(request),
     address(request),
     value(request),
-  ], cfg);
+  ], cfg, {headerImageUrl:cfg.orderLogoUrl});
 }
 
 async function notifyCourierAssigned({request, courier}) {
   const phone = courier?.whatsapp || courier?.phone;
-  return sendTemplate(phone, config().courierTemplate, [
+  const cfg=config();
+  return sendTemplate(phone, cfg.courierTemplate, [
     courierName(courier),
     orderCode(request),
-  ]);
+  ], cfg, {headerImageUrl:cfg.orderLogoUrl});
+}
+
+async function notifyClientOrderCreated({request, client}) {
+  const cfg=config(),phone=client?.whatsapp||client?.phone||request?.whatsapp||request?.phone;
+  return sendTemplate(phone,cfg.clientOrderTemplate,[
+    clientName(client,request),
+    orderCode(request),
+    serviceName(request),
+  ],cfg,{headerImageUrl:cfg.orderLogoUrl});
+}
+
+async function notifyRecipientOrderCreated({request}) {
+  const cfg=config(),phone=request?.recipientPhone;
+  return sendTemplate(phone,cfg.recipientOrderTemplate,[
+    request?.recipient||'Destinatario',
+    orderCode(request),
+    serviceName(request),
+    address(request),
+  ],cfg,{headerImageUrl:cfg.orderLogoUrl});
 }
 
 async function notifyClientDelivered({request, client}) {
   const phone = client?.whatsapp || client?.phone || request?.whatsapp || request?.phone;
-  return sendTemplate(phone, config().clientDeliveredTemplate, [
+  const cfg=config();
+  return sendTemplate(phone, cfg.clientDeliveredTemplate, [
     clientName(client, request),
     orderCode(request),
     serviceName(request),
-  ]);
+  ], cfg, {headerImageUrl:cfg.orderLogoUrl});
 }
 
 async function sendProspectFirstContact({phone,business,message,imageUrl=''}) {
@@ -147,6 +171,8 @@ module.exports = {
   sendTemplate,
   notifyAdminNewOrder,
   notifyCourierAssigned,
+  notifyClientOrderCreated,
+  notifyRecipientOrderCreated,
   notifyClientDelivered,
   sendProspectFirstContact,
   sendProspectReply,
