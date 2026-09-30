@@ -1,7 +1,8 @@
 import React,{useEffect,useRef,useState}from'react';
-import{Alert,Image,Linking,Modal,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View}from'react-native';
+import{Alert,Image,Linking,Modal,Platform,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View}from'react-native';
 import AsyncStorage from'@react-native-async-storage/async-storage';
 import{Asset}from'expo-asset';
+import * as FileSystem from'expo-file-system';
 import * as ImagePicker from'expo-image-picker';
 import Share from'react-native-share';
 import{StatusBar}from'expo-status-bar';
@@ -23,22 +24,47 @@ async function openWhatsApp(phone,message,label='WhatsApp'){
   if(!number)return Alert.alert(label,'No hay un número de WhatsApp registrado.');
   try{await Linking.openURL(`https://wa.me/${number}?text=${encodeURIComponent(message)}`)}catch{Alert.alert(label,'No se pudo abrir WhatsApp. Verifica que esté instalado o disponible en el teléfono.')}
 }
+async function brandedLogoDataUri(){
+  const asset=Asset.fromModule(require('../assets/goy-logo.jpg'));
+  await asset.downloadAsync();
+  const uri=asset.localUri||asset.uri;
+  if(!uri)throw new Error('No se pudo preparar el logotipo GOY XPRESS.');
+  if(/^data:image\//i.test(String(uri)))return String(uri);
+  const base64=await FileSystem.readAsStringAsync(uri,{encoding:FileSystem.EncodingType.Base64});
+  if(!base64)throw new Error('No se pudo convertir el logotipo GOY XPRESS.');
+  return `data:image/jpeg;base64,${base64}`;
+}
+async function installedWhatsappTargets(){
+  const fallback=['whatsapp','whatsappbusiness'];
+  if(Platform.OS!=='android'||typeof Share.isPackageInstalled!=='function')return fallback;
+  const candidates=[['com.whatsapp','whatsapp'],['com.whatsapp.w4b','whatsappbusiness']],targets=[];
+  for(const [pkg,social] of candidates){
+    try{const status=await Share.isPackageInstalled(pkg);if(status?.isInstalled)targets.push(social)}catch{}
+  }
+  return targets.length?targets:fallback;
+}
 async function shareBrandedWhatsApp(phone,message,label='WhatsApp'){
   const number=whatsappNumber(phone);
   if(!number)return Alert.alert(label,'No hay un número de WhatsApp registrado.');
   try{
-    const asset=Asset.fromModule(require('../assets/goy-logo.jpg'));
-    await asset.downloadAsync();
-    const url=asset.localUri||asset.uri;
+    const url=await brandedLogoDataUri();
     const base={title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',whatsAppNumber:number,useInternalStorage:true};
-    try{await Share.shareSingle({...base,social:Share.Social.WHATSAPP});return}
-    catch(firstError){
-      try{await Share.open({title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',failOnCancel:false,useInternalStorage:true});return}
-      catch(secondError){throw secondError||firstError}
+    let lastError=null;
+    for(const social of await installedWhatsappTargets()){
+      try{
+        const result=await Share.shareSingle({...base,social});
+        if(result?.success===false)throw new Error(result?.message||'WhatsApp rechazó el archivo.');
+        return;
+      }catch(error){lastError=error}
     }
-  }catch{
+    try{
+      const result=await Share.open({...base,failOnCancel:false});
+      if(result?.success===false&&!result?.dismissedAction)throw new Error(result?.message||'No se pudo compartir el logotipo.');
+      return;
+    }catch(error){throw error||lastError}
+  }catch(error){
     await openWhatsApp(phone,message,label);
-    Alert.alert('GOY XPRESS','WhatsApp se abrió con el texto. Si el teléfono no permite adjuntar el logo automáticamente, puedes continuar enviando el mensaje de respaldo.');
+    Alert.alert('GOY XPRESS','No fue posible adjuntar el logotipo en este teléfono. Se abrió WhatsApp con el texto como respaldo. Verifica que WhatsApp tenga permiso para recibir imágenes compartidas.');
   }
 }
 function recipientData(req){const raw=req?.recipient;return{name:(typeof raw==='string'?raw:raw?.name)||req?.recipientName||req?.receiverName||'Destinatario',phone:req?.recipientPhone||req?.recipientWhatsapp||req?.recipientWhatsApp||raw?.phone||raw?.whatsapp||req?.destinationPhone||req?.receiverPhone||req?.contactPhone||''}}
