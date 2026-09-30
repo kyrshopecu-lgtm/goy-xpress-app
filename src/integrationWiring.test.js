@@ -249,3 +249,21 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   assert.match(cloudflare, /cloudflare-login-v2\.js/);
   assert.match(cloudflare, /cloudflare-password\.mjs/);
 });
+
+test('WhatsApp transaccional usa logo GOY para mensajero, cliente y destinatario', () => {
+  const wa = read('server/whatsappNotifications.js');
+  const adminCreate = read('api/admin-create-request.js');
+  const edge = read('cloudflare-worker-v2.js');
+  assert.match(wa, /GOY_WA_ORDER_LOGO_URL/);
+  assert.match(wa, /\/assets\/goy-logo\.jpg/);
+  assert.match(wa, /notifyClientOrderCreated/);
+  assert.match(wa, /notifyRecipientOrderCreated/);
+  assert.match(wa, /headerImageUrl:cfg\.orderLogoUrl/);
+  assert.match(adminCreate, /notifyClientOrderCreated/);
+  assert.match(adminCreate, /notifyRecipientOrderCreated/);
+  assert.match(adminCreate, /whatsapp\.client/);
+  assert.match(adminCreate, /whatsapp\.recipient/);
+  assert.match(edge, /GOY_WA_CLIENT_ORDER_TEMPLATE/);
+  assert.match(edge, /GOY_WA_RECIPIENT_ORDER_TEMPLATE/);
+  assert.match(edge, /GOY_WA_ORDER_LOGO_URL/);
+});
