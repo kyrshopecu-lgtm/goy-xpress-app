@@ -3,6 +3,8 @@ const backendV5 = require('../server/server-v5');
 const {
   notifyAdminNewOrder,
   notifyCourierAssigned,
+  notifyClientOrderCreated,
+  notifyRecipientOrderCreated,
   safeNotify,
 } = require('../server/whatsappNotifications');
 
@@ -166,6 +168,10 @@ function createHandler(options = {}) {
 
       const whatsapp = {};
       whatsapp.admin = await safeNotify('admin-new-order', () => notifyAdminNewOrder({request, client}));
+      whatsapp.client = await safeNotify('client-new-order', () => notifyClientOrderCreated({request, client}));
+      if (request.recipientPhone) {
+        whatsapp.recipient = await safeNotify('recipient-new-order', () => notifyRecipientOrderCreated({request}));
+      }
       if (courier && !assignmentWarning) {
         whatsapp.courier = await safeNotify('courier-assigned', () => notifyCourierAssigned({request, courier}));
       }
