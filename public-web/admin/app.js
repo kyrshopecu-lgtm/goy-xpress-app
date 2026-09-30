@@ -102,7 +102,8 @@
     $('ordersBody').innerHTML=rows.map(o=>{
       const waitAlert=waitNeedsDecision(o)?`<br><strong style="color:#9a6500">⚠ Espera al límite · requiere decisión</strong>`:'';
       const waitExtra=o.wait?.extraMinutes?`<br><small>Espera +${o.wait.extraMinutes} min (${money(o.wait.extraCost)})</small>`:'';
-      return `<tr><td><strong>${escapeHtml(o.id)}</strong><br><small>${escapeHtml(o.cycleKey)}</small></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}${waitAlert}${waitExtra}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`;
+      const novelty=(o.raw.novelties||[])[0]; const noveltyHtml=novelty?`<br><strong style="color:#9a6500">Novedad:</strong> <small>${escapeHtml(novelty.message)}</small>`:'';
+      return `<tr><td><strong>${escapeHtml(o.id)}</strong><br><small>${escapeHtml(o.cycleKey)}</small></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}${waitAlert}${waitExtra}${noveltyHtml}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`;
     }).join('')||'<tr><td colspan="8">No hay solicitudes en este estado.</td></tr>';
   }
   function renderCouriers(){ $('courierCards').innerHTML=data.couriers.map(c=>`<article class="courier-card"><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.phone)}</small><p>${badge(c.status)}</p><small>${c.jobs} solicitud(es) asignada(s)</small></article>`).join('')||'<p>Aún no hay mensajeros registrados.</p>'; }
