@@ -267,3 +267,13 @@ test('WhatsApp transaccional usa logo GOY para mensajero, cliente y destinatario
   assert.match(edge, /GOY_WA_RECIPIENT_ORDER_TEMPLATE/);
   assert.match(edge, /GOY_WA_ORDER_LOGO_URL/);
 });
+
+test('Asignación administrativa avisa al mensajero por push y WhatsApp una sola vez', () => {
+  const edge = read('cloudflare-entry.js');
+  assert.match(edge, /notifyCourierAssigned/);
+  assert.match(edge, /safeNotify\('courier-assigned'/);
+  assert.match(edge, /newlyAssigned/);
+  assert.match(edge, /current\.courierId/);
+  assert.match(edge, /Ingresa a la app para revisar los detalles/);
+  assert.match(edge, /whatsapp:\{courier:courierWhatsapp\}/);
+});
