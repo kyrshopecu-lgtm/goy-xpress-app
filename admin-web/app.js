@@ -93,6 +93,7 @@
     if(o.gps?.last) buttons.push(`<button data-gps="${id}">GPS</button>`);
     if(o.wallet?.depositPhoto && !o.wallet?.released) buttons.push(`<button data-release="${id}">Liberar cartera</button>`);
     if(!['Entrega finalizada','Cancelado'].includes(o.status)) buttons.push(`<button data-order="${id}" data-status="Cancelado">Cancelar</button>`);
+    buttons.push(`<button data-delete-order="${id}" title="Eliminar definitivamente esta orden">Eliminar</button>`);
     return `<div class="order-actions">${buttons.join('')}</div>`;
   }
 
@@ -127,6 +128,13 @@
   }
 
   async function updateOrder(code,patch,button){if(button)button.disabled=true;try{await api(`/admin/requests/${encodeURIComponent(code)}`,{method:'PATCH',body:JSON.stringify(patch)});await loadData(data.activeCycle);}catch(err){alert(err.message||'No se pudo actualizar la solicitud');}finally{if(button)button.disabled=false;}}
+  async function deleteOrder(code,button){
+    if(!confirm(`¿Eliminar definitivamente la orden ${code}?\n\nSe quitará de Administración y dejará de aparecer en las apps Cliente y Mensajero. Esta acción no se puede deshacer.`))return;
+    if(button)button.disabled=true;
+    try{await api(`/admin/requests/${encodeURIComponent(code)}`,{method:'DELETE'});await loadData(data.activeCycle);alert(`Orden ${code} eliminada correctamente.`);}
+    catch(err){alert(err.message||'No se pudo eliminar la orden');}
+    finally{if(button)button.disabled=false;}
+  }
   async function decideWait(code,decision,button){
     const continueWaiting=decision==='continue';
     const message=continueWaiting?'¿Autorizar espera adicional? Desde el siguiente minuto se aplicará el recargo configurado.':'¿Indicar al mensajero que deje de esperar y pase a la siguiente entrega?';
@@ -163,6 +171,7 @@
   document.addEventListener('click',e=>{
     const go=e.target.closest('[data-go]');if(go){showView(go.dataset.go);return;}
     const wait=e.target.closest('[data-wait-decision]');if(wait){decideWait(wait.dataset.waitOrder,wait.dataset.waitDecision,wait);return;}
+    const remove=e.target.closest('[data-delete-order]');if(remove){deleteOrder(remove.dataset.deleteOrder,remove);return;}
     const status=e.target.closest('[data-order][data-status]');if(status){updateOrder(status.dataset.order,{status:status.dataset.status},status);return;}
     const manage=e.target.closest('[data-manage]');if(manage){manageOrder(manage.dataset.manage);return;}
     const quote=e.target.closest('[data-quote]');if(quote){quoteOrder(quote.dataset.quote);return;}
