@@ -615,3 +615,33 @@ test('panel administrativo crea Trámites programados con fecha, hora y tipo de 
   assert.match(edge,/procedureDetail/);
   new vm.Script(admin,{filename:'public-web/admin/modern-admin.js'});
 });
+
+test('Guía QR usa generador local y refleja los campos operativos actuales', () => {
+  const publicGuide=read('public-web/admin/tracking-labels.js');
+  const mirrorGuide=read('admin-web/tracking-labels.js');
+  assert.equal(publicGuide,mirrorGuide);
+  assert.match(publicGuide,/\/admin\/vendor\/qrcode\.min\.js/);
+  assert.doesNotMatch(publicGuide,/cdn\.jsdelivr\.net/);
+  assert.match(publicGuide,/deliveryAddress/);
+  assert.match(publicGuide,/recipientPhone/);
+  assert.match(publicGuide,/scheduledDate/);
+  assert.match(publicGuide,/serviceDetail/);
+  assert.match(publicGuide,/Detalle operativo/);
+  assert.match(publicGuide,/new QRCode/);
+  new vm.Script(publicGuide,{filename:'public-web/admin/tracking-labels.js'});
+});
+
+test('Ecosistema conserva detalle operativo y programación entre administración y apps', () => {
+  const admin=read('public-web/admin/modern-admin.js');
+  const edge=read('cloudflare-entry.js');
+  const client=read('src/ClientAppV12.js');
+  const courier=read('src/CourierAppV18.js');
+  for(const field of ['serviceDetail','scheduledDate','scheduledTime','scheduleType','recipientPhone']) {
+    assert.match(admin,new RegExp(field));
+    assert.match(edge,new RegExp(field));
+  }
+  assert.match(client,/scheduledDate/);
+  assert.match(client,/scheduledTime/);
+  assert.match(courier,/serviceDetail/);
+  assert.match(courier,/recipientPhone/);
+});
