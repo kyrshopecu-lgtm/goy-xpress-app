@@ -595,6 +595,23 @@ test('Nueva orden administrativa conserva detalle operativo para el mensajero en
   assert.match(publicAdmin,/Detalle para el mensajero/);
   assert.match(publicAdmin,/name="serviceDetail"/);
   assert.match(publicAdmin,/serviceDetail:String\(fd\.get\('serviceDetail'\)/);
-  for(const service of ['package','shipment-scheduled','shipment-express','procedure','deposit-checks','deposit-cash','custom','diverse']) assert.ok(publicAdmin.includes(service));
+  for(const service of ['package','shipment-scheduled','shipment-express','procedure','procedure-scheduled','deposit-checks','deposit-cash','custom','diverse']) assert.ok(publicAdmin.includes(service));
   new vm.Script(publicAdmin,{filename:'public-web/admin/modern-admin.js'});
+});
+
+
+test('panel administrativo crea Trámites programados con fecha, hora y tipo de programación', () => {
+  const admin=read('public-web/admin/modern-admin.js');
+  const edge=read('cloudflare-entry.js');
+  assert.match(admin,/procedure-scheduled/);
+  assert.match(admin,/Trámites programados/);
+  assert.match(admin,/name="scheduleType"/);
+  assert.match(admin,/name="scheduledDate" type="date"/);
+  assert.match(admin,/name="scheduledTime" type="time"/);
+  assert.match(admin,/procedureMode:'scheduled'/);
+  assert.match(admin,/scheduleType:String\(fd\.get\('scheduleType'\)/);
+  assert.match(edge,/scheduledDate/);
+  assert.match(edge,/scheduledTime/);
+  assert.match(edge,/procedureDetail/);
+  new vm.Script(admin,{filename:'public-web/admin/modern-admin.js'});
 });
