@@ -127,7 +127,7 @@ test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.6 prioriza imagen y caption en WhatsApp', () => {
+test('Mensajero 1.5.6 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
   assert.equal(config.version, '1.5.6');
@@ -178,14 +178,16 @@ test('Mensajero 1.5.6 prioriza imagen y caption en WhatsApp', () => {
   assert.match(courier, /<ServiceDetailCard req=\{req\}\/>/);
   assert.match(courier, /shareBrandedWhatsApp/);
   assert.match(courier, /Asset\.fromModule\(require\('\.\.\/assets\/goy-logo\.jpg'\)\)/);
-  assert.match(courier, /FileSystem\.readAsStringAsync/);
-  assert.match(courier, /FileSystem\.EncodingType\.Base64/);
-  assert.match(courier, /data:image\/jpeg;base64/);
+  assert.match(courier, /FileSystem\.cacheDirectory/);
+  assert.match(courier, /FileSystem\.copyAsync/);
+  assert.match(courier, /goy-xpress-logo\.jpg/);
+  assert.match(courier, /No se pudo adjuntar el logo/);
+  assert.doesNotMatch(courier, /await openWhatsApp\(phone,message,label\)/);
   assert.match(courier, /Share\.isPackageInstalled/);
   assert.match(courier, /com\.whatsapp\.w4b/);
   assert.match(courier, /Share\.Social\.WHATSAPPBUSINESS/);
   assert.doesNotMatch(courier, /whatsAppNumber:number/);
-  assert.match(courier, /Para conservar la imagen no se abrirá el mensaje de solo texto/);
+  assert.match(courier, /no abrirá un mensaje de solo texto/);
   assert.match(courier, /Share\.open/);
   assert.match(courier, /TRÁMITE PROGRAMADO/);
   assert.match(courier, /scheduledDate/);
