@@ -91,6 +91,19 @@ jobs:
       - name: Instalar y validar NDK Android
         run: bash scripts/install-android-ndk.sh 27.1.12297006
 
+      - name: Instalar y validar CMake Android
+        run: |
+          CMAKE_DIR="$ANDROID_HOME/cmake/3.22.1"
+          rm -rf "$CMAKE_DIR"
+          for attempt in 1 2 3 4; do
+            echo "Instalando CMake 3.22.1 (intento $attempt/4)"
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmake;3.22.1" && test -x "$CMAKE_DIR/bin/cmake" && break
+            rm -rf "$CMAKE_DIR"
+            sleep $((attempt * 5))
+          done
+          test -x "$CMAKE_DIR/bin/cmake"
+          "$CMAKE_DIR/bin/cmake" --version
+
       - name: Compilar APK release
         working-directory: android
         run: |
