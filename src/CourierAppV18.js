@@ -1,7 +1,9 @@
 import React,{useEffect,useRef,useState}from'react';
 import{Alert,Image,Linking,Modal,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View}from'react-native';
 import AsyncStorage from'@react-native-async-storage/async-storage';
+import{Asset}from'expo-asset';
 import * as ImagePicker from'expo-image-picker';
+import Share from'react-native-share';
 import{StatusBar}from'expo-status-bar';
 import{API_BASE,getCourierJob,getCourierJobs,getMe,sendCurrentLocation,setWaitDecision,startLocationTracking,updateCourierWait}from'./goyApiV5';
 import{playGoyEventSound}from'./goyBrandSound';
@@ -20,6 +22,24 @@ async function openWhatsApp(phone,message,label='WhatsApp'){
   const number=whatsappNumber(phone);
   if(!number)return Alert.alert(label,'No hay un número de WhatsApp registrado.');
   try{await Linking.openURL(`https://wa.me/${number}?text=${encodeURIComponent(message)}`)}catch{Alert.alert(label,'No se pudo abrir WhatsApp. Verifica que esté instalado o disponible en el teléfono.')}
+}
+async function shareBrandedWhatsApp(phone,message,label='WhatsApp'){
+  const number=whatsappNumber(phone);
+  if(!number)return Alert.alert(label,'No hay un número de WhatsApp registrado.');
+  try{
+    const asset=Asset.fromModule(require('../assets/goy-logo.jpg'));
+    await asset.downloadAsync();
+    const url=asset.localUri||asset.uri;
+    const base={title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',whatsAppNumber:number,useInternalStorage:true};
+    try{await Share.shareSingle({...base,social:Share.Social.WHATSAPP});return}
+    catch(firstError){
+      try{await Share.shareSingle({...base,social:Share.Social.WHATSAPPBUSINESS});return}
+      catch(secondError){throw secondError||firstError}
+    }
+  }catch{
+    await openWhatsApp(phone,message,label);
+    Alert.alert('GOY XPRESS','WhatsApp se abrió con el texto. Si el teléfono no permite adjuntar el logo automáticamente, puedes continuar enviando el mensaje de respaldo.');
+  }
 }
 function recipientData(req){const raw=req?.recipient;return{name:(typeof raw==='string'?raw:raw?.name)||req?.recipientName||req?.receiverName||'Destinatario',phone:req?.recipientPhone||req?.recipientWhatsapp||req?.recipientWhatsApp||raw?.phone||raw?.whatsapp||req?.destinationPhone||req?.receiverPhone||req?.contactPhone||''}}
 function routeLocations(req){
