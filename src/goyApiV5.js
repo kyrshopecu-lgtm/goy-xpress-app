@@ -272,6 +272,10 @@ export async function startLocationTracking(token, code, onUpdated, onError) {
   return () => subscription.remove();
 }
 
+export function registerCourierNovelty(token, code, message) {
+  return courierAction(token, code, 'novelty', {message});
+}
+
 export function updateCourierWait(token, code, elapsedMinutes) {
   return courierAction(token, code, 'wait', {elapsedMinutes});
 }

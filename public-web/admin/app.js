@@ -93,6 +93,7 @@
     if(o.gps?.last) buttons.push(`<button data-gps="${id}">GPS</button>`);
     if(o.wallet?.depositPhoto && !o.wallet?.released) buttons.push(`<button data-release="${id}">Liberar cartera</button>`);
     if(!['Entrega finalizada','Cancelado'].includes(o.status)) buttons.push(`<button data-order="${id}" data-status="Cancelado">Cancelar</button>`);
+    buttons.push(`<button data-delete-order="${id}" title="Eliminar definitivamente esta orden">Eliminar</button>`);
     return `<div class="order-actions">${buttons.join('')}</div>`;
   }
 
@@ -101,13 +102,18 @@
     $('ordersBody').innerHTML=rows.map(o=>{
       const waitAlert=waitNeedsDecision(o)?`<br><strong style="color:#9a6500">⚠ Espera al límite · requiere decisión</strong>`:'';
       const waitExtra=o.wait?.extraMinutes?`<br><small>Espera +${o.wait.extraMinutes} min (${money(o.wait.extraCost)})</small>`:'';
-      return `<tr><td><strong>${escapeHtml(o.id)}</strong><br><small>${escapeHtml(o.cycleKey)}</small></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}${waitAlert}${waitExtra}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`;
+      const novelty=(o.raw.novelties||[])[0]; const noveltyHtml=novelty?`<br><strong style="color:#9a6500">Novedad:</strong> <small>${escapeHtml(novelty.message)}</small>`:'';
+      return `<tr><td><strong>${escapeHtml(o.id)}</strong><br><small>${escapeHtml(o.cycleKey)}</small></td><td>${escapeHtml(o.client)}</td><td>${escapeHtml(o.service)}${waitAlert}${waitExtra}${noveltyHtml}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.courier)}</td><td>${badge(o.status)}</td><td>${money(o.value)}</td><td>${actionButtons(o)}</td></tr>`;
     }).join('')||'<tr><td colspan="8">No hay solicitudes en este estado.</td></tr>';
   }
   function renderCouriers(){ $('courierCards').innerHTML=data.couriers.map(c=>`<article class="courier-card"><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.phone)}</small><p>${badge(c.status)}</p><small>${c.jobs} solicitud(es) asignada(s)</small></article>`).join('')||'<p>Aún no hay mensajeros registrados.</p>'; }
   function renderPayments(){ $('paymentsBody').innerHTML=data.payments.map(p=>`<tr><td>${escapeHtml(p.date)}</td><td>${escapeHtml(p.order)}</td><td>${escapeHtml(p.client)}</td><td>${escapeHtml(p.method)}</td><td>${money(p.value)}</td><td>${badge(p.status)}</td></tr>`).join('')||'<tr><td colspan="6">Aún no hay cobros registrados.</td></tr>'; }
   function renderAll(){renderDashboard();renderClients();renderOrders($('orderFilter')?.value||'all');renderCouriers();renderPayments();}
 
+  let agendaItems=[];
+  function renderAgenda(){const body=$('agendaBody');if(!body)return;const now=Date.now();const pending=agendaItems.filter(x=>x.status!=='Completado');$('agendaSummary').textContent=`${pending.length} pendiente(s) · ${pending.filter(x=>new Date(x.dueAt).getTime()<now).length} vencido(s)`;body.innerHTML=agendaItems.map(item=>{const overdue=item.status!=='Completado'&&new Date(item.dueAt).getTime()<now;return `<tr><td>${escapeHtml(new Date(item.dueAt).toLocaleString('es-EC'))}${overdue?'<br><strong style="color:#b3261e">VENCIDO</strong>':''}</td><td>${item.type==='scheduled_payment'?'Pago programado':'Seguimiento trámite'}</td><td><strong>${escapeHtml(item.clientName||'-')}</strong><br><small>${escapeHtml(item.requestCode||'')}</small></td><td>${escapeHtml(item.title)}${item.pendingDocuments?`<br><small>Documentos: ${escapeHtml(item.pendingDocuments)}</small>`:''}${item.details?`<br><small>${escapeHtml(item.details)}</small>`:''}</td><td>${item.type==='scheduled_payment'?money(item.amount):'-'}</td><td>${badge(item.status)}</td><td><button data-agenda-status="${escapeHtml(item.id)}" data-next-status="${item.status==='Pendiente'?'En proceso':item.status==='En proceso'?'Completado':'Pendiente'}">${item.status==='Completado'?'Reabrir':item.status==='En proceso'?'Completar':'Iniciar'}</button> <button data-agenda-delete="${escapeHtml(item.id)}">Eliminar</button></td></tr>`}).join('')||'<tr><td colspan="7">No hay seguimientos programados.</td></tr>';}
+  async function loadAgenda(){try{const result=await api('/admin/agenda');agendaItems=result.items||[];renderAgenda()}catch(err){console.warn('Agenda',err)}}
+  async function saveAgenda(e){e.preventDefault();try{await api('/admin/agenda',{method:'POST',body:JSON.stringify({type:$('agendaType').value,dueAt:$('agendaDueAt').value,title:$('agendaTitle').value,clientName:$('agendaClient').value,requestCode:$('agendaRequest').value,amount:$('agendaAmount').value,pendingDocuments:$('agendaDocuments').value,details:$('agendaDetails').value})});e.target.reset();await loadAgenda()}catch(err){alert(err.message||'No se pudo guardar el recordatorio')}}
   function renderReportControls(){
     const box=document.querySelector('.report-box'); if(!box||$('cycleSelect')) return;
     const wrap=document.createElement('div'); wrap.className='report-controls';
@@ -118,15 +124,22 @@
     $('printPdf')?.addEventListener('click',()=>window.print());
   }
 
-  function showView(view){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));document.querySelectorAll('.nav-item').forEach(v=>v.classList.toggle('active',v.dataset.view===view));const el=$(view);if(el)el.classList.add('active-view');$('pageTitle').textContent={dashboard:'Dashboard',clients:'Clientes',orders:'Solicitudes',couriers:'Mensajeros',payments:'Cobros',invites:'Invitaciones',reports:'Reportes'}[view]||'GOY XPRESS';if(innerWidth<760)scrollTo({top:0,behavior:'smooth'});}
+  function showView(view){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));document.querySelectorAll('.nav-item').forEach(v=>v.classList.toggle('active',v.dataset.view===view));const el=$(view);if(el)el.classList.add('active-view');$('pageTitle').textContent={dashboard:'Dashboard',clients:'Clientes',orders:'Solicitudes',couriers:'Mensajeros',payments:'Cobros',invites:'Invitaciones',agenda:'Agenda operativa',reports:'Reportes'}[view]||'GOY XPRESS';if(innerWidth<760)scrollTo({top:0,behavior:'smooth'});}
   async function authenticate(email,password){const result=await api('/admin/login',{method:'POST',body:JSON.stringify({email,password})});if(!result.token)throw new Error('El servidor no devolvió una sesión válida');sessionStorage.setItem('goyAdminToken',result.token);}
   async function enterApp(){
     $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
-    try{await loadData();if(liveRefresh)clearInterval(liveRefresh);liveRefresh=setInterval(()=>{if(token()&&!document.hidden)loadData(data.activeCycle).catch(()=>undefined);},12000);}
+    try{await loadData();await loadAgenda();if(liveRefresh)clearInterval(liveRefresh);liveRefresh=setInterval(()=>{if(token()&&!document.hidden)loadData(data.activeCycle).catch(()=>undefined);},12000);}
     catch(err){sessionStorage.removeItem('goyAdminToken');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginMessage').textContent=err.message||'No se pudieron cargar los datos';}
   }
 
   async function updateOrder(code,patch,button){if(button)button.disabled=true;try{await api(`/admin/requests/${encodeURIComponent(code)}`,{method:'PATCH',body:JSON.stringify(patch)});await loadData(data.activeCycle);}catch(err){alert(err.message||'No se pudo actualizar la solicitud');}finally{if(button)button.disabled=false;}}
+  async function deleteOrder(code,button){
+    if(!confirm(`¿Eliminar definitivamente la orden ${code}?\n\nSe quitará de Administración y dejará de aparecer en las apps Cliente y Mensajero. Esta acción no se puede deshacer.`))return;
+    if(button)button.disabled=true;
+    try{await api(`/admin/requests/${encodeURIComponent(code)}`,{method:'DELETE'});await loadData(data.activeCycle);alert(`Orden ${code} eliminada correctamente.`);}
+    catch(err){alert(err.message||'No se pudo eliminar la orden');}
+    finally{if(button)button.disabled=false;}
+  }
   async function decideWait(code,decision,button){
     const continueWaiting=decision==='continue';
     const message=continueWaiting?'¿Autorizar espera adicional? Desde el siguiente minuto se aplicará el recargo configurado.':'¿Indicar al mensajero que deje de esperar y pase a la siguiente entrega?';
@@ -162,13 +175,17 @@
   $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)showView(b.dataset.view);});
   document.addEventListener('click',e=>{
     const go=e.target.closest('[data-go]');if(go){showView(go.dataset.go);return;}
+    const agendaStatus=e.target.closest('[data-agenda-status]');if(agendaStatus){api(`/admin/agenda/${encodeURIComponent(agendaStatus.dataset.agendaStatus)}`,{method:'PATCH',body:JSON.stringify({status:agendaStatus.dataset.nextStatus})}).then(loadAgenda).catch(err=>alert(err.message));return;}
+    const agendaDelete=e.target.closest('[data-agenda-delete]');if(agendaDelete){if(confirm('¿Eliminar este recordatorio de la agenda?'))api(`/admin/agenda/${encodeURIComponent(agendaDelete.dataset.agendaDelete)}`,{method:'DELETE'}).then(loadAgenda).catch(err=>alert(err.message));return;}
     const wait=e.target.closest('[data-wait-decision]');if(wait){decideWait(wait.dataset.waitOrder,wait.dataset.waitDecision,wait);return;}
+    const remove=e.target.closest('[data-delete-order]');if(remove){deleteOrder(remove.dataset.deleteOrder,remove);return;}
     const status=e.target.closest('[data-order][data-status]');if(status){updateOrder(status.dataset.order,{status:status.dataset.status},status);return;}
     const manage=e.target.closest('[data-manage]');if(manage){manageOrder(manage.dataset.manage);return;}
     const quote=e.target.closest('[data-quote]');if(quote){quoteOrder(quote.dataset.quote);return;}
     const gps=e.target.closest('[data-gps]');if(gps){showGps(gps.dataset.gps);return;}
     const release=e.target.closest('[data-release]');if(release){releaseWallet(release.dataset.release,release);}
   });
+  $('agendaForm')?.addEventListener('submit',saveAgenda);$('agendaReload')?.addEventListener('click',loadAgenda);
   $('clientSearch').addEventListener('input',e=>renderClients(e.target.value));
   $('orderFilter').addEventListener('change',e=>renderOrders(e.target.value));
   $('inviteForm').addEventListener('submit',async e=>{e.preventDefault();try{const label=$('inviteName').value.trim()||'Invitación GOY XPRESS';const whatsapp=$('invitePhone').value.trim();const invite=await api('/admin/invites',{method:'POST',body:JSON.stringify({label,whatsapp})});const base=String(config.registrationBaseUrl||'').replace(/\/$/,'');$('inviteLink').value=`${base}/${encodeURIComponent(invite.token)}`;$('inviteResult').classList.remove('hidden');}catch(err){alert(err.message||'No se pudo crear la invitación');}});

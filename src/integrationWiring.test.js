@@ -83,12 +83,12 @@ test('catálogo funciona sin red, no se superpone a la app y acciones del mensaj
   assert.match(courier, /timeoutMs=30000/);
 });
 
-test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados', () => {
+test('Cliente 1.4.3 muestra detalle completo sin identidad del mensajero, evidencias y trámites programados', () => {
   const client = read('src/ClientAppV12.js');
   const api = read('src/goyApiV5.js');
   const config = JSON.parse(read('app.client.json')).expo;
-  assert.equal(config.version, '1.4.2');
-  assert.equal(config.android.versionCode, 16);
+  assert.equal(config.version, '1.4.3');
+  assert.equal(config.android.versionCode, 17);
   assert.match(client, /recipientPhone/);
   assert.match(client, /originMapUrl/);
   assert.match(client, /destinationMapUrl/);
@@ -127,11 +127,11 @@ test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.6 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
+test('Mensajero 1.5.7 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.6');
-  assert.equal(config.android.versionCode, 21);
+  assert.equal(config.version, '1.5.7');
+  assert.equal(config.android.versionCode, 22);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -239,13 +239,35 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   const ndkInstaller = read('scripts/install-android-ndk.sh');
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.2\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.6\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.6-ARM64\.apk/);
+  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.3\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.7\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.7-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
   assert.match(ndkInstaller, /source\.properties/);
   assert.match(cloudflare, /cloudflare-login-v2\.js/);
   assert.match(cloudflare, /cloudflare-password\.mjs/);
+});
+
+test('WhatsApp transaccional usa logo GOY para mensajero, cliente y destinatario', () => {
+  const wa = read('server/whatsappNotifications.js'), adminCreate = read('api/admin-create-request.js'), edge = read('cloudflare-worker-v2.js');
+  assert.match(wa, /GOY_WA_ORDER_LOGO_URL/); assert.match(wa, /\/assets\/goy-logo\.jpg/);
+  assert.match(wa, /notifyClientOrderCreated/); assert.match(wa, /notifyRecipientOrderCreated/);
+  assert.match(wa, /headerImageUrl:cfg\.orderLogoUrl/);
+  assert.match(adminCreate, /whatsapp\.client/); assert.match(adminCreate, /whatsapp\.recipient/);
+  assert.match(edge, /GOY_WA_CLIENT_ORDER_TEMPLATE/); assert.match(edge, /GOY_WA_RECIPIENT_ORDER_TEMPLATE/); assert.match(edge, /GOY_WA_ORDER_LOGO_URL/);
+});
+test('Asignación administrativa avisa al mensajero por push y WhatsApp una sola vez', () => {
+  const edge = read('cloudflare-entry.js');
+  assert.match(edge, /notifyCourierAssigned/); assert.match(edge, /safeNotify\('courier-assigned'/);
+  assert.match(edge, /newlyAssigned/); assert.match(edge, /current\.courierId/);
+  assert.match(edge, /Ingresa a la app para revisar los detalles/);
+});
+
+test('Mensajero registra novedades y Cliente las visualiza sin identidad personal', () => {
+  const courier=read('src/CourierAppV18.js'),client=read('src/ClientAppV12.js'),api=read('src/goyApiV5.js'),backend=read('server/server-v5.js');
+  assert.match(courier,/Registrar novedad/);assert.match(courier,/\/novelty/);assert.match(courier,/Novedades de la orden/);
+  assert.match(client,/NOVEDADES DE LA ORDEN/);assert.match(client,/item\.message/);
+  assert.match(api,/registerCourierNovelty/);assert.match(backend,/authorLabel:'Mensajero GOY XPRESS'/);assert.match(backend,/courier_novelty/);
 });

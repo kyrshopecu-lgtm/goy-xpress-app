@@ -615,3 +615,59 @@ test('panel administrativo crea Trámites programados con fecha, hora y tipo de 
   assert.match(edge,/procedureDetail/);
   new vm.Script(admin,{filename:'public-web/admin/modern-admin.js'});
 });
+
+test('Guía QR usa generador local y refleja los campos operativos actuales', () => {
+  const publicGuide=read('public-web/admin/tracking-labels.js');
+  const mirrorGuide=read('admin-web/tracking-labels.js');
+  assert.equal(publicGuide,mirrorGuide);
+  assert.match(publicGuide,/\/admin\/vendor\/qrcode\.min\.js/);
+  assert.doesNotMatch(publicGuide,/cdn\.jsdelivr\.net/);
+  assert.match(publicGuide,/deliveryAddress/);
+  assert.match(publicGuide,/recipientPhone/);
+  assert.match(publicGuide,/scheduledDate/);
+  assert.match(publicGuide,/serviceDetail/);
+  assert.match(publicGuide,/Detalle operativo/);
+  assert.match(publicGuide,/new QRCode/);
+  new vm.Script(publicGuide,{filename:'public-web/admin/tracking-labels.js'});
+});
+
+test('Ecosistema conserva detalle operativo y programación entre administración y apps', () => {
+  const admin=read('public-web/admin/modern-admin.js');
+  const edge=read('cloudflare-entry.js');
+  const client=read('src/ClientAppV12.js');
+  const courier=read('src/CourierAppV18.js');
+  for(const field of ['serviceDetail','scheduledDate','scheduledTime','scheduleType','recipientPhone']) {
+    assert.match(admin,new RegExp(field));
+    assert.match(edge,new RegExp(field));
+  }
+  assert.match(client,/scheduledDate/);
+  assert.match(client,/scheduledTime/);
+  assert.match(courier,/serviceDetail/);
+  assert.match(courier,/recipientPhone/);
+});
+
+test('Administración puede eliminar una orden y retirarla del ecosistema', () => {
+  const publicAdmin=read('public-web/admin/app.js');
+  const mirrorAdmin=read('admin-web/app.js');
+  const edge=read('cloudflare-entry.js');
+  const backend=read('server/server-v5.js');
+  assert.equal(publicAdmin,mirrorAdmin);
+  assert.match(publicAdmin,/data-delete-order/);
+  assert.match(publicAdmin,/method:'DELETE'/);
+  assert.match(publicAdmin,/Eliminar definitivamente la orden/);
+  assert.match(publicAdmin,/apps Cliente y Mensajero/);
+  assert.match(edge,/requestMatch && request\.method === 'DELETE'/);
+  assert.match(edge,/verifyAdminToken/);
+  assert.match(edge,/state\.requests\.splice\(index, 1\)/);
+  assert.match(backend,/req\.method==='DELETE'&&pathname\.startsWith\('\/admin\/requests\/'\)/);
+  assert.match(backend,/data\.requests\.splice\(index,1\)/);
+  new vm.Script(publicAdmin,{filename:'public-web/admin/app.js'});
+});
+
+test('Agenda administrativa guarda seguimientos de trámites y pagos programados', () => {
+  const html=read('public-web/admin/index.html'),admin=read('public-web/admin/app.js'),edge=read('cloudflare-entry.js');
+  assert.match(html,/id="agenda"/);assert.match(html,/Seguimiento de trámite/);assert.match(html,/Pago programado/);assert.match(html,/Documentos pendientes/);
+  assert.match(admin,/\/admin\/agenda/);assert.match(admin,/data-agenda-status/);assert.match(admin,/Completado/);assert.match(admin,/VENCIDO/);
+  assert.match(edge,/agendaItems/);assert.match(edge,/procedure_followup/);assert.match(edge,/scheduled_payment/);assert.match(edge,/pendingDocuments/);
+  new vm.Script(admin,{filename:'public-web/admin/app.js'});
+});

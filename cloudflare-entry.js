@@ -1,3 +1,5 @@
+import process from 'node:process';
+import {notifyCourierAssigned, safeNotify} from './server/whatsappNotifications.js';
 import { neon } from '@neondatabase/serverless';
 import worker from './cloudflare-worker-v2.js';
 import {ensureStateTable, readVersionedState, writeVersionedState} from './cloudflare-versioned-state.js';
@@ -48,7 +50,7 @@ async function verifyAdminToken(request, env) {
 
 function normalizeState(state) {
   const normalized = state && typeof state === 'object' ? state : {};
-  for (const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices']) {
+  for (const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','agendaItems']) {
     if (!Array.isArray(normalized[key])) normalized[key] = [];
   }
   return normalized;
@@ -335,9 +337,17 @@ async function adminData(request, env, optionsOnly = false) {
   }
 }
 
+function syncWhatsAppEnv(env) {
+  for (const key of ['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_GRAPH_VERSION','GOY_WA_TEMPLATE_LANG','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_ORDER_LOGO_URL']) {
+    if (env[key] === undefined || env[key] === null) delete process.env[key];
+    else process.env[key] = String(env[key]);
+  }
+}
+
 async function adminUpdateRequest(request, env, code, ctx) {
   if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
   try {
+    syncWhatsAppEnv(env);
     const body = await request.json().catch(() => ({}));
     const state = await readState(env);
     const index = state.requests.findIndex(item => String(item.code || item.id) === String(code));
@@ -415,21 +425,69 @@ async function adminUpdateRequest(request, env, code, ctx) {
     state.requests[index] = updated;
     await writeState(env, state);
 
+    let courierWhatsapp = null;
     if (assignedCourier) {
-      const task = sendExpoPush(assignedCourier, {
+      const newlyAssigned = String(current.courierId || '') !== String(assignedCourier.id || '');
+      const pushTask = sendExpoPush(assignedCourier, {
         title:'Nueva entrega asignada',
-        body:`Tienes una nueva operación GOY XPRESS: ${updated.code || updated.id || code}.`,
+        body:`Tienes una nueva operación GOY XPRESS: ${updated.code || updated.id || code}. Ingresa a la app para revisar los detalles.`,
         type:'courier_assignment',
         code:updated.code || updated.id || code,
       });
-      if (ctx?.waitUntil) ctx.waitUntil(task);
-      else await task;
+      if (newlyAssigned) {
+        const whatsappTask = safeNotify('courier-assigned', () => notifyCourierAssigned({request:updated, courier:assignedCourier}));
+        if (ctx?.waitUntil) {
+          ctx.waitUntil(pushTask);
+          ctx.waitUntil(whatsappTask);
+          courierWhatsapp = {queued:true};
+        } else {
+          await pushTask;
+          courierWhatsapp = await whatsappTask;
+        }
+      } else if (ctx?.waitUntil) ctx.waitUntil(pushTask);
+      else await pushTask;
     }
 
-    return json({request:sanitizeRequest(updated)}, 200);
+    return json({request:sanitizeRequest(updated), ...(courierWhatsapp ? {whatsapp:{courier:courierWhatsapp}} : {})}, 200);
   } catch (error) {
     console.error('GOY XPRESS native admin update', error);
     return json({error:error.message || 'No se pudo actualizar la solicitud.'}, 503);
+  }
+}
+
+
+async function adminAgenda(request, env, itemId = '') {
+  if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
+  try {
+    const state=await readState(env);state.agendaItems=Array.isArray(state.agendaItems)?state.agendaItems:[];
+    if(request.method==='GET') return json({items:state.agendaItems.slice().sort((a,b)=>String(a.dueAt).localeCompare(String(b.dueAt)))},200);
+    if(request.method==='POST'){
+      const body=await request.json().catch(()=>({})),title=String(body.title||'').trim(),dueAt=String(body.dueAt||'').trim();
+      if(!title||!dueAt)return json({error:'Completa el asunto y la fecha/hora.'},400);
+      const item={id:crypto.randomUUID(),type:['procedure_followup','scheduled_payment'].includes(body.type)?body.type:'procedure_followup',title,dueAt,clientId:String(body.clientId||''),clientName:String(body.clientName||''),requestCode:String(body.requestCode||''),details:String(body.details||'').trim(),pendingDocuments:String(body.pendingDocuments||'').trim(),amount:Math.max(0,Number(body.amount||0)),status:'Pendiente',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+      state.agendaItems.unshift(item);await writeState(env,state);return json({item},201);
+    }
+    const index=state.agendaItems.findIndex(item=>String(item.id)===String(itemId));if(index<0)return json({error:'Recordatorio no encontrado.'},404);
+    if(request.method==='DELETE'){state.agendaItems.splice(index,1);await writeState(env,state);return json({ok:true},200);}
+    if(request.method==='PATCH'){const body=await request.json().catch(()=>({})),current=state.agendaItems[index];const patch={updatedAt:new Date().toISOString()};for(const key of ['title','dueAt','clientId','clientName','requestCode','details','pendingDocuments'])if(Object.prototype.hasOwnProperty.call(body,key))patch[key]=String(body[key]||'').trim();if(['Pendiente','En proceso','Completado'].includes(body.status))patch.status=body.status;if(['procedure_followup','scheduled_payment'].includes(body.type))patch.type=body.type;if(body.amount!==undefined)patch.amount=Math.max(0,Number(body.amount||0));state.agendaItems[index]={...current,...patch};await writeState(env,state);return json({item:state.agendaItems[index]},200);}
+    return json({error:'Método no permitido.'},405);
+  }catch(error){console.error('GOY XPRESS agenda',error);return json({error:error.message||'No se pudo actualizar la agenda.'},503);}
+}
+
+async function adminDeleteRequest(request, env, code) {
+  if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
+  try {
+    const state = await readState(env);
+    const index = state.requests.findIndex(item => String(item.code || item.id) === String(code));
+    if (index < 0) return json({error:'Solicitud no encontrada.'}, 404);
+    const removed = state.requests[index];
+    state.requests.splice(index, 1);
+    if (Array.isArray(state.walletEntries)) state.walletEntries = state.walletEntries.filter(item => String(item.requestCode || item.code || item.order || '') !== String(code));
+    await writeState(env, state);
+    return json({ok:true, deleted:String(removed.code || removed.id || code)}, 200);
+  } catch (error) {
+    console.error('GOY XPRESS native admin delete', error);
+    return json({error:error.message || 'No se pudo eliminar la solicitud.'}, 503);
   }
 }
 
@@ -461,6 +519,9 @@ export default {
     if (path === '/api/admin/event-state' && request.method === 'GET') {
       return adminEventState(request, env);
     }
+    if (path === '/api/admin/agenda' && ['GET','POST'].includes(request.method)) return adminAgenda(request, env);
+    const agendaMatch=path.match(/^\/api\/admin\/agenda\/([^/]+)$/);
+    if (agendaMatch && ['PATCH','DELETE'].includes(request.method)) return adminAgenda(request, env, decodeURIComponent(agendaMatch[1]));
     const evidenceMatch = path.match(/^\/api\/admin\/requests\/([^/]+)\/evidence$/);
     if (evidenceMatch && request.method === 'GET') {
       return adminEvidence(request, env, decodeURIComponent(evidenceMatch[1]));
@@ -468,6 +529,9 @@ export default {
     const requestMatch = path.match(/^\/api\/admin\/requests\/([^/]+)$/);
     if (requestMatch && request.method === 'PATCH') {
       return adminUpdateRequest(request, env, decodeURIComponent(requestMatch[1]), ctx);
+    }
+    if (requestMatch && request.method === 'DELETE') {
+      return adminDeleteRequest(request, env, decodeURIComponent(requestMatch[1]));
     }
 
     const deliveryMatch = path.match(/^\/api\/requests\/([^/]+)\/delivery$/);

@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState}from'react';
-import{Alert,Image,Linking,Modal,Platform,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View}from'react-native';
+import{Alert,Image,Linking,Modal,Platform,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,TextInput,View}from'react-native';
 import AsyncStorage from'@react-native-async-storage/async-storage';
 import{Asset}from'expo-asset';
 import * as FileSystem from'expo-file-system';
@@ -30,12 +30,12 @@ async function brandedLogoFileUri(){
   const source=asset.localUri||asset.uri;
   if(!source)throw new Error('No se pudo preparar el logotipo GOY XPRESS.');
   const dir=`${FileSystem.cacheDirectory}goy-whatsapp/`;
-  const info=await FileSystem.getInfoAsync(dir);
-  if(!info.exists)await FileSystem.makeDirectoryAsync(dir,{intermediates:true});
+  const dirInfo=await FileSystem.getInfoAsync(dir);
+  if(!dirInfo.exists)await FileSystem.makeDirectoryAsync(dir,{intermediates:true});
   const target=`${dir}goy-xpress-logo.jpg`;
   await FileSystem.copyAsync({from:source,to:target});
   const saved=await FileSystem.getInfoAsync(target);
-  if(!saved.exists||!saved.size)throw new Error('No se pudo crear el archivo del logotipo.');
+  if(!saved.exists||!saved.size)throw new Error('No se pudo crear el JPG del logotipo.');
   return target;
 }
 async function installedWhatsappTargets(){
@@ -52,24 +52,24 @@ async function shareBrandedWhatsApp(phone,message,label='WhatsApp'){
   if(!number)return Alert.alert(label,'No hay un número de WhatsApp registrado.');
   try{
     const url=await brandedLogoFileUri();
-    const media={title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',useInternalStorage:true,failOnCancel:false};
+    const media={title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',useInternalStorage:true};
     const targets=await installedWhatsappTargets();
     if(targets.length===1){
       const result=await Share.shareSingle({...media,social:targets[0]});
-      if(result?.success===false&&!result?.dismissedAction)throw new Error(result?.message||'WhatsApp rechazó la imagen.');
+      if(result?.success===false)throw new Error(result?.message||'WhatsApp rechazó la imagen.');
       return;
     }
-    const result=await Share.open(media);
+    const result=await Share.open({...media,failOnCancel:false});
     if(result?.success===false&&!result?.dismissedAction)throw new Error(result?.message||'No se pudo compartir el logotipo.');
   }catch(error){
     try{
       const url=await brandedLogoFileUri();
-      const result=await Share.open({title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',useInternalStorage:true,failOnCancel:false});
+      const result=await Share.open({title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',failOnCancel:false,useInternalStorage:true});
       if(result?.success!==false||result?.dismissedAction)return;
     }catch{}
     Alert.alert(
       'No se pudo adjuntar el logo',
-      'Para conservar la imagen, GOY XPRESS no abrirá un mensaje de solo texto. Verifica que WhatsApp esté instalado y vuelve a intentar.'
+      'Para conservar la imagen no abrirá un mensaje de solo texto. Verifica que WhatsApp esté instalado y vuelve a intentar.',
     );
   }
 }
@@ -239,7 +239,7 @@ function ActionCard({token,req,stage,done,busy,tracking,onWork,onTrack}){
   return <Card><SectionHead letter="3" kicker="ACCIÓN ACTUAL" title="Completar entrega"/><Text style={s.note}>Toma una foto amplia y nítida como evidencia principal antes de cerrar la operación.</Text><Btn title={busy?'Procesando…':'Finalizar entrega con foto'} green disabled={busy} onPress={()=>onWork(()=>evidence(token,req.code,'delivery'))}/><Btn title="Agregar otra foto de entrega" outline disabled={busy} onPress={()=>onWork(()=>extraPhoto(token,req.code,'delivery'))}/>{Number(req.totalToCollect||0)>0?<><Btn title="Registrar depósito con foto" outline disabled={busy} onPress={()=>onWork(()=>evidence(token,req.code,'deposit-evidence',req.totalToCollect))}/><Btn title="Agregar otra foto del depósito" outline disabled={busy} onPress={()=>onWork(()=>extraPhoto(token,req.code,'deposit'))}/></>:null}</Card>
 }
 
-function Detail({token,job,onBack,onUpdated}){const[req,setReq]=useState(job),[busy,setBusy]=useState(false),[tracking,setTracking]=useState(false),stop=useRef(null);useEffect(()=>()=>stop.current?.(),[]);const apply=v=>{if(v){setReq(v);onUpdated(v)}return v};const work=async fn=>{if(busy)return null;setBusy(true);try{return apply(await fn())}catch(e){Alert.alert('Operación',e.message);return null}finally{setBusy(false)}};const stage=req.status==='Entrega finalizada'?3:req.status==='En camino'?2:req.status==='Recogido'?1:0,done=['Entrega finalizada','Cancelado'].includes(req.status);const track=async()=>{if(tracking){stop.current?.();stop.current=null;setTracking(false);return}try{stop.current=await startLocationTracking(token,req.code,apply,e=>Alert.alert('GPS',e.message));setTracking(true)}catch(e){Alert.alert('GPS',e.message)}};
+function Detail({token,job,onBack,onUpdated}){const[req,setReq]=useState(job),[busy,setBusy]=useState(false),[tracking,setTracking]=useState(false),[novelty,setNovelty]=useState(''),stop=useRef(null);useEffect(()=>()=>stop.current?.(),[]);const apply=v=>{if(v){setReq(v);onUpdated(v)}return v};const work=async fn=>{if(busy)return null;setBusy(true);try{return apply(await fn())}catch(e){Alert.alert('Operación',e.message);return null}finally{setBusy(false)}};const stage=req.status==='Entrega finalizada'?3:req.status==='En camino'?2:req.status==='Recogido'?1:0,done=['Entrega finalizada','Cancelado'].includes(req.status);const track=async()=>{if(tracking){stop.current?.();stop.current=null;setTracking(false);return}try{stop.current=await startLocationTracking(token,req.code,apply,e=>Alert.alert('GPS',e.message));setTracking(true)}catch(e){Alert.alert('GPS',e.message)}};
   return <View><View style={s.detailHead}><Pressable onPress={onBack} style={s.back}><Text style={s.backText}>‹</Text></Pressable><View style={s.flex}><Text style={s.kicker}>OPERACIÓN ACTIVA</Text><Text style={s.title}>{req.code}</Text><Status value={req.status}/></View></View>
   <View style={s.steps}><Step n="1" title="Retiro" active={stage===0} done={stage>0}/><Step n="2" title="Ruta" active={stage===1} done={stage>1}/><Step n="3" title="Entrega" active={stage===2} done={stage>2}/></View>
   <RouteCard req={req} stage={stage}/>
@@ -252,6 +252,7 @@ function Detail({token,job,onBack,onUpdated}){const[req,setReq]=useState(job),[b
   <ClientCard token={token} req={req} stage={stage} done={done}/>
   <RecipientCard req={req} stage={stage} done={done}/>
   <EvidenceGallery req={req}/>
+  <Card><SectionHead letter="N" kicker="HISTORIAL" title="Novedades de la orden"/>{(req.novelties||[]).length?(req.novelties||[]).map(item=><View key={item.id||item.at} style={s.noticeBox}><Text style={s.noticeTitle}>{item.authorLabel||'Mensajero GOY XPRESS'}</Text><Text style={s.note}>{item.message}</Text><Text style={s.small}>{item.at?new Date(item.at).toLocaleString('es-EC'):'Ahora'}</Text></View>):<Text style={s.note}>No hay novedades registradas.</Text>}<TextInput value={novelty} onChangeText={setNovelty} multiline maxLength={1200} placeholder="Escribe una novedad: falta documento, institución cerrada, reprogramación..." style={[s.input,{minHeight:92,textAlignVertical:'top'}]}/><Btn title={busy?'Guardando…':'Registrar novedad'} green disabled={busy||!novelty.trim()} onPress={()=>work(async()=>{const updated=await api(`/requests/${encodeURIComponent(req.code)}/novelty`,{method:'POST',token,body:{message:novelty.trim()}});setNovelty('');return updated})}/></Card>
   <Card><SectionHead letter="S" kicker="SOPORTE" title="¿Tienes una novedad?"/><Text style={s.note}>Soporte puede ayudarte con direcciones, datos faltantes o novedades de la operación.</Text><Btn title="Escribir a soporte GOY XPRESS" green onPress={()=>openWhatsApp(SUPPORT,`GOY XPRESS - Novedad\nOrden: ${req.code}\nCliente: ${req.customer||'-'}\nDetalle:`,'Soporte')}/></Card>
   </View>}
 
@@ -275,6 +276,7 @@ const s=StyleSheet.create({
   packagePhoto:{width:'100%',height:220,borderRadius:14,backgroundColor:'#EDF3F5',marginTop:12},serviceDetailCard:{borderColor:'#C9E9F4'},scheduleBox:{backgroundColor:'#F1FBF3',borderWidth:1,borderColor:'#CBE8D1',borderRadius:14,padding:12,marginTop:12,marginBottom:4},scheduleTitle:{color:C.green,fontSize:10,fontWeight:'900',letterSpacing:.8,marginBottom:4},serviceDetailMain:{backgroundColor:C.soft,borderRadius:14,padding:12,marginTop:12,borderWidth:1,borderColor:'#BFE7F5'},serviceDetailTitle:{color:C.cyan,fontSize:9,fontWeight:'900',letterSpacing:.8},serviceDetailText:{color:C.ink,fontSize:14,fontWeight:'800',lineHeight:20,marginTop:5},adminNotesBox:{backgroundColor:'#FFF8E7',borderRadius:14,padding:12,marginTop:12,borderWidth:1,borderColor:'#F0D89A'},adminNotesTitle:{color:'#8A6200',fontSize:9,fontWeight:'900',letterSpacing:.8},adminNotesText:{color:'#6A520B',fontSize:13,fontWeight:'800',lineHeight:19,marginTop:5},depositCard:{borderColor:'#C9E9F4',backgroundColor:'#FCFEFF'},depositHighlight:{backgroundColor:C.navy,borderRadius:16,padding:14,marginTop:12},depositLabel:{color:'#8CE6FF',fontSize:9,fontWeight:'900',letterSpacing:1},depositValue:{color:C.white,fontSize:27,fontWeight:'900',marginTop:3},depositSectionTitle:{color:C.cyan,fontWeight:'900',fontSize:10,letterSpacing:.7,marginTop:15,marginBottom:2},depositBankRow:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:'#F7FAFB',borderWidth:1,borderColor:C.line,borderRadius:14,padding:11,marginTop:8},depositBankNumber:{width:27,height:27,borderRadius:14,backgroundColor:C.green,alignItems:'center',justifyContent:'center'},depositBankNumberText:{color:C.white,fontWeight:'900',fontSize:11},depositBankText:{flex:1,color:C.ink,fontWeight:'900',fontSize:14,lineHeight:19},stopRoute:{borderWidth:1,borderColor:C.line,borderRadius:15,padding:12,marginTop:10,backgroundColor:'#FAFCFD'},stopRouteTitle:{color:C.cyan,fontWeight:'900',fontSize:10,letterSpacing:.5},
   card:{backgroundColor:C.white,borderWidth:1,borderColor:C.line,borderRadius:20,padding:16,marginBottom:12,shadowColor:C.navy,shadowOpacity:.06,shadowRadius:9,elevation:2},jobCard:{padding:17},arrivalCard:{borderColor:'#9ADCB1',backgroundColor:'#FBFFFC'},waitAlert:{borderColor:'#F1C56D',backgroundColor:'#FFF9EA'},done:{backgroundColor:'#EFFAF2',borderColor:'#B9E4C3'},doneText:{color:C.green,fontWeight:'900',fontSize:16},routeCard:{padding:17,borderColor:'#C9E9F4'},collectCard:{backgroundColor:'#FFF9F7',borderColor:'#F2D9D0'},
   sectionHead:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:2},sectionIcon:{width:34,height:34,borderRadius:11,backgroundColor:C.navy,alignItems:'center',justifyContent:'center'},sectionIconText:{color:'#8CE6FF',fontWeight:'900',fontSize:13},kicker:{color:C.cyan,fontWeight:'900',fontSize:9,letterSpacing:1},title:{color:C.ink,fontSize:22,fontWeight:'900'},h2:{color:C.ink,fontSize:18,fontWeight:'900',marginTop:3},contactName:{color:C.navy,fontSize:17,fontWeight:'900',marginTop:12},note:{color:C.muted,fontSize:12,lineHeight:18,marginTop:6},line:{color:C.muted,fontSize:12,lineHeight:19,marginTop:5},bold:{fontWeight:'900',color:C.ink},
+  input:{borderWidth:1,borderColor:C.line,borderRadius:14,padding:12,marginTop:10,backgroundColor:C.white,color:C.ink,fontSize:14},
   btn:{backgroundColor:C.cyan,borderRadius:14,paddingHorizontal:14,paddingVertical:13,minHeight:50,justifyContent:'center',alignItems:'center',marginTop:9},btnText:{color:C.white,fontWeight:'900',textAlign:'center',fontSize:13},green:{backgroundColor:C.green},danger:{backgroundColor:C.red},outline:{backgroundColor:C.white,borderWidth:1,borderColor:'#BCD4DE'},outlineText:{color:C.navy},disabled:{opacity:.43},row:{flexDirection:'row',gap:8},flex:{flex:1},between:{flexDirection:'row',justifyContent:'space-between',gap:10},
   code:{color:C.cyan,fontWeight:'900',fontSize:12},badge:{borderRadius:999,paddingHorizontal:9,paddingVertical:6,alignSelf:'flex-start'},badgeText:{fontWeight:'900',fontSize:9},open:{color:C.cyan,fontWeight:'900',fontSize:11,textAlign:'right',marginTop:14},detailHead:{flexDirection:'row',gap:12,alignItems:'center',marginBottom:12},back:{width:44,height:44,borderRadius:14,backgroundColor:C.white,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center'},backText:{fontSize:34,color:C.navy,lineHeight:37},
   steps:{flexDirection:'row',backgroundColor:C.white,borderRadius:18,padding:12,marginBottom:12,borderWidth:1,borderColor:C.line},step:{flex:1,alignItems:'center'},stepDot:{width:31,height:31,borderRadius:16,backgroundColor:'#DDE7EB',alignItems:'center',justifyContent:'center'},stepActive:{backgroundColor:C.cyan},stepDone:{backgroundColor:C.green},stepDotText:{color:C.white,fontWeight:'900'},stepText:{fontSize:9,color:C.muted,fontWeight:'800',marginTop:5},stepTextOn:{color:C.navy},
