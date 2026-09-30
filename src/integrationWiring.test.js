@@ -127,11 +127,11 @@ test('Cliente 1.4.3 muestra detalle completo sin identidad del mensajero, eviden
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.7 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
+test('Mensajero 1.5.8 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.7');
-  assert.equal(config.android.versionCode, 22);
+  assert.equal(config.version, '1.5.8');
+  assert.equal(config.android.versionCode, 23);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -271,3 +271,6 @@ test('Mensajero registra novedades y Cliente las visualiza sin identidad persona
   assert.match(client,/NOVEDADES DE LA ORDEN/);assert.match(client,/item\.message/);
   assert.match(api,/registerCourierNovelty/);assert.match(backend,/authorLabel:'Mensajero GOY XPRESS'/);assert.match(backend,/courier_novelty/);
 });
+
+
+test('Mensajero no confunde timeout con cuenta pendiente de aprobación',()=>{const courier=read('src/CourierAppV18.js');assert.match(courier,/connectionError/);assert.match(courier,/No se pudo actualizar la conexión/);assert.match(courier,/Tu estado de aprobación no cambiará por un fallo de internet/);assert.match(courier,/profile&&!profile\.approved/);});
