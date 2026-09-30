@@ -127,11 +127,11 @@ test('Cliente 1.4.2 muestra detalle completo, evidencias y trámites programados
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.6 prioriza imagen y caption en WhatsApp', () => {
+test('Mensajero 1.5.7 prioriza JPG físico y caption en WhatsApp', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.6');
-  assert.equal(config.android.versionCode, 21);
+  assert.equal(config.version, '1.5.7');
+  assert.equal(config.android.versionCode, 22);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -178,9 +178,9 @@ test('Mensajero 1.5.6 prioriza imagen y caption en WhatsApp', () => {
   assert.match(courier, /<ServiceDetailCard req=\{req\}\/>/);
   assert.match(courier, /shareBrandedWhatsApp/);
   assert.match(courier, /Asset\.fromModule\(require\('\.\.\/assets\/goy-logo\.jpg'\)\)/);
-  assert.match(courier, /FileSystem\.readAsStringAsync/);
-  assert.match(courier, /FileSystem\.EncodingType\.Base64/);
-  assert.match(courier, /data:image\/jpeg;base64/);
+  assert.match(courier, /FileSystem\.cacheDirectory/);
+  assert.match(courier, /FileSystem\.copyAsync/);
+  assert.match(courier, /goy-xpress-logo\.jpg/);
   assert.match(courier, /Share\.isPackageInstalled/);
   assert.match(courier, /com\.whatsapp\.w4b/);
   assert.match(courier, /Share\.Social\.WHATSAPPBUSINESS/);
@@ -238,8 +238,8 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(roles, /CLIENTE-PARCHE-v1\.4\.2\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.6\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.6-ARM64\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.7\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.7-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
