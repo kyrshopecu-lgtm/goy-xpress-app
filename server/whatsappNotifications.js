@@ -19,7 +19,7 @@ function config() {
     clientDeliveredTemplate: String(process.env.GOY_WA_CLIENT_DELIVERED_TEMPLATE || 'goy_entrega_finalizada_cliente'),
     prospectTemplate: String(process.env.GOY_WA_PROSPECT_TEMPLATE || ''),
     prospectMediaHeader: String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER || '').toLowerCase() === 'true',
-    orderLogoUrl: String(process.env.GOY_WA_ORDER_LOGO_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/goy-whatsapp-logo.jpg').trim(),
+    orderLogoUrl: String(process.env.GOY_WA_ORDER_LOGO_URL || 'https://goy-xpress-app.kyrshopecu.workers.dev/assets/goy-logo.jpg').trim(),
     clientOrderTemplate: String(process.env.GOY_WA_CLIENT_ORDER_TEMPLATE || 'goy_nueva_orden_cliente'),
     recipientOrderTemplate: String(process.env.GOY_WA_RECIPIENT_ORDER_TEMPLATE || 'goy_nueva_orden_destinatario'),
   };
