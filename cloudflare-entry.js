@@ -50,7 +50,7 @@ async function verifyAdminToken(request, env) {
 
 function normalizeState(state) {
   const normalized = state && typeof state === 'object' ? state : {};
-  for (const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices']) {
+  for (const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','agendaItems']) {
     if (!Array.isArray(normalized[key])) normalized[key] = [];
   }
   return normalized;
@@ -456,6 +456,24 @@ async function adminUpdateRequest(request, env, code, ctx) {
 }
 
 
+async function adminAgenda(request, env, itemId = '') {
+  if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
+  try {
+    const state=await readState(env);state.agendaItems=Array.isArray(state.agendaItems)?state.agendaItems:[];
+    if(request.method==='GET') return json({items:state.agendaItems.slice().sort((a,b)=>String(a.dueAt).localeCompare(String(b.dueAt)))},200);
+    if(request.method==='POST'){
+      const body=await request.json().catch(()=>({})),title=String(body.title||'').trim(),dueAt=String(body.dueAt||'').trim();
+      if(!title||!dueAt)return json({error:'Completa el asunto y la fecha/hora.'},400);
+      const item={id:crypto.randomUUID(),type:['procedure_followup','scheduled_payment'].includes(body.type)?body.type:'procedure_followup',title,dueAt,clientId:String(body.clientId||''),clientName:String(body.clientName||''),requestCode:String(body.requestCode||''),details:String(body.details||'').trim(),pendingDocuments:String(body.pendingDocuments||'').trim(),amount:Math.max(0,Number(body.amount||0)),status:'Pendiente',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+      state.agendaItems.unshift(item);await writeState(env,state);return json({item},201);
+    }
+    const index=state.agendaItems.findIndex(item=>String(item.id)===String(itemId));if(index<0)return json({error:'Recordatorio no encontrado.'},404);
+    if(request.method==='DELETE'){state.agendaItems.splice(index,1);await writeState(env,state);return json({ok:true},200);}
+    if(request.method==='PATCH'){const body=await request.json().catch(()=>({})),current=state.agendaItems[index];const patch={updatedAt:new Date().toISOString()};for(const key of ['title','dueAt','clientId','clientName','requestCode','details','pendingDocuments'])if(Object.prototype.hasOwnProperty.call(body,key))patch[key]=String(body[key]||'').trim();if(['Pendiente','En proceso','Completado'].includes(body.status))patch.status=body.status;if(['procedure_followup','scheduled_payment'].includes(body.type))patch.type=body.type;if(body.amount!==undefined)patch.amount=Math.max(0,Number(body.amount||0));state.agendaItems[index]={...current,...patch};await writeState(env,state);return json({item:state.agendaItems[index]},200);}
+    return json({error:'Método no permitido.'},405);
+  }catch(error){console.error('GOY XPRESS agenda',error);return json({error:error.message||'No se pudo actualizar la agenda.'},503);}
+}
+
 async function adminDeleteRequest(request, env, code) {
   if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
   try {
@@ -501,6 +519,9 @@ export default {
     if (path === '/api/admin/event-state' && request.method === 'GET') {
       return adminEventState(request, env);
     }
+    if (path === '/api/admin/agenda' && ['GET','POST'].includes(request.method)) return adminAgenda(request, env);
+    const agendaMatch=path.match(/^\/api\/admin\/agenda\/([^/]+)$/);
+    if (agendaMatch && ['PATCH','DELETE'].includes(request.method)) return adminAgenda(request, env, decodeURIComponent(agendaMatch[1]));
     const evidenceMatch = path.match(/^\/api\/admin\/requests\/([^/]+)\/evidence$/);
     if (evidenceMatch && request.method === 'GET') {
       return adminEvidence(request, env, decodeURIComponent(evidenceMatch[1]));
