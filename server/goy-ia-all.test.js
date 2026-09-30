@@ -1,0 +1,3 @@
+'use strict';const test=require('node:test');const assert=require('node:assert/strict');const {configFromEnv,configured}=require('./whatsapp-business');const {metrics,ensureCrm}=require('./sales-crm');
+test('WhatsApp stays disabled without private credentials',()=>{assert.equal(configured(configFromEnv({})),false);});
+test('CRM normalizes legacy state safely',()=>{const d=ensureCrm({users:[]});assert.deepEqual(metrics(d).byStatus,{});assert.ok(Array.isArray(d.prospects));});
