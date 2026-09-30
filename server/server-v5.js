@@ -550,6 +550,21 @@ async function buildClientRequest(body, user, config, mapsFetch) {
     request.totalToCollect=calculateCollectTotal({productValue:request.productValue,deliveryCost:request.serviceCost,cashOnDelivery:request.cashOnDelivery,deliveryPayer:request.deliveryPayer});
     request.wallet={collected:Number(request.totalToCollect||0),depositPhoto:null,released:Number(request.totalToCollect||0)===0};
   } else if (kind === 'procedure') {
+    const scheduled=String(body.procedureMode||'')==='scheduled';
+    const procedureAddress=String(body.procedureAddress||body.destinationAddress||'').trim();
+    const procedureDetail=String(body.procedureDetail||body.details||'').trim();
+    if(scheduled){
+      const scheduleType=body.scheduleType==='delivery'?'delivery':'pickup';
+      const scheduledDate=String(body.scheduledDate||'').trim();
+      const scheduledTime=String(body.scheduledTime||'').trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)){const error=new Error('Selecciona una fecha válida para el trámite programado.');error.status=422;throw error;}
+      if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(scheduledTime)){const error=new Error('Selecciona una hora válida para el trámite programado.');error.status=422;throw error;}
+      request.procedureMode='scheduled';request.scheduleType=scheduleType;request.scheduledDate=scheduledDate;request.scheduledTime=scheduledTime;request.serviceLabel='Trámites programados';
+    }else{
+      request.procedureMode=String(body.procedureMode||'standard')||'standard';
+      request.serviceLabel=String(body.serviceLabel||'Trámite ejecutivo');
+    }
+    request.procedureAddress=procedureAddress;request.destinationAddress=String(body.destinationAddress||procedureAddress).trim();request.procedureDetail=procedureDetail;
     const pricing=calculateExecutivePrice(body.waitMinutes||40); request.waitMinutes=pricing.requestedMinutes; request.baseServiceCost=Number(pricing.total||0); request.serviceCost=Number(pricing.total||0); request.totalToCollect=0;
   } else if (kind === 'deposit') {
     const deposit=calculateDepositPrice({checkCount:body.checkCount,cashAmount:body.cashAmount,method:body.depositMethod});
