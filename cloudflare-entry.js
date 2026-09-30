@@ -455,6 +455,24 @@ async function adminUpdateRequest(request, env, code, ctx) {
   }
 }
 
+
+async function adminDeleteRequest(request, env, code) {
+  if (!(await verifyAdminToken(request, env))) return json({error:'No autorizado'}, 401);
+  try {
+    const state = await readState(env);
+    const index = state.requests.findIndex(item => String(item.code || item.id) === String(code));
+    if (index < 0) return json({error:'Solicitud no encontrada.'}, 404);
+    const removed = state.requests[index];
+    state.requests.splice(index, 1);
+    if (Array.isArray(state.walletEntries)) state.walletEntries = state.walletEntries.filter(item => String(item.requestCode || item.code || item.order || '') !== String(code));
+    await writeState(env, state);
+    return json({ok:true, deleted:String(removed.code || removed.id || code)}, 200);
+  } catch (error) {
+    console.error('GOY XPRESS native admin delete', error);
+    return json({error:error.message || 'No se pudo eliminar la solicitud.'}, 503);
+  }
+}
+
 async function serveAsset(request, env, pathname) {
   const target = new URL(request.url);
   target.pathname = pathname;
@@ -490,6 +508,9 @@ export default {
     const requestMatch = path.match(/^\/api\/admin\/requests\/([^/]+)$/);
     if (requestMatch && request.method === 'PATCH') {
       return adminUpdateRequest(request, env, decodeURIComponent(requestMatch[1]), ctx);
+    }
+    if (requestMatch && request.method === 'DELETE') {
+      return adminDeleteRequest(request, env, decodeURIComponent(requestMatch[1]));
     }
 
     const deliveryMatch = path.match(/^\/api\/requests\/([^/]+)\/delivery$/);
