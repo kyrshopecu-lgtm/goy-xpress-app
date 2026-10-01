@@ -127,11 +127,11 @@ test('Cliente 1.4.3 muestra detalle completo sin identidad del mensajero, eviden
   assert.match(api, /Ubicación Maps/);
 });
 
-test('Mensajero 1.5.7 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
+test('Mensajero 1.5.8 adjunta logo por WhatsApp como JPG físico y muestra programación', () => {
   const courier = read('src/CourierAppV18.js');
   const config = JSON.parse(read('app.courier.json')).expo;
-  assert.equal(config.version, '1.5.7');
-  assert.equal(config.android.versionCode, 22);
+  assert.equal(config.version, '1.5.8');
+  assert.equal(config.android.versionCode, 23);
   assert.equal(config.android.package, 'com.goyxpress.mensajero');
   assert.match(courier, /PUNTO DE RETIRO/);
   assert.match(courier, /Abrir retiro en Maps/);
@@ -186,9 +186,9 @@ test('Mensajero 1.5.7 adjunta logo por WhatsApp como JPG físico y muestra progr
   assert.match(courier, /Share\.isPackageInstalled/);
   assert.match(courier, /com\.whatsapp\.w4b/);
   assert.match(courier, /Share\.Social\.WHATSAPPBUSINESS/);
-  assert.doesNotMatch(courier, /whatsAppNumber:number/);
+  assert.match(courier, /whatsAppNumber:number/);
   assert.match(courier, /no abrirá un mensaje de solo texto/);
-  assert.match(courier, /Share\.open/);
+  assert.doesNotMatch(courier, /Share\.open/);
   assert.match(courier, /TRÁMITE PROGRAMADO/);
   assert.match(courier, /scheduledDate/);
   assert.match(courier, /scheduledTime/);
@@ -240,8 +240,8 @@ test('workflows generan las versiones corregidas sin caché npm inválida', () =
   assert.doesNotMatch(generic, /cache:\s*npm/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(roles, /CLIENTE-PARCHE-v1\.4\.3\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.7\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.7-ARM64\.apk/);
+  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.8\.apk/);
+  assert.match(roles, /MENSAJERO-v1\.5\.8-ARM64\.apk/);
   assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
@@ -271,3 +271,14 @@ test('Mensajero registra novedades y Cliente las visualiza sin identidad persona
   assert.match(client,/NOVEDADES DE LA ORDEN/);assert.match(client,/item\.message/);
   assert.match(api,/registerCourierNovelty/);assert.match(backend,/authorLabel:'Mensajero GOY XPRESS'/);assert.match(backend,/courier_novelty/);
 });
+
+
+test('Mensajero abre WhatsApp directo al número de cliente o destinatario con logo',()=>{
+ const courier=read('src/CourierAppV18.js');
+ assert.match(courier,/Share\.shareSingle\(\{\.\.\.media,social,whatsAppNumber:number\}\)/);
+ assert.doesNotMatch(courier,/Share\.open\(\{\.\.\.media/);
+ assert.match(courier,/shareBrandedWhatsApp\(phone,pickup,'Cliente'\)/);
+ assert.match(courier,/shareBrandedWhatsApp\(phone,arrival,'Destinatario'\)/);
+});
+
+test('Mensajero no confunde timeout con cuenta pendiente de aprobación',()=>{const courier=read('src/CourierAppV18.js');assert.match(courier,/connectionError/);assert.match(courier,/No se pudo actualizar la conexión/);assert.match(courier,/Tu estado de aprobación no cambiará por un fallo de internet/);assert.match(courier,/profile&&!profile\.approved/);});
