@@ -54,18 +54,14 @@ async function shareBrandedWhatsApp(phone,message,label='WhatsApp'){
     const url=await brandedLogoFileUri();
     const media={title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',useInternalStorage:true};
     const targets=await installedWhatsappTargets();
-    if(targets.length===1){
-      const result=await Share.shareSingle({...media,social:targets[0]});
-      if(result?.success===false)throw new Error(result?.message||'WhatsApp rechazó la imagen.');
-      return;
-    }
-    const result=await Share.open({...media,failOnCancel:false});
-    if(result?.success===false&&!result?.dismissedAction)throw new Error(result?.message||'No se pudo compartir el logotipo.');
+    const social=targets.includes(Share.Social.WHATSAPP)?Share.Social.WHATSAPP:targets[0];
+    const result=await Share.shareSingle({...media,social,whatsAppNumber:number});
+    if(result?.success===false)throw new Error(result?.message||'WhatsApp rechazó la imagen.');
   }catch(error){
     try{
       const url=await brandedLogoFileUri();
-      const result=await Share.open({title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',failOnCancel:false,useInternalStorage:true});
-      if(result?.success!==false||result?.dismissedAction)return;
+      const result=await Share.shareSingle({title:'GOY XPRESS',message,url,type:'image/jpeg',filename:'goy-xpress-logo.jpg',useInternalStorage:true,social:Share.Social.WHATSAPP,whatsAppNumber:number});
+      if(result?.success!==false)return;
     }catch{}
     Alert.alert(
       'No se pudo adjuntar el logo',
