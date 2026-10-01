@@ -186,9 +186,9 @@ test('Mensajero 1.5.8 adjunta logo por WhatsApp como JPG físico y muestra progr
   assert.match(courier, /Share\.isPackageInstalled/);
   assert.match(courier, /com\.whatsapp\.w4b/);
   assert.match(courier, /Share\.Social\.WHATSAPPBUSINESS/);
-  assert.doesNotMatch(courier, /whatsAppNumber:number/);
+  assert.match(courier, /whatsAppNumber:number/);
   assert.match(courier, /no abrirá un mensaje de solo texto/);
-  assert.match(courier, /Share\.open/);
+  assert.doesNotMatch(courier, /Share\.open/);
   assert.match(courier, /TRÁMITE PROGRAMADO/);
   assert.match(courier, /scheduledDate/);
   assert.match(courier, /scheduledTime/);
