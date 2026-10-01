@@ -273,4 +273,12 @@ test('Mensajero registra novedades y Cliente las visualiza sin identidad persona
 });
 
 
+test('Mensajero abre WhatsApp directo al número de cliente o destinatario con logo',()=>{
+ const courier=read('src/CourierAppV18.js');
+ assert.match(courier,/Share\.shareSingle\(\{\.\.\.media,social,whatsAppNumber:number\}\)/);
+ assert.doesNotMatch(courier,/Share\.open\(\{\.\.\.media/);
+ assert.match(courier,/shareBrandedWhatsApp\(phone,pickup,'Cliente'\)/);
+ assert.match(courier,/shareBrandedWhatsApp\(phone,arrival,'Destinatario'\)/);
+});
+
 test('Mensajero no confunde timeout con cuenta pendiente de aprobación',()=>{const courier=read('src/CourierAppV18.js');assert.match(courier,/connectionError/);assert.match(courier,/No se pudo actualizar la conexión/);assert.match(courier,/Tu estado de aprobación no cambiará por un fallo de internet/);assert.match(courier,/profile&&!profile\.approved/);});
