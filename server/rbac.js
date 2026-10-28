@@ -35,7 +35,7 @@ function permissionsFor(user) {
   const role = String(user.role || '');
   const defaults = ROLE_PERMISSIONS[role] || [];
   const overrides = normalizePermissions(user.permissions);
-  // Explicit permissions may narrow or extend non-admin roles; '*' is never
+  // Explicit permissions may supplement non-admin role defaults; '*' is never
   // accepted from user data, so only the trusted admin role gets full access.
   return role === 'admin' ? ['*'] : [...new Set([...defaults, ...overrides])];
 }
