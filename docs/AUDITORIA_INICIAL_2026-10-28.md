@@ -71,4 +71,17 @@ La consulta muestra que esos PR existen y aparecen abiertos, pero no confirma qu
 5. Los permisos iniciales deben ser conservadores y denegar por defecto. El rol administrador conserva el acceso completo; cualquier excepción requiere prueba explícita.
 6. Registrar quién realizó cada cambio sensible y cuándo, sin guardar contraseñas, tokens ni secretos en el registro.
 7. Antes de activar los nuevos roles en producción, ejecutar la suite existente y pruebas nuevas para administrador, ventas, contabilidad, usuario bloqueado, token expirado y rutas sin permiso.
+## Avance de implementación — primitivas RBAC (28-10-2026)
 
+Se añadieron `server/rbac.js` y `server/rbac.test.js`, y se incorporó el test al comando `npm test`. El módulo define permisos base separados para admin, ventas, contabilidad y mensajero; rechaza comodines recibidos en permisos personalizados; deniega permisos a usuarios inactivos/bloqueados; y aporta una comprobación de asignación de órdenes.
+
+**Límite actual:** el módulo RBAC todavía no está conectado a las rutas de API ni existe aún el ciclo de alta/login/bloqueo para usuarios internos. Por eso no debe considerarse una barrera de seguridad activa ni habilitarse acceso a usuarios de ventas/contabilidad. El administrador existente conserva el flujo actual.
+
+**Validación de CI consultada para el commit `efe59691949c6984abd9488d0b1929cc3e523f8d`:** el único estado reportado por la herramienta fue `Vercel: failure`, con destino a una página de despliegues bloqueados por cuenta. No es un resultado de `npm test` y no permite afirmar que los tests hayan pasado o fallado. No se ejecutó la suite en un entorno local durante esta tarea.
+
+### Siguiente paso seguro
+
+1. Verificar si el fallo de Vercel corresponde al entorno de despliegue o si hay un workflow de tests independiente.
+2. Añadir y probar autenticación específica para usuarios internos sin aceptar `role` desde el cuerpo de la petición.
+3. Resolver permisos contra el usuario activo almacenado en servidor, no solo contra claims antiguos del token.
+4. Integrar autorización por ruta en una primera lista limitada y cubrir denegaciones con tests de integración antes de abrir paneles a ventas/contabilidad.
