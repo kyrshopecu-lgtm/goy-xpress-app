@@ -50,3 +50,25 @@ Fecha de revisión: 2026-10-28
 - No eliminar tablas, datos, aplicaciones ni endpoints en esta fase.
 - No desplegar ni fusionar cambios de autenticación sin pruebas de regresión.
 - Mantener los módulos nuevos desactivados hasta que los secretos y webhooks estén configurados y validados.
+
+## Revisión adicional de cambios pendientes (28-10-2026)
+
+Se encontraron estos PR abiertos en la consulta del repositorio; deben inspeccionarse antes de fusionar o reimplementar sus funciones:
+
+- [PR #15 — GOY IA Comercial: CRM, WhatsApp y agenda](https://github.com/kyrshopecu-lgtm/goy-xpress-app/pull/15): describe CRM de prospectos, conversaciones, campañas, seguimiento, integración Cloud API y agenda. La descripción indica que WhatsApp queda desactivado hasta configurar credenciales privadas.
+- [PR #86 — GOY XPRESS: WhatsApp con logo + privacidad Cliente](https://github.com/kyrshopecu-lgtm/goy-xpress-app/pull/86): describe notificaciones transaccionales con logo y reglas de privacidad de la identidad del mensajero.
+- [PR #88 — Mensajero 1.5.8: corregir timeout y estado de aprobación](https://github.com/kyrshopecu-lgtm/goy-xpress-app/pull/88): describe una corrección de estado de conexión y reintento en la app del mensajero.
+- [PR #89 — Plan de reestructuración CRM, ventas, contabilidad y permisos](https://github.com/kyrshopecu-lgtm/goy-xpress-app/pull/89): este plan de trabajo; permanece como borrador y contiene documentación, no los módulos nuevos.
+
+La consulta muestra que esos PR existen y aparecen abiertos, pero no confirma que sus pruebas pasen ni que estén desplegados. No se debe fusionar ninguno automáticamente.
+
+## Decisiones para la primera fase de código
+
+1. Mantener intacto el inicio de sesión administrativo existente mientras se crea el flujo separado de usuarios internos.
+2. No autorizar al equipo de ventas ni contabilidad solo por ocultar botones en el navegador: cada endpoint deberá validar el permiso en el servidor.
+3. Comenzar con el ciclo de vida de usuarios internos (crear/invitar, activar, bloquear, rol y permisos) y pruebas negativas de autorización. No almacenar contraseñas en texto claro; reutilizar hashing robusto y tokens firmados con expiración.
+4. El acceso a clientes, mensajeros y operaciones debe concederse por permiso específico; ventas no debe heredar acceso a contabilidad, y contabilidad no debe recibir acciones de asignación operativa por defecto.
+5. Los permisos iniciales deben ser conservadores y denegar por defecto. El rol administrador conserva el acceso completo; cualquier excepción requiere prueba explícita.
+6. Registrar quién realizó cada cambio sensible y cuándo, sin guardar contraseñas, tokens ni secretos en el registro.
+7. Antes de activar los nuevos roles en producción, ejecutar la suite existente y pruebas nuevas para administrador, ventas, contabilidad, usuario bloqueado, token expirado y rutas sin permiso.
+
