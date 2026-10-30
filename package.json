@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js src/uiWiring.test.js src/integrationWiring.test.js server/server.test.js server/server-v4.test.js server/server-v5.test.js server/cloudflare-delivery-notification.test.js server/courierOtp.test.js server/admin-create-request.test.js server/admin-web.test.js server/admin-clients.test.js server/sales-assistant.test.js server/versioned-state.test.js",
+    "test": "node --test src/domain.test.js src/authDomain.test.js src/logisticsRules.test.js src/uiWiring.test.js src/integrationWiring.test.js server/server.test.js server/server-v4.test.js server/server-v5.test.js server/cloudflare-delivery-notification.test.js server/courierOtp.test.js server/admin-create-request.test.js server/admin-web.test.js server/admin-clients.test.js server/admin-management.test.js server/sales-assistant.test.js server/versioned-state.test.js server/rbac.test.js",
     "export:android": "expo export --platform android --output-dir dist",
     "verify": "npm test && npm run export:android"
   },
@@ -27,7 +27,6 @@
     "react-dom": "19.0.0",
     "react-native": "0.79.0",
     "react-native-share": "12.3.1",
-    "react-native-web": "~0.20.0",
     "expo-media-library": "~17.1.7",
     "expo-av": "~15.1.7",
     "expo-build-properties": "~0.14.8",

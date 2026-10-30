@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const v5 = require('./server-v5');
+const {ensureStateTable, readVersionedState, writeVersionedState} = require('./versioned-state');
 
 function cfg() {
   return {
@@ -27,10 +28,8 @@ async function readState(config) {
       const {neon} = require('@neondatabase/serverless');
       sqlClient = neon(config.databaseUrl);
     }
-    await sqlClient`CREATE TABLE IF NOT EXISTS goy_state (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
-    await sqlClient`INSERT INTO goy_state (id,data) VALUES (1,${JSON.stringify(cleanData({}))}::jsonb) ON CONFLICT (id) DO NOTHING`;
-    const rows = await sqlClient`SELECT data FROM goy_state WHERE id=1 LIMIT 1`;
-    return cleanData(rows[0]?.data || {});
+    await ensureStateTable(sqlClient, cleanData({}));
+    return readVersionedState(sqlClient, cleanData);
   }
   try {
     if (!fs.existsSync(config.dataFile)) return cleanData({});
@@ -47,7 +46,7 @@ async function writeState(config,data) {
       const {neon} = require('@neondatabase/serverless');
       sqlClient = neon(config.databaseUrl);
     }
-    await sqlClient`UPDATE goy_state SET data=${JSON.stringify(normalized)}::jsonb, updated_at=NOW() WHERE id=1`;
+    await writeVersionedState(sqlClient, data, cleanData);
     return;
   }
   const dir = path.dirname(config.dataFile);
