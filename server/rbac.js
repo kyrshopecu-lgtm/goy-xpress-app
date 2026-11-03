@@ -27,7 +27,7 @@ function normalizePermissions(value) {
     .filter(item => typeof item === 'string')
     .map(item => item.trim())
     .filter(item => /^[a-z][a-z0-9_-]*(\.[a-z][a-z0-9_-]*)+$/.test(item))
-  ];
+  ))];
 }
 
 function permissionsFor(user) {
