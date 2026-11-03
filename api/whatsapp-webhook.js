@@ -1,0 +1,3 @@
+'use strict';
+const {configFromEnv,verifyWebhook,inboundMessages}=require('../server/whatsapp-business');
+module.exports=async function(req,res){const config=configFromEnv();if(req.method==='GET'){const q=req.query||Object.fromEntries(new URL(req.url,'http://localhost').searchParams);const challenge=verifyWebhook(q,config);if(challenge===null){res.statusCode=403;return res.end('Forbidden');}res.statusCode=200;return res.end(challenge);}if(req.method==='POST'){const messages=inboundMessages(req.body||{});res.statusCode=200;res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({ok:true,received:messages.length,messages}));}res.statusCode=405;res.end('Method Not Allowed');};

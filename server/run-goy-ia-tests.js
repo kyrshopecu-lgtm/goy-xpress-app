@@ -1,0 +1,1 @@
+'use strict';const {spawnSync}=require('node:child_process');const files=['server/sales-assistant.test.js','server/sales-crm.test.js','server/sales-assistant-api.test.js','server/goy-ia-all.test.js'];const result=spawnSync(process.execPath,['--test',...files],{stdio:'inherit'});process.exit(result.status??1);

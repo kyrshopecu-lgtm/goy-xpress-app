@@ -1,0 +1,4 @@
+'use strict';const test=require('node:test');const assert=require('node:assert/strict');const {createSalesApi}=require('./sales-assistant-api');
+function store(initial={}){let v=initial;return{read:async()=>JSON.parse(JSON.stringify(v)),write:async n=>{v=JSON.parse(JSON.stringify(n));}}}function res(){return{headers:{},setHeader(k,v){this.headers[k]=v},end(v){this.payload=JSON.parse(v)}}}
+test('overview returns empty CRM',async()=>{const handler=createSalesApi({store:store(),authorize:()=>true});const r=res();await handler({method:'GET',url:'/api/sales/overview'},r);assert.equal(r.statusCode,200);assert.equal(r.payload.metrics.total,0);});
+test('unauthorized CRM is rejected',async()=>{const handler=createSalesApi({store:store(),authorize:()=>false});const r=res();await handler({method:'GET',url:'/api/sales/overview'},r);assert.equal(r.statusCode,401);});

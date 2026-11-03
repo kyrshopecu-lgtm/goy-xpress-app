@@ -1,0 +1,10 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');
+const {ensureCrm,importProspects,receiveMessage,queueFirstContact,recordAppointment,metrics}=require('./sales-crm');
+const wa=require('./whatsapp-business');
+test('CRM imports and deduplicates prospects',()=>{const d=ensureCrm({});const r=importProspects(d,[{name:'Ana',phone:'0999999999',consent:true},{name:'Ana 2',phone:'0999999999',consent:true}]);assert.equal(r.created.length,1);assert.equal(r.skipped.length,1);});
+test('CRM processes inbound and queues reply',()=>{const d=ensureCrm({});const p=importProspects(d,[{name:'Luis',phone:'0999999999',consent:true}]).created[0];const r=receiveMessage(d,p,'Necesito apostillar un documento');assert.equal(r.service.id,'apostille');assert.equal(d.salesMessages.length,2);});
+test('first contact requires consent',()=>{const d=ensureCrm({});const p=importProspects(d,[{name:'Ana',phone:'0999999999',consent:false}]).created[0];assert.equal(queueFirstContact(d,p).ok,false);});
+test('appointment updates pipeline and metrics',()=>{const d=ensureCrm({});const p=importProspects(d,[{name:'Ana',phone:'0999999999',consent:true}]).created[0];recordAppointment(d,p,{type:'video',startTime:'2026-09-18T10:00:00-05:00',endTime:'2026-09-18T10:15:00-05:00'});assert.equal(p.status,'Reunión agendada');assert.equal(metrics(d).meetings,1);});
+test('WhatsApp parses inbound webhook',()=>{const rows=wa.inboundMessages({entry:[{changes:[{value:{messages:[{id:'wamid.1',from:'593999999999',type:'text',text:{body:'Hola'}}]}}]}]});assert.equal(rows[0].text,'Hola');});
+test('WhatsApp verification uses configured token',()=>{assert.equal(wa.verifyWebhook({'hub.mode':'subscribe','hub.verify_token':'abc','hub.challenge':'42'},{verifyToken:'abc'}),'42');});
