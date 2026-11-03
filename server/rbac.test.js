@@ -32,3 +32,9 @@ test('mensajero solo tiene alcance sobre órdenes asignadas a su cuenta', () => 
   assert.equal(isAssignedTo(courier, { courierId: 'c2' }), false);
   assert.equal(isAssignedTo({ ...courier, active: false }, { courierId: 'c1' }), false);
 });
+
+test('permisos inválidos o valores que no son listas se rechazan sin excepción', () => {
+  assert.deepEqual(normalizePermissions(null), []);
+  assert.deepEqual(normalizePermissions('sales.prospects.read'), []);
+  assert.deepEqual(normalizePermissions(['sales', 'Sales.prospects.read', 'sales..read', 'sales.prospects.read/../../admin']), []);
+});
