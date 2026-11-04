@@ -37,3 +37,43 @@ test('ventas solo accede a CRM de prospectos con permisos del rol',async()=>{
 });
 
 test('el rol enviado en el cuerpo no sustituye una sesión administrativa',async()=>{const h=harness();try{const res=await call(h,request('POST','/api/admin/services',{name:'No autorizado',price:1,role:'admin'}));assert.equal(res.statusCode,401);const data=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.equal((data.customServices||[]).length,0);}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
+
+test('contabilidad registra ingresos y egresos y obtiene resumen',async()=>{
+ const user={id:'acct-1',role:'accounting',name:'Contabilidad',active:true,permissions:['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports']};
+ const h=harness({users:[user]});
+ try{
+  const token=sign({role:'accounting',userId:'acct-1',exp:Date.now()+60000},'test-secret');
+  let res=await call(h,request('POST','/api/admin/accounting/entries',{type:'income',amount:'125.50',category:'Mensajería',description:'Cobro de servicio GOY',date:'2026-11-04',paymentMethod:'Transferencia'},token));
+  assert.equal(res.statusCode,201);assert.equal(res.body.entry.amount,125.5);const id=res.body.entry.id;
+  res=await call(h,request('POST','/api/admin/accounting/entries',{type:'expense',amount:25,category:'Combustible',description:'Gasto operativo',date:'2026-11-04'},token));
+  assert.equal(res.statusCode,201);
+  res=await call(h,request('GET','/api/admin/accounting/summary',{},token));
+  assert.equal(res.statusCode,200);assert.equal(res.body.totals.income,125.5);assert.equal(res.body.totals.expense,25);assert.equal(res.body.totals.balance,100.5);
+  res=await call(h,request('GET','/api/admin/accounting/entries',{},token));assert.equal(res.body.total,2);
+  res=await call(h,request('PATCH',`/api/admin/accounting/entries/${id}`,{amount:130},token));assert.equal(res.statusCode,200);assert.equal(res.body.entry.amount,130);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
+
+test('contabilidad concilia registros y bloquea su edición posterior',async()=>{
+ const user={id:'acct-2',role:'accounting',active:true,permissions:['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports']};
+ const h=harness({users:[user]});
+ try{
+  const token=sign({role:'accounting',userId:'acct-2',exp:Date.now()+60000},'test-secret');
+  let res=await call(h,request('POST','/api/admin/accounting/entries',{type:'expense',amount:8,category:'Movilidad',description:'Taxi operativo',date:'2026-11-04'},token));const id=res.body.entry.id;
+  res=await call(h,request('POST','/api/admin/accounting/reconcile',{ids:[id]},token));assert.equal(res.statusCode,200);assert.equal(res.body.reconciled,1);
+  res=await call(h,request('PATCH',`/api/admin/accounting/entries/${id}`,{amount:10},token));assert.equal(res.statusCode,409);
+  res=await call(h,request('GET','/api/admin/accounting/summary',{},token));assert.equal(res.body.pendingReconciliation,0);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
+
+test('permisos contables son verificados en servidor y no aceptan campos de rol del cliente',async()=>{
+ const user={id:'acct-read',role:'accounting',active:true,permissions:['accounting.read']};
+ const h=harness({users:[user]});
+ try{
+  const token=sign({role:'accounting',userId:'acct-read',exp:Date.now()+60000},'test-secret');
+  let res=await call(h,request('GET','/api/admin/accounting/entries',{},token));assert.equal(res.statusCode,200);
+  res=await call(h,request('POST','/api/admin/accounting/entries',{type:'income',amount:20,category:'Prueba',description:'No permitido',date:'2026-11-04',role:'admin'},token));assert.equal(res.statusCode,403);
+  res=await call(h,request('GET','/api/admin/accounting/summary',{},token));assert.equal(res.statusCode,403);
+  res=await call(h,request('POST','/api/admin/accounting/entries',{type:'income',amount:-1,category:'Prueba',description:'Valor inválido',date:'2026-11-04'},sign({role:'admin',exp:Date.now()+60000},'test-secret')));assert.equal(res.statusCode,400);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
