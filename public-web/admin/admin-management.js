@@ -91,7 +91,7 @@
           <label>WhatsApp<input id="goyStaffPhone" required inputmode="tel"></label>
           <label>Área<select id="goyStaffRole"><option value="sales">Ventas</option><option value="accounting">Contabilidad</option></select></label>
           <label id="goyStaffPasswordLabel">Contraseña inicial<input id="goyStaffPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres, letras y números"></label>
-          <div class="goy-permissions-wrap"><strong>Permisos individuales</strong><small>Si no seleccionas permisos, se aplican los permisos predeterminados del área. Si seleccionas alguno, solo se habilitarán los seleccionados.</small><div id="goyStaffPermissions" class="goy-permissions"></div></div>
+          <div class="goy-permissions-wrap"><strong>Permisos individuales</strong><small>Los permisos del área aparecen seleccionados inicialmente. Desmarca los que no debe utilizar; si no queda ninguno, la cuenta no tendrá acceso a esas funciones.</small><div id="goyStaffPermissions" class="goy-permissions"></div></div>
           <div class="goy-staff-actions"><button class="primary" type="submit" id="goyStaffSubmit">Crear cuenta</button><button type="button" id="goyStaffCancel" class="ghost" hidden>Cancelar edición</button></div><p id="goyStaffMessage" class="form-message" role="status"></p>
         </form></article>
         <article class="panel"><div class="panel-head"><div><span class="eyebrow">Equipo de trabajo</span><h3>Usuarios internos</h3><small class="muted">Activa, bloquea y administra los permisos de cada persona.</small></div><button id="goyStaffRefresh" class="ghost" type="button">Actualizar</button></div><div id="goyStaffList" class="goy-staff-list">Cargando usuarios…</div></article>
@@ -99,12 +99,12 @@
       <article class="panel" style="margin-top:16px"><div class="panel-head"><div><span class="eyebrow">Trazabilidad</span><h3>Actividad administrativa</h3></div></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Acción</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="goyStaffAudit"><tr><td colspan="4">Sin registros.</td></tr></tbody></table></div></article>`;
       main.append(section);
       section.querySelector('#goyStaffForm').addEventListener('submit',saveInternalUser);
-      section.querySelector('#goyStaffRole').addEventListener('change',renderPermissionChoices);
+      section.querySelector('#goyStaffRole').addEventListener('change',event=>renderPermissionChoices(event.target.value));
       section.querySelector('#goyStaffCancel').addEventListener('click',resetInternalForm);
       section.querySelector('#goyStaffRefresh').addEventListener('click',loadInternalUsers);
     }
   }
-  function renderPermissionChoices(role='sales',selected=[]){
+  function renderPermissionChoices(role='sales',selected=permissionCatalog[role].map(item=>item[0])){
     const box=document.getElementById('goyStaffPermissions');if(!box)return;
     box.innerHTML=permissionCatalog[role].map(([key,label])=>`<label class="goy-permission"><input type="checkbox" value="${esc(key)}" ${selected.includes(key)?'checked':''}><span>${esc(label)}</span></label>`).join('');
   }
@@ -113,7 +113,7 @@
   }
   function editInternalUser(id){
     const user=internalUsers.find(u=>u.id===id);if(!user)return;const form=document.getElementById('goyStaffForm');form.dataset.editId=id;
-    document.getElementById('goyStaffName').value=user.name||'';document.getElementById('goyStaffUsername').value=user.username||'';document.getElementById('goyStaffEmail').value=user.email||'';document.getElementById('goyStaffPhone').value=user.phone||'';document.getElementById('goyStaffRole').value=user.role;document.getElementById('goyStaffUsername').disabled=true;document.getElementById('goyStaffRole').disabled=true;document.getElementById('goyStaffPasswordLabel').hidden=false;document.getElementById('goyStaffPassword').required=false;document.getElementById('goyStaffPassword').value='';document.getElementById('goyStaffPassword').placeholder='Dejar vacío para conservar la contraseña';document.getElementById('goyStaffFormTitle').textContent='Editar trabajador';document.getElementById('goyStaffSubmit').textContent='Guardar cambios';document.getElementById('goyStaffCancel').hidden=false;document.getElementById('goyStaffMessage').textContent='';renderPermissionChoices(user.role,Array.isArray(user.permissions)?user.permissions:[]);
+    document.getElementById('goyStaffName').value=user.name||'';document.getElementById('goyStaffUsername').value=user.username||'';document.getElementById('goyStaffEmail').value=user.email||'';document.getElementById('goyStaffPhone').value=user.phone||'';document.getElementById('goyStaffRole').value=user.role;document.getElementById('goyStaffUsername').disabled=true;document.getElementById('goyStaffRole').disabled=true;document.getElementById('goyStaffPasswordLabel').hidden=false;document.getElementById('goyStaffPassword').required=false;document.getElementById('goyStaffPassword').value='';document.getElementById('goyStaffPassword').placeholder='Dejar vacío para conservar la contraseña';document.getElementById('goyStaffFormTitle').textContent='Editar trabajador';document.getElementById('goyStaffSubmit').textContent='Guardar cambios';document.getElementById('goyStaffCancel').hidden=false;document.getElementById('goyStaffMessage').textContent='';renderPermissionChoices(user.role,Array.isArray(user.permissions)?user.permissions:permissionCatalog[user.role].map(item=>item[0]));
     document.querySelector('[data-view="internal-users"]')?.click();document.getElementById('goyStaffName').focus();
   }
   let internalUsers=[];
