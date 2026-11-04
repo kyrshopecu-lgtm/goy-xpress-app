@@ -23,7 +23,7 @@ test('rechaza gestión sin sesión administrativa',async()=>{const h=harness();t
 test('rechaza tokens de ventas en rutas administrativas sensibles',async()=>{const h=harness();try{const salesToken=sign({role:'sales',userId:'sales-1',exp:Date.now()+60000},'test-secret');for(const [method,url,body] of [['GET','/api/admin/services',{}],['GET','/api/admin/prospects',{}],['POST','/api/admin/services',{name:'No autorizado',price:1,role:'admin'}]]){const res=await call(h,request(method,url,body,salesToken));assert.equal(res.statusCode,403,method+' '+url+' debe denegar token de ventas sin permiso o usuario registrado');}}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
 
 test('ventas solo accede a CRM de prospectos con permisos del rol',async()=>{
- const user={id:'sales-1',role:'sales',name:'Ventas',active:true};
+ const user={id:'sales-1',role:'sales',name:'Ventas',active:true,permissions:['sales.prospects.read']};
  const h=harness({users:[user]});
  try{
   const token=sign({role:'sales',userId:'sales-1',exp:Date.now()+60000},'test-secret');
