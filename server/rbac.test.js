@@ -17,6 +17,13 @@ test('ventas y contabilidad permanecen separadas por defecto', () => {
   assert.equal(hasPermission(accounting, 'sales.whatsapp.send'), false);
 });
 
+test('la lista explícita del administrador reemplaza los permisos predeterminados', () => {
+  const sales = { id: 's2', role: 'sales', active: true, permissions: ['sales.prospects.read'] };
+  assert.equal(hasPermission(sales, 'sales.prospects.read'), true);
+  assert.equal(hasPermission(sales, 'sales.prospects.create'), false);
+  assert.equal(hasPermission({ ...sales, permissions: [] }, 'sales.prospects.read'), false);
+});
+
 test('usuario bloqueado o inactivo no tiene permisos', () => {
   assert.deepEqual(permissionsFor({ role: 'admin', active: false }), []);
   assert.equal(hasPermission({ role: 'sales', blocked: true }, 'sales.prospects.read'), false);
