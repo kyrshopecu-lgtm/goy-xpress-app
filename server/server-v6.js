@@ -144,7 +144,7 @@ async function handler(req,res){
       if(name.length<2||!internalUsername(username)||!validEmail(email)||phone.length<9||passwordError)return json(res,400,{error:passwordError||'Completa nombre, usuario (3-30 caracteres), correo y WhatsApp válidos.'},config.allowedOrigin);
       const data=await readState(config);
       if(data.users.some(u=>normalizeUsername(u.username)===username||normalizeEmail(u.email)===email))return json(res,409,{error:'El usuario o correo ya existe.'},config.allowedOrigin);
-      const pwd=hashPassword(body.password),now=new Date().toISOString(),user={id:crypto.randomUUID(),role,name,username,email,phone,approved:true,active:true,blocked:false,permissions:normalizePermissions(body.permissions),passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now};
+      const pwd=hashPassword(body.password),now=new Date().toISOString(),user={id:crypto.randomUUID(),role,name,username,email,phone,approved:true,active:true,blocked:false,...(Array.isArray(body.permissions)?{permissions:normalizePermissions(body.permissions)}:{}),passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now};
       data.users.unshift(user);audit(data,actor,'internal_user.created',user.id,{role,username});await writeState(config,data);
       return json(res,201,{user:publicUser(user),permissions:permissionsFor(user)},config.allowedOrigin);
     }
