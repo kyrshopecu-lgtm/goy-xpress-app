@@ -258,7 +258,7 @@ function wrap(next,overrides={}){
     if(entry.reconciled)return json(res,409,{error:'El registro ya está conciliado y no puede modificarse.'},config.allowedOrigin);
     if(Object.prototype.hasOwnProperty.call(body,'amount')){const amount=cleanMoney(body.amount);if(amount===null||amount<=0)return json(res,400,{error:'El valor debe ser mayor que cero.'},config.allowedOrigin);entry.amount=amount;}
     for(const key of ['category','description','paymentMethod','reference','notes'])if(Object.prototype.hasOwnProperty.call(body,key)){const value=String(body[key]||'').trim();if(key==='category'&&value.length<2)return json(res,400,{error:'Categoría no válida.'},config.allowedOrigin);if(key==='description'&&value.length<3)return json(res,400,{error:'Descripción no válida.'},config.allowedOrigin);entry[key]=value.slice(0,key==='description'||key==='notes'?500:100);}
-    if(Object.prototype.hasOwnProperty.call(body,'date')){const date=String(body.date||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T00:00:00Z')))return json(res,400,{error:'Fecha no válida.'},config.allowedOrigin);entry.date=date;}
+    if(Object.prototype.hasOwnProperty.call(body,'date')){const date=String(body.date||'');if(!validISODate(date))return json(res,400,{error:'Fecha no válida.'},config.allowedOrigin);entry.date=date;}
     entry.updatedAt=new Date().toISOString();entry.updatedBy=payload.userId||'admin';await writeState(config,data);return json(res,200,{entry},config.allowedOrigin);
    }
    if(accountingReconcileRoute){
