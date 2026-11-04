@@ -701,8 +701,9 @@ test('portal interno autentica Ventas y presenta el módulo contable sin datos s
 
 test('portal de Contabilidad usa endpoints protegidos y no simula datos bancarios',()=>{
  const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),api=read('server/admin-management.js');
- for(const id of ['accountingForm','accIncome','accExpense','accBalance','accPending','accountingBody','accReconcile'])assert.ok(html.includes('id="'+id+'"'),`Falta control contable ${id}`);
+ for(const id of ['accountingForm','accIncome','accExpense','accBalance','accPending','accountingBody','accReconcile','accFrom','accTo','accFilterType','accApplyFilters','accClearFilters','accExport'])assert.ok(html.includes('id="'+id+'"'),`Falta control contable ${id}`);
  for(const route of ['/admin/accounting/entries','/admin/accounting/summary','/admin/accounting/reconcile'])assert.ok(js.includes(route),`Falta conexión ${route}`);
+ assert.match(js,/function exportAccounting\\(\\)/);assert.match(js,/goy-xpress-libro-contable\\.csv/);assert.match(js,/params\\.set\\('from'/);assert.match(js,/params\\.set\\('to'/);assert.match(js,/params\\.set\\('type'/);
  for(const permission of ['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports'])assert.ok(api.includes(permission),`Falta permiso ${permission}`);
  assert.match(html,/No está conectado automáticamente a bancos/);
  new vm.Script(js,{filename:'public-web/staff/app.js'});
