@@ -22,4 +22,18 @@ test('rechaza gestión sin sesión administrativa',async()=>{const h=harness();t
 
 test('rechaza tokens de ventas en rutas administrativas sensibles',async()=>{const h=harness();try{const salesToken=sign({role:'sales',userId:'sales-1',exp:Date.now()+60000},'test-secret');for(const [method,url,body] of [['GET','/api/admin/services',{}],['GET','/api/admin/prospects',{}],['POST','/api/admin/services',{name:'No autorizado',price:1,role:'admin'}]]){const res=await call(h,request(method,url,body,salesToken));assert.equal(res.statusCode,403,method+' '+url+' debe denegar token de ventas sin permiso o usuario registrado');}}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
 
+test('ventas solo accede a CRM de prospectos con permisos del rol',async()=>{
+ const user={id:'sales-1',role:'sales',name:'Ventas',active:true};
+ const h=harness({users:[user]});
+ try{
+  const token=sign({role:'sales',userId:'sales-1',exp:Date.now()+60000},'test-secret');
+  const prospects=await call(h,request('GET','/api/admin/prospects',{},token));
+  assert.equal(prospects.statusCode,200);
+  const services=await call(h,request('GET','/api/admin/services',{},token));
+  assert.equal(services.statusCode,403);
+  const forbiddenWrite=await call(h,request('POST','/api/admin/prospects',{business:'Nuevo prospecto'},token));
+  assert.equal(forbiddenWrite.statusCode,403);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
+
 test('el rol enviado en el cuerpo no sustituye una sesión administrativa',async()=>{const h=harness();try{const res=await call(h,request('POST','/api/admin/services',{name:'No autorizado',price:1,role:'admin'}));assert.equal(res.statusCode,401);const data=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.equal((data.customServices||[]).length,0);}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
