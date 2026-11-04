@@ -1,5 +1,5 @@
 (()=>{
- const $=id=>document.getElementById(id),apiBase='/api';let session=null,items=[],editing='';
+ const $=id=>document.getElementById(id),apiBase='/api';let session=null,items=[],editing='',accountingEntries=[];
  const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
  async function api(path,options={}){const headers={'Content-Type':'application/json',...(session?.token?{Authorization:`Bearer ${session.token}`}:{})};const res=await fetch(apiBase+path,{...options,headers});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'No se pudo completar la operación.');return data;}
  function showError(message){$('errorText').textContent=message;$('errorView').classList.remove('hidden');}
@@ -8,13 +8,27 @@
  async function loadAccounting(){
   const body=$('accountingBody');body.innerHTML='<tr><td colspan="7">Cargando movimientos…</td></tr>';
   try{
-   const [entriesData,summaryData]=await Promise.all([api('/admin/accounting/entries'),has('accounting.reports')?api('/admin/accounting/summary'):Promise.resolve(null)]);
-   const entries=entriesData.entries||[];
-   if(summaryData){$('accIncome').textContent=money(summaryData.totals.income);$('accExpense').textContent=money(summaryData.totals.expense);$('accBalance').textContent=money(summaryData.totals.balance);$('accPending').textContent=String(summaryData.pendingReconciliation);}
-   else{$('accIncome').textContent='—';$('accExpense').textContent='—';$('accBalance').textContent='—';$('accPending').textContent='—';}
-   body.innerHTML=entries.map(item=>`<tr><td>${item.reconciled?'✓':`<input type="checkbox" aria-label="Seleccionar movimiento" data-acc-select="${esc(item.id)}">`}</td><td>${esc(item.date)}</td><td><span class="pill">${item.type==='income'?'Ingreso':'Egreso'}</span></td><td><strong>${esc(item.category)}</strong><br><small>${esc(item.description)}</small></td><td>${money(item.amount)}</td><td>${esc(item.reference||item.paymentMethod||'—')}</td><td>${item.reconciled?'Conciliado':'Pendiente'}</td></tr>`).join('')||'<tr><td colspan="7">Todavía no hay movimientos registrados.</td></tr>';
-   $('accountingForm').classList.toggle('hidden',!has('accounting.entries.create'));$('accReconcile').classList.toggle('hidden',!has('accounting.reconcile'));
+   const params=new URLSearchParams();
+   if($('accFrom').value)params.set('from',$('accFrom').value);
+   if($('accTo').value)params.set('to',$('accTo').value);
+   if($('accFilterType').value)params.set('type',$('accFilterType').value);
+   const entriesData=await api('/admin/accounting/entries'+(params.size?'?'+params.toString():''));
+   accountingEntries=entriesData.entries||[];
+   const totals=accountingEntries.reduce((acc,item)=>{acc[item.type]=(acc[item.type]||0)+(Number(item.amount)||0);return acc;},{income:0,expense:0});
+   $('accIncome').textContent=money(totals.income);$('accExpense').textContent=money(totals.expense);$('accBalance').textContent=money(totals.income-totals.expense);$('accPending').textContent=String(accountingEntries.filter(item=>!item.reconciled).length);
+   body.innerHTML=accountingEntries.map(item=>`<tr><td>${item.reconciled?'✓':`<input type="checkbox" aria-label="Seleccionar movimiento" data-acc-select="${esc(item.id)}">`}</td><td>${esc(item.date)}</td><td><span class="pill">${item.type==='income'?'Ingreso':'Egreso'}</span></td><td><strong>${esc(item.category)}</strong><br><small>${esc(item.description)}</small></td><td>${money(item.amount)}</td><td>${esc(item.reference||item.paymentMethod||'—')}</td><td>${item.reconciled?'Conciliado':'Pendiente'}</td></tr>`).join('')||'<tr><td colspan="7">No hay movimientos para los filtros seleccionados.</td></tr>';
+   $('accFilterMessage').textContent=`${entriesData.total??accountingEntries.length} movimiento(s) en el resultado.`;
+   $('accountingForm').classList.toggle('hidden',!has('accounting.entries.create'));$('accReconcile').classList.toggle('hidden',!has('accounting.reconcile'));$('accExport').classList.toggle('hidden',!has('accounting.reports'));
   }catch(error){body.innerHTML=`<tr><td colspan="7">${esc(error.message)}</td></tr>`;}
+ }
+ function exportAccounting(){
+  if(!has('accounting.reports'))return alert('No tienes permiso para exportar reportes.');
+  const columns=['Fecha','Tipo','Categoría','Descripción','Valor USD','Método de pago','Referencia','Notas','Estado'];
+  const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  const rows=accountingEntries.map(item=>[item.date,item.type==='income'?'Ingreso':'Egreso',item.category,item.description,Number(item.amount||0).toFixed(2),item.paymentMethod,item.reference,item.notes,item.reconciled?'Conciliado':'Pendiente']);
+  const csv='\\uFEFF'+[columns,...rows].map(row=>row.map(quote).join(';')).join('\\r\\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='goy-xpress-libro-contable.csv';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
  }
  async function saveAccounting(event){
   event.preventDefault();$('accMessage').textContent='Guardando…';
@@ -35,5 +49,5 @@
  async function saveProspect(event){event.preventDefault();const body={business:$('business').value.trim(),city:$('city').value.trim(),category:$('category').value.trim(),contact:$('contact').value.trim(),channel:$('channel').value.trim(),sourceUrl:$('sourceUrl').value.trim(),fitReason:$('fitReason').value.trim()};$('prospectMessage').textContent='Guardando…';try{await api(editing?`/admin/prospects/${encodeURIComponent(editing)}`:'/admin/prospects',{method:editing?'PATCH':'POST',body:JSON.stringify(body)});$('prospectMessage').textContent='Prospecto guardado.';resetForm();await loadProspects();}catch(error){$('prospectMessage').textContent=error.message;}}
  function edit(id){const p=items.find(x=>x.id===id);if(!p)return;editing=id;$('business').value=p.business||'';$('city').value=p.city||'';$('category').value=p.category||'';$('contact').value=p.contact||'';$('channel').value=p.channel||'';$('sourceUrl').value=p.sourceUrl||'';$('fitReason').value=p.fitReason||'';$('formTitle').textContent='Editar prospecto';$('cancelEdit').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}
  async function next(id){const p=items.find(x=>x.id===id);if(!p)return;const choices=['Pendiente de revisión','Aprobado para contacto','Respondió','Interesado','Solicita llamada','Cliente','Descartado'];const nextStatus=prompt('Nuevo estado:\n'+choices.map((v,i)=>`${i+1}. ${v}`).join('\n'),p.status||choices[0]);if(nextStatus===null)return;const chosen=choices.find((v,i)=>nextStatus===v||String(i+1)===nextStatus.trim());if(!chosen)return alert('Estado no válido.');try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({status:chosen})});await loadProspects();}catch(error){alert(error.message);}}
- $('loginForm').addEventListener('submit',login);$('accountingForm').addEventListener('submit',saveAccounting);$('accountingReload').addEventListener('click',loadAccounting);$('accReconcile').addEventListener('click',reconcileAccounting);$('prospectForm').addEventListener('submit',saveProspect);$('reload').addEventListener('click',loadProspects);$('search').addEventListener('input',renderProspects);$('cancelEdit').addEventListener('click',resetForm);$('prospectsBody').addEventListener('click',event=>{const editButton=event.target.closest('[data-edit]');if(editButton)edit(editButton.dataset.edit);const nextButton=event.target.closest('[data-next]');if(nextButton)next(nextButton.dataset.next);});$('logout').addEventListener('click',()=>{session=null;items=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginForm').reset();$('prospectMessage').textContent='';});
+ $('loginForm').addEventListener('submit',login);$('accountingForm').addEventListener('submit',saveAccounting);$('accountingReload').addEventListener('click',loadAccounting);$('accApplyFilters').addEventListener('click',loadAccounting);$('accClearFilters').addEventListener('click',()=>{$('accFrom').value='';$('accTo').value='';$('accFilterType').value='';loadAccounting();});$('accExport').addEventListener('click',exportAccounting);$('accReconcile').addEventListener('click',reconcileAccounting);$('prospectForm').addEventListener('submit',saveProspect);$('reload').addEventListener('click',loadProspects);$('search').addEventListener('input',renderProspects);$('cancelEdit').addEventListener('click',resetForm);$('prospectsBody').addEventListener('click',event=>{const editButton=event.target.closest('[data-edit]');if(editButton)edit(editButton.dataset.edit);const nextButton=event.target.closest('[data-next]');if(nextButton)next(nextButton.dataset.next);});$('logout').addEventListener('click',()=>{session=null;items=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginForm').reset();$('prospectMessage').textContent='';});
 })();
