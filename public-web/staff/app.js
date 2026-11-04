@@ -12,10 +12,11 @@
    if($('accFrom').value)params.set('from',$('accFrom').value);
    if($('accTo').value)params.set('to',$('accTo').value);
    if($('accFilterType').value)params.set('type',$('accFilterType').value);
-   const entriesData=await api('/admin/accounting/entries'+(params.size?'?'+params.toString():''));
+   const [entriesData,summaryData]=await Promise.all([api('/admin/accounting/entries'+(params.size?'?'+params.toString():'')),api('/admin/accounting/summary')]);
    accountingEntries=entriesData.entries||[];
-   const totals=accountingEntries.reduce((acc,item)=>{acc[item.type]=(acc[item.type]||0)+(Number(item.amount)||0);return acc;},{income:0,expense:0});
-   $('accIncome').textContent=money(totals.income);$('accExpense').textContent=money(totals.expense);$('accBalance').textContent=money(totals.income-totals.expense);$('accPending').textContent=String(accountingEntries.filter(item=>!item.reconciled).length);
+   const filteredTotals=accountingEntries.reduce((acc,item)=>{acc[item.type]=(acc[item.type]||0)+(Number(item.amount)||0);return acc;},{income:0,expense:0});
+   const totals=params.size?filteredTotals:(summaryData.totals||filteredTotals);
+   $('accIncome').textContent=money(totals.income);$('accExpense').textContent=money(totals.expense);$('accBalance').textContent=money(totals.balance??(totals.income-totals.expense));$('accPending').textContent=String(params.size?accountingEntries.filter(item=>!item.reconciled).length:(summaryData.pendingReconciliation??accountingEntries.filter(item=>!item.reconciled).length));
    body.innerHTML=accountingEntries.map(item=>`<tr><td>${item.reconciled?'✓':`<input type="checkbox" aria-label="Seleccionar movimiento" data-acc-select="${esc(item.id)}">`}</td><td>${esc(item.date)}</td><td><span class="pill">${item.type==='income'?'Ingreso':'Egreso'}</span></td><td><strong>${esc(item.category)}</strong><br><small>${esc(item.description)}</small></td><td>${money(item.amount)}</td><td>${esc(item.reference||item.paymentMethod||'—')}</td><td>${item.reconciled?'Conciliado':'Pendiente'}</td></tr>`).join('')||'<tr><td colspan="7">No hay movimientos para los filtros seleccionados.</td></tr>';
    $('accFilterMessage').textContent=`${entriesData.total??accountingEntries.length} movimiento(s) en el resultado.`;
    $('accountingForm').classList.toggle('hidden',!has('accounting.entries.create'));$('accReconcile').classList.toggle('hidden',!has('accounting.reconcile'));$('accExport').classList.toggle('hidden',!has('accounting.reports'));
