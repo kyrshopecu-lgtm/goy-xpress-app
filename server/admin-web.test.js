@@ -694,8 +694,7 @@ test('portal interno autentica Ventas y presenta el módulo contable sin datos s
  const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),worker=read('cloudflare-worker-v2.js');
  assert.match(html,/id="loginForm"/);assert.match(html,/value="sales"/);assert.match(html,/value="accounting"/);
  assert.match(html,/id="salesView"/);assert.match(html,/id="accountingView"/);
- assert.match(js,/\/auth\/login/);assert.match(js,/\/admin\/prospects/);assert.match(js,/permissions/);
- assert.match(js,/todavía están en construcción/);
+ assert.match(js,/\/auth\/login/);assert.match(js,/\/admin\/prospects/);assert.match(html,/todavía están en construcción/);
  assert.match(worker,/path === '\/equipo' \|\| path === '\/equipo\/'/);
  new vm.Script(js,{filename:'public-web/staff/app.js'});
 });
