@@ -11,7 +11,7 @@ function bearer(req){const a=String(req.headers?.authorization||'');return a.sta
 function pathnameOf(req){const u=new URL(req.url,`http://${req.headers?.host||'localhost'}`);let p=u.pathname.replace(/\/$/,'')||'/';if(p==='/api')p='/';else if(p.startsWith('/api/'))p=p.slice(4);return p;}
 function json(res,status,body,origin='*'){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization, X-Request-Secret');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');res.end(JSON.stringify(body));}
 async function readBody(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>1000000)throw new Error('Payload demasiado grande');}return raw?JSON.parse(raw):{};}
-function cleanData(value){const data=value&&typeof value==='object'?value:{};for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','prospects','prospectDailyRuns'])if(!Array.isArray(data[key]))data[key]=[];if(!data.prospectDiscoveryUsage||typeof data.prospectDiscoveryUsage!=='object')data.prospectDiscoveryUsage={};return data;}
+function cleanData(value){const data=value&&typeof value==='object'?value:{};for(const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','customServices','prospects','prospectDailyRuns','accountingEntries'])if(!Array.isArray(data[key]))data[key]=[];if(!data.prospectDiscoveryUsage||typeof data.prospectDiscoveryUsage!=='object')data.prospectDiscoveryUsage={};return data;}
 let sqlClient;
 async function readState(config){if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await ensureStateTable(sqlClient,cleanData({}));return readVersionedState(sqlClient,cleanData);}try{if(!fs.existsSync(config.dataFile))return cleanData({});return cleanData(JSON.parse(fs.readFileSync(config.dataFile,'utf8')));}catch{return cleanData({});}}
 async function writeState(config,data){const normalized=cleanData(data);if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await writeVersionedState(sqlClient,data,cleanData);return;}const dir=path.dirname(config.dataFile);if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});const tmp=`${config.dataFile}.tmp`;fs.writeFileSync(tmp,JSON.stringify(normalized,null,2));fs.renameSync(tmp,config.dataFile);}
@@ -192,7 +192,11 @@ function wrap(next,overrides={}){
   const prospectMetricsRoute=p==='/admin/prospects/metrics';
   const prospectDailyRunLog=p==='/admin/prospects/daily-run-log';
   const prospectSendApprovedBatch=p==='/admin/prospects/send-approved-batch';
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectMetricsRoute&&req.method==='GET')||(prospectDailyRunLog&&req.method==='POST')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE');
+  const accountingEntryMatch=p.match(/^\/admin\/accounting\/entries\/([^/]+)$/);
+  const accountingEntriesRoute=p==='/admin/accounting/entries';
+  const accountingSummaryRoute=p==='/admin/accounting/summary';
+  const accountingReconcileRoute=p==='/admin/accounting/reconcile';
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectMetricsRoute&&req.method==='GET')||(prospectDailyRunLog&&req.method==='POST')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE')||(accountingEntriesRoute&&['GET','POST'].includes(req.method))||(accountingEntryMatch&&['PATCH'].includes(req.method))||(accountingSummaryRoute&&req.method==='GET')||(accountingReconcileRoute&&req.method==='POST');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),workersAiRun:typeof overrides.workersAiRun==='function'?overrides.workersAiRun:null,openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),openaiFallbackEnabled:String(overrides.openaiFallbackEnabled??process.env.GOY_AI_OPENAI_FALLBACK??'').toLowerCase()==='true',googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -207,6 +211,11 @@ function wrap(next,overrides={}){
    else if(prospectServiceIntelligence||prospectMetricsRoute)requiredPermission='sales.prospects.read';
    else if(prospectMatch&&req.method==='GET')requiredPermission='sales.prospects.read';
    else if(prospectMatch&&req.method==='PATCH')requiredPermission='sales.prospects.update';
+   if(accountingEntriesRoute&&req.method==='GET')requiredPermission='accounting.read';
+   else if(accountingEntriesRoute&&req.method==='POST')requiredPermission='accounting.entries.create';
+   else if(accountingEntryMatch&&req.method==='PATCH')requiredPermission='accounting.entries.update';
+   else if(accountingSummaryRoute)requiredPermission='accounting.reports';
+   else if(accountingReconcileRoute)requiredPermission='accounting.reconcile';
    if(payload.role!=='admin'){
     if(!requiredPermission||!['sales','accounting'].includes(payload.role))return json(res,403,{error:'No tienes permiso para esta operación.'},config.allowedOrigin);
     const actor=data.users.find(u=>u.id===payload.userId&&u.role===payload.role);
@@ -220,6 +229,45 @@ function wrap(next,overrides={}){
     data.users=data.users.filter(u=>u.id!==id);
     if(role==='client')data.clients=data.clients.filter(x=>x.userId!==id&&x.id!==id);else data.couriers=data.couriers.filter(x=>x.userId!==id&&x.id!==id);
     await writeState(config,data);return json(res,200,{ok:true,message:role==='client'?'Cliente eliminado.':'Mensajero eliminado.'},config.allowedOrigin);
+   }
+   if(accountingSummaryRoute){
+    const entries=data.accountingEntries.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    const totals=entries.reduce((acc,item)=>{const amount=Number(item.amount)||0;acc[item.type]=(acc[item.type]||0)+amount;return acc;},{income:0,expense:0});
+    const pending=entries.filter(item=>!item.reconciled).length;
+    return json(res,200,{totals:{income:Math.round((totals.income||0)*100)/100,expense:Math.round((totals.expense||0)*100)/100,balance:Math.round(((totals.income||0)-(totals.expense||0))*100)/100},count:entries.length,pendingReconciliation:pending,entries:entries.slice(0,100)},config.allowedOrigin);
+   }
+   if(accountingEntriesRoute&&req.method==='GET'){
+    const url=new URL(req.url,`http://${req.headers?.host||'localhost'}`),type=url.searchParams.get('type')||'',from=url.searchParams.get('from')||'',to=url.searchParams.get('to')||'';
+    const entries=data.accountingEntries.filter(item=>(!type||item.type===type)&&(!from||item.date>=from)&&(!to||item.date<=to)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    return json(res,200,{entries:entries.slice(0,500),total:entries.length},config.allowedOrigin);
+   }
+   if(accountingEntriesRoute&&req.method==='POST'){
+    const body=await readBody(req),type=String(body.type||''),amount=cleanMoney(body.amount),category=String(body.category||'').trim(),description=String(body.description||'').trim(),date=String(body.date||'').trim();
+    if(!['income','expense'].includes(type))return json(res,400,{error:'Selecciona ingreso o egreso.'},config.allowedOrigin);
+    if(amount===null||amount<=0)return json(res,400,{error:'El valor debe ser mayor que cero.'},config.allowedOrigin);
+    if(category.length<2||category.length>80)return json(res,400,{error:'Ingresa una categoría válida.'},config.allowedOrigin);
+    if(description.length<3||description.length>500)return json(res,400,{error:'Ingresa una descripción de 3 a 500 caracteres.'},config.allowedOrigin);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T00:00:00Z')))return json(res,400,{error:'La fecha debe tener formato AAAA-MM-DD.'},config.allowedOrigin);
+    const now=new Date().toISOString(),entry={id:crypto.randomUUID(),type,amount,category,description,date,paymentMethod:String(body.paymentMethod||'').trim().slice(0,40),reference:String(body.reference||'').trim().slice(0,100),notes:String(body.notes||'').trim().slice(0,500),reconciled:false,createdAt:now,updatedAt:now,createdBy:payload.userId||'admin'};
+    data.accountingEntries.unshift(entry);await writeState(config,data);return json(res,201,{entry},config.allowedOrigin);
+   }
+   if(accountingEntryMatch){
+    const id=decodeURIComponent(accountingEntryMatch[1]),entry=data.accountingEntries.find(item=>item.id===id);if(!entry)return json(res,404,{error:'Registro contable no encontrado.'},config.allowedOrigin);
+    const body=await readBody(req);
+    if(entry.reconciled)return json(res,409,{error:'El registro ya está conciliado y no puede modificarse.'},config.allowedOrigin);
+    if(Object.prototype.hasOwnProperty.call(body,'amount')){const amount=cleanMoney(body.amount);if(amount===null||amount<=0)return json(res,400,{error:'El valor debe ser mayor que cero.'},config.allowedOrigin);entry.amount=amount;}
+    for(const key of ['category','description','paymentMethod','reference','notes'])if(Object.prototype.hasOwnProperty.call(body,key)){const value=String(body[key]||'').trim();if(key==='category'&&value.length<2)return json(res,400,{error:'Categoría no válida.'},config.allowedOrigin);if(key==='description'&&value.length<3)return json(res,400,{error:'Descripción no válida.'},config.allowedOrigin);entry[key]=value.slice(0,key==='description'||key==='notes'?500:100);}
+    if(Object.prototype.hasOwnProperty.call(body,'date')){const date=String(body.date||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T00:00:00Z')))return json(res,400,{error:'Fecha no válida.'},config.allowedOrigin);entry.date=date;}
+    entry.updatedAt=new Date().toISOString();entry.updatedBy=payload.userId||'admin';await writeState(config,data);return json(res,200,{entry},config.allowedOrigin);
+   }
+   if(accountingReconcileRoute){
+    const body=await readBody(req),ids=Array.isArray(body.ids)?[...new Set(body.ids.map(String))]:[];
+    if(!ids.length||ids.length>100)return json(res,400,{error:'Selecciona entre 1 y 100 registros para conciliar.'},config.allowedOrigin);
+    const selected=data.accountingEntries.filter(item=>ids.includes(item.id));
+    if(selected.length!==ids.length)return json(res,404,{error:'Uno o más registros no existen.'},config.allowedOrigin);
+    if(selected.some(item=>item.reconciled))return json(res,409,{error:'Uno o más registros ya fueron conciliados.'},config.allowedOrigin);
+    const now=new Date().toISOString();selected.forEach(item=>{item.reconciled=true;item.reconciledAt=now;item.reconciledBy=payload.userId||'admin';});
+    await writeState(config,data);return json(res,200,{ok:true,reconciled:selected.length},config.allowedOrigin);
    }
    if(prospectWhatsAppStatus){
     const accessToken=String(process.env.WHATSAPP_ACCESS_TOKEN||''),phoneNumberId=String(process.env.WHATSAPP_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_PROSPECT_TEMPLATE||''),mediaHeader=String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER||'').toLowerCase()==='true';
