@@ -17,6 +17,7 @@ async function readState(config){if(config.databaseUrl){if(!sqlClient){const {ne
 async function writeState(config,data){const normalized=cleanData(data);if(config.databaseUrl){if(!sqlClient){const {neon}=require('@neondatabase/serverless');sqlClient=neon(config.databaseUrl);}await writeVersionedState(sqlClient,data,cleanData);return;}const dir=path.dirname(config.dataFile);if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});const tmp=`${config.dataFile}.tmp`;fs.writeFileSync(tmp,JSON.stringify(normalized,null,2));fs.renameSync(tmp,config.dataFile);}
 function activeStatus(value){return !['Entrega finalizada','Cancelado','Entregado','Finalizado'].includes(String(value||''));}
 function cleanMoney(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;}
+function validISODate(value){const date=String(value||'');if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return false;const parsed=new Date(date+'T00:00:00Z');return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===date;}
 function publicService(item){return {id:item.id,name:item.name,price:Number(item.price||0),description:item.description||'',active:item.active!==false,createdAt:item.createdAt,updatedAt:item.updatedAt};}
 
 const SALES_BASE_SERVICES=[
@@ -247,7 +248,7 @@ function wrap(next,overrides={}){
     if(amount===null||amount<=0)return json(res,400,{error:'El valor debe ser mayor que cero.'},config.allowedOrigin);
     if(category.length<2||category.length>80)return json(res,400,{error:'Ingresa una categoría válida.'},config.allowedOrigin);
     if(description.length<3||description.length>500)return json(res,400,{error:'Ingresa una descripción de 3 a 500 caracteres.'},config.allowedOrigin);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T00:00:00Z')))return json(res,400,{error:'La fecha debe tener formato AAAA-MM-DD.'},config.allowedOrigin);
+    if(!validISODate(date))return json(res,400,{error:'La fecha debe tener formato AAAA-MM-DD.'},config.allowedOrigin);
     const now=new Date().toISOString(),entry={id:crypto.randomUUID(),type,amount,category,description,date,paymentMethod:String(body.paymentMethod||'').trim().slice(0,40),reference:String(body.reference||'').trim().slice(0,100),notes:String(body.notes||'').trim().slice(0,500),reconciled:false,createdAt:now,updatedAt:now,createdBy:payload.userId||'admin'};
     data.accountingEntries.unshift(entry);await writeState(config,data);return json(res,201,{entry},config.allowedOrigin);
    }
