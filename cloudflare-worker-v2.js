@@ -235,6 +235,8 @@ async function handleApi(request, env) {
 
   if (
     path === '/api/auth/login' ||
+    path === '/api/admin/internal-users' ||
+    /^\/api\/admin\/internal-users\/[^/]+$/.test(path) ||
     /^\/api\/admin\/(clients|couriers)\/[^/]+\/approve$/.test(path)
   ) {
     return invokeNode(serverV6, request);
