@@ -3,6 +3,7 @@ const fs=require('fs');
 const path=require('path');
 const crypto=require('crypto');
 const {cleanPhone,sendProspectFirstContact,sendProspectReply}=require('./whatsappNotifications');
+const {hasPermission}=require('./rbac');
 
 function safeEqual(a,b){const x=Buffer.from(String(a));const y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y);}
 function verifyToken(token,secret){if(!token||!secret)return null;const [body,sig]=String(token).split('.');if(!body||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(sig,expected))return null;try{const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));if(!payload.exp||Date.now()>payload.exp)return null;return payload;}catch{return null;}}
@@ -195,8 +196,22 @@ function wrap(next,overrides={}){
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),workersAiRun:typeof overrides.workersAiRun==='function'?overrides.workersAiRun:null,openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),openaiFallbackEnabled:String(overrides.openaiFallbackEnabled??process.env.GOY_AI_OPENAI_FALLBACK??'').toLowerCase()==='true',googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
-   const payload=verifyToken(bearer(req),config.tokenSecret);if(!payload||payload.role!=='admin')return json(res,401,{error:'No autorizado'},config.allowedOrigin);
+   const payload=verifyToken(bearer(req),config.tokenSecret);if(!payload)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
    const data=await readState(config);
+   let requiredPermission='';
+   if(p==='/admin/prospects'&&req.method==='GET')requiredPermission='sales.prospects.read';
+   else if((p==='/admin/prospects'&&req.method==='POST')||prospectImport||prospectDiscover)requiredPermission='sales.prospects.create';
+   else if(prospectAnalyzeMatch||prospectFollowupMatch)requiredPermission='sales.prospects.update';
+   else if(prospectSendMatch||prospectFollowupSendMatch||prospectSendApprovedBatch)requiredPermission='sales.whatsapp.send';
+   else if(prospectWhatsAppStatus)requiredPermission='sales.whatsapp.send';
+   else if(prospectServiceIntelligence||prospectMetricsRoute)requiredPermission='sales.prospects.read';
+   else if(prospectMatch&&req.method==='GET')requiredPermission='sales.prospects.read';
+   else if(prospectMatch&&req.method==='PATCH')requiredPermission='sales.prospects.update';
+   if(payload.role!=='admin'){
+    if(!requiredPermission||!['sales','accounting'].includes(payload.role))return json(res,403,{error:'No tienes permiso para esta operación.'},config.allowedOrigin);
+    const actor=data.users.find(u=>u.id===payload.userId&&u.role===payload.role);
+    if(!actor||actor.active===false||actor.blocked===true||!hasPermission(actor,requiredPermission))return json(res,403,{error:'No tienes permiso para esta operación.'},config.allowedOrigin);
+   }
    if(accountMatch){
     const role=accountMatch[1]==='clients'?'client':'courier',id=decodeURIComponent(accountMatch[2]);
     const user=data.users.find(u=>u.id===id&&u.role===role);if(!user)return json(res,404,{error:role==='client'?'Cliente no encontrado.':'Mensajero no encontrado.'},config.allowedOrigin);
