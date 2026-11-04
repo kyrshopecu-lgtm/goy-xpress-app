@@ -261,6 +261,7 @@ async function handleStatic(request, env) {
   let path = url.pathname;
 
   if (path === '/inicio') path = '/';
+  else if (path === '/equipo' || path === '/equipo/') path = '/staff/index.html';
   else if (path === '/servicio') path = '/service.html';
   else if (path === '/admin' || path === '/admin/') path = '/admin/index.html';
   else if (path === '/tracking' || path === '/tracking/') path = '/tracking/index.html';
