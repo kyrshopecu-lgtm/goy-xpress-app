@@ -77,3 +77,16 @@ test('permisos contables son verificados en servidor y no aceptan campos de rol 
   res=await call(h,request('POST','/api/admin/accounting/entries',{type:'income',amount:-1,category:'Prueba',description:'Valor inválido',date:'2026-11-04'},sign({role:'admin',exp:Date.now()+60000},'test-secret')));assert.equal(res.statusCode,400);
  }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
 });
+
+test('contabilidad rechaza fechas imposibles y ventas no puede consultar el libro contable',async()=>{
+ const accounting={id:'acct-date',role:'accounting',active:true,permissions:['accounting.entries.create','accounting.read']};
+ const sales={id:'sales-date',role:'sales',active:true,permissions:['sales.prospects.read']};
+ const h=harness({users:[accounting,sales]});
+ try{
+  const acctToken=sign({role:'accounting',userId:'acct-date',exp:Date.now()+60000},'test-secret');
+  const salesToken=sign({role:'sales',userId:'sales-date',exp:Date.now()+60000},'test-secret');
+  let res=await call(h,request('POST','/api/admin/accounting/entries',{type:'income',amount:10,category:'Cobro',description:'Fecha imposible',date:'2026-02-31'},acctToken));
+  assert.equal(res.statusCode,400);
+  res=await call(h,request('GET','/api/admin/accounting/entries',{},salesToken));assert.equal(res.statusCode,403);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
