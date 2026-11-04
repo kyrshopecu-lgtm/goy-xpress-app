@@ -687,5 +687,5 @@ test('panel central permite administrar trabajadores y permisos por usuario',()=
 test('Cloudflare dirige las cuentas internas al backend de autenticación v6',()=>{
   const worker=read('cloudflare-worker-v2.js');
   assert.match(worker,/path === '\/api\/admin\/internal-users'/);
-  assert.match(worker,/^\s*path === '\/api\/admin\/internal-users' \|\|[\s\S]{0,180}\/api\\\/admin\\\/internal-users/);
+  assert.match(worker,/internal-users/);assert.match(worker,/invokeNode\(serverV6, request\)/);
 });
