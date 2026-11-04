@@ -698,3 +698,12 @@ test('portal interno autentica Ventas y presenta el módulo contable sin datos s
  assert.match(worker,/path === '\/equipo' \|\| path === '\/equipo\/'/);
  new vm.Script(js,{filename:'public-web/staff/app.js'});
 });
+
+test('portal de Contabilidad usa endpoints protegidos y no simula datos bancarios',()=>{
+ const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),api=read('server/admin-management.js');
+ for(const id of ['accountingForm','accIncome','accExpense','accBalance','accPending','accountingBody','accReconcile'])assert.ok(html.includes('id="'+id+'"'),`Falta control contable ${id}`);
+ for(const route of ['/admin/accounting/entries','/admin/accounting/summary','/admin/accounting/reconcile'])assert.ok(js.includes(route),`Falta conexión ${route}`);
+ for(const permission of ['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports'])assert.ok(api.includes(permission),`Falta permiso ${permission}`);
+ assert.match(html,/No está conectado automáticamente a bancos/);
+ new vm.Script(js,{filename:'public-web/staff/app.js'});
+});
