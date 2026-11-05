@@ -12,6 +12,7 @@ test('ventas y contabilidad permanecen separadas por defecto', () => {
   const sales = { id: 's1', role: 'sales', active: true };
   const accounting = { id: 'a1', role: 'accounting', active: true };
   assert.equal(hasPermission(sales, 'sales.prospects.update'), true);
+  assert.equal(hasPermission(sales, 'sales.whatsapp.send'), false);
   assert.equal(hasPermission(sales, 'accounting.reconcile'), false);
   assert.equal(hasPermission(accounting, 'accounting.reconcile'), true);
   assert.equal(hasPermission(accounting, 'sales.whatsapp.send'), false);
