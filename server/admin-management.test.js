@@ -33,6 +33,13 @@ test('ventas solo accede a CRM de prospectos con permisos del rol',async()=>{
   assert.equal(services.statusCode,403);
   const forbiddenWrite=await call(h,request('POST','/api/admin/prospects',{business:'Nuevo prospecto'},token));
   assert.equal(forbiddenWrite.statusCode,403);
+  const forbiddenWhatsApp=await call(h,request('POST','/api/admin/prospects/prospect-1/send-whatsapp',{},token));
+  assert.equal(forbiddenWhatsApp.statusCode,403);
+  const persisted=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));
+  persisted.users[0].active=false;
+  fs.writeFileSync(h.dataFile,JSON.stringify(persisted,null,2));
+  const staleSession=await call(h,request('GET','/api/admin/prospects',{},token));
+  assert.equal(staleSession.statusCode,403);
  }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
 });
 
