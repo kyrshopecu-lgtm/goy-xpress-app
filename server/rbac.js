@@ -7,7 +7,7 @@ const ROLE_PERMISSIONS = Object.freeze({
   sales: Object.freeze([
     'crm.contacts.read', 'crm.contacts.update', 'crm.contacts.assign',
     'sales.prospects.read', 'sales.prospects.create', 'sales.prospects.update',
-    'sales.whatsapp.send', 'procedures.read'
+    'procedures.read'
   ]),
   accounting: Object.freeze([
     'crm.contacts.read_billing', 'operations.requests.read_billing',
