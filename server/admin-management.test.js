@@ -97,3 +97,36 @@ test('contabilidad rechaza fechas imposibles y ventas no puede consultar el libr
   res=await call(h,request('GET','/api/admin/accounting/entries',{},salesToken));assert.equal(res.statusCode,403);
  }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
 });
+test('ventas y contabilidad no pueden cruzar módulos aunque llamen directamente a la API',async()=>{
+ const sales={id:'sales-isolated',role:'sales',active:true,permissions:['sales.prospects.read','sales.prospects.create','sales.prospects.update']};
+ const accounting={id:'acct-isolated',role:'accounting',active:true,permissions:['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports']};
+ const entry={id:'entry-isolated',type:'income',amount:10,category:'Prueba',description:'Registro de prueba',date:'2026-11-04',reconciled:false};
+ const h=harness({users:[sales,accounting],accountingEntries:[entry]});
+ try{
+  const salesToken=sign({role:'sales',userId:sales.id,exp:Date.now()+60000},'test-secret');
+  const accountingToken=sign({role:'accounting',userId:accounting.id,exp:Date.now()+60000},'test-secret');
+  const salesAttempts=[
+   ['GET','/api/admin/accounting/entries',{}],
+   ['GET','/api/admin/accounting/summary',{}],
+   ['POST','/api/admin/accounting/entries',{type:'income',amount:99,category:'No autorizado',description:'Ventas',date:'2026-11-04'}],
+   ['PATCH','/api/admin/accounting/entries/entry-isolated',{amount:99}],
+   ['POST','/api/admin/accounting/reconcile',{ids:['entry-isolated']}]
+  ];
+  for(const [method,url,body] of salesAttempts){
+   const res=await call(h,request(method,url,body,salesToken));
+   assert.equal(res.statusCode,403, 'Ventas debe quedar fuera de '+method+' '+url);
+  }
+  const accountingAttempts=[
+   ['GET','/api/admin/prospects',{}],
+   ['POST','/api/admin/prospects',{business:'No autorizado desde contabilidad'}],
+   ['PATCH','/api/admin/prospects/prospect-1',{status:'Cliente'}]
+  ];
+  for(const [method,url,body] of accountingAttempts){
+   const res=await call(h,request(method,url,body,accountingToken));
+   assert.equal(res.statusCode,403, 'Contabilidad debe quedar fuera de '+method+' '+url);
+  }
+  const data=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));
+  assert.equal(data.accountingEntries[0].amount,10,'Ventas no debe modificar movimientos contables');
+  assert.equal(data.prospects.length,0,'Contabilidad no debe crear ni modificar prospectos');
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
