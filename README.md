@@ -1,87 +1,71 @@
-# GOY XPRESS Mobile 3.0
+# GOY XPRESS · Administración web y app de mensajero
 
-Aplicación móvil en React Native y Expo para la operación de GOY XPRESS en Quito.
+GOY XPRESS opera con dos herramientas principales:
 
-## Funciones incluidas
+1. **Web de administración:** centro único para registrar clientes, crear y recibir órdenes, cotizar, asignar mensajeros, actualizar estados, controlar cobros, revisar evidencias, consultar GPS y generar reportes.
+2. **App de mensajero:** aplicación móvil para que cada mensajero ingrese con sus credenciales, consulte únicamente las órdenes asignadas, navegue a las direcciones, actualice el avance y cargue fotografías y comprobantes.
 
-### Cliente
+## Flujo operativo
 
-- Dashboard con solicitudes, entregas, liquidaciones e inventario.
+1. El administrador registra o selecciona al cliente desde la web.
+2. El administrador crea la orden en el panel, registra servicio, direcciones, instrucciones y valores.
+3. Desde la web asigna la orden al mensajero correspondiente.
+4. El mensajero recibe y ejecuta la orden desde su app: recogida, ruta, novedades, cobro y entrega.
+5. La web centraliza el estado, las evidencias, la ubicación y el control administrativo de la operación.
+
+**No se desarrollará ni se generará una APK independiente para clientes.** Los clientes no necesitan instalar una aplicación: las órdenes se ingresan y administran desde la web de administración. La app móvil se reserva para el personal mensajero.
+
+## Funciones de la web de administración
+
+- Crear, consultar, editar, asignar y dar seguimiento a órdenes.
+- Administrar clientes y mensajeros.
+- Gestionar servicios, cotizaciones, agenda y trámites.
+- Controlar cobros, valores contra entrega y liquidaciones.
+- Consultar evidencias fotográficas, novedades y ubicación del mensajero.
+- Gestionar usuarios internos y permisos por módulo (administración, ventas y contabilidad).
+
+## Funciones de la app de mensajero
+
+- Inicio de sesión individual y acceso según permisos.
+- Consulta de órdenes asignadas.
+- Datos de recogida, entrega, contacto e instrucciones.
+- Navegación y seguimiento GPS durante una operación activa.
+- Actualización de estados de la orden.
+- Fotografías de recogida, entrega y evidencias de trámites o depósitos.
+- Registro de novedades y confirmación de valores recaudados.
+
+## Tarifas operativas configuradas
+
 - Entrega programada: **$3,00 hasta 5 km**.
 - Entrega Express: **$3,00 hasta 5 km + $0,50 por km adicional iniciado**.
-- Mensajería ejecutiva para ingreso, retiro y entrega de documentos, depósitos,
-  pagos y otras diligencias.
-- Tarifa ejecutiva: **$6,50 hasta 40 minutos de espera + $0,10 por minuto
-  adicional**.
-- Retiro y despacho en la oficina: **$1,00**.
-- Cálculo de valor del producto, envío y total a cobrar al destinatario.
-- Cobro contra entrega sin comisión y control de liquidación.
-- Registro de productos y ajuste de inventario.
-- Solicitud del plan de bodega, empaque, entregas y apoyo comercial.
-- Historial y seguimiento de estados.
-- Aviso por WhatsApp al administrador `+593 99 772 9964` con mensaje
-  prellenado.
+- Mensajería ejecutiva: **$6,50 hasta 40 minutos + $0,10 por minuto adicional**.
+- Retiro y despacho en oficina: **$1,00**.
 
-### Administrador
+## Persistencia e integraciones
 
-- Bandeja de solicitudes nuevas, activas y finalizadas.
-- Asignación de mensajero.
-- Atención de prospectos del plan de bodega y ventas.
-- Control de valores contra entrega.
-- Confirmación de liquidaciones transferidas.
-
-### Mensajero
-
-- Selección de mensajero activo.
-- Visualización de tareas asignadas.
-- Llamada al cliente y apertura de la dirección en mapas.
-- Estados `Asignado`, `En ruta` y `Finalizado`.
-- Confirmación del valor a cobrar al finalizar.
-
-## Persistencia
-
-Las solicitudes y el inventario se guardan localmente con AsyncStorage. La
-versión 3.0 también migra las solicitudes creadas por versiones anteriores.
-
-## WhatsApp
-
-La aplicación abre WhatsApp con una solicitud completa y prellenada. El usuario
-debe pulsar **Enviar**. Para una notificación totalmente automática se requiere
-WhatsApp Business Cloud API y un backend seguro; los tokens nunca deben guardarse
-dentro de la aplicación móvil.
+La operación debe centralizarse en el backend y la base de datos compartida para que la web y la app de mensajero consulten la misma orden y sus actualizaciones. Las notificaciones automáticas de WhatsApp requieren credenciales y configuración de WhatsApp Business Cloud API; no se consideran activas solo por tener enlaces o mensajes prellenados.
 
 ## Ejecutar y verificar
 
 ```bash
 npm ci
 npm test
-npm run export:android
-npx expo start
 ```
 
-Escanea el código QR con Expo Go para probar la aplicación.
-
-## Generar APK
-
-El repositorio incluye `.github/workflows/build-apk.yml`. En GitHub abre
-**Actions → Generar APK GOY XPRESS → Run workflow**. El APK aparecerá como
-artefacto `GOY-XPRESS-APK` al terminar.
-
-También puede compilarse con EAS después de vincular el proyecto Expo:
+La compilación Android se realiza con el perfil de mensajero:
 
 ```bash
-eas build:configure
-eas build --platform android --profile preview
+cp app.courier.json app.json
+cp index.courier.js index.js
+npm run export:android
+CI=1 npx expo prebuild --platform android --clean
 ```
 
-## Antes de producción
+El workflow **Generar APK GOY XPRESS Mensajero** genera y verifica la APK del mensajero, incluida la variante ARM64, y ejecuta una prueba de apertura en Android 10.
 
-La versión actual es funcional en un solo dispositivo. Para operar con varios
-clientes, administradores y mensajeros en tiempo real se debe añadir:
+## Seguridad y producción
 
-- autenticación por usuario;
-- base de datos en la nube (Supabase o Firebase);
-- notificaciones push;
-- mapas y cálculo automático de distancia;
-- evidencia fotográfica y firma del receptor;
-- permisos separados para cada rol.
+- No guardar credenciales privadas dentro de la APK.
+- El servidor valida identidad, permisos y asignación de cada orden.
+- Un mensajero solo puede consultar y actualizar las órdenes que le corresponden.
+- No desplegar cambios a producción ni activar servicios de pago sin autorización.
