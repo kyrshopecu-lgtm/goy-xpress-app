@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const v5 = require('./server-v5');
+const {ensureStateTable, readVersionedState, writeVersionedState} = require('./versioned-state');
+const {normalizePermissions, permissionsFor} = require('./rbac');
 
 function cfg() {
   return {
@@ -14,7 +16,7 @@ function cfg() {
 
 function cleanData(value) {
   const data = value && typeof value === 'object' ? value : {};
-  for (const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives']) {
+  for (const key of ['users','clients','couriers','requests','payments','invites','templates','walletEntries','monthlyArchives','adminAuditLog']) {
     if (!Array.isArray(data[key])) data[key] = [];
   }
   return data;
@@ -27,10 +29,8 @@ async function readState(config) {
       const {neon} = require('@neondatabase/serverless');
       sqlClient = neon(config.databaseUrl);
     }
-    await sqlClient`CREATE TABLE IF NOT EXISTS goy_state (id INTEGER PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
-    await sqlClient`INSERT INTO goy_state (id,data) VALUES (1,${JSON.stringify(cleanData({}))}::jsonb) ON CONFLICT (id) DO NOTHING`;
-    const rows = await sqlClient`SELECT data FROM goy_state WHERE id=1 LIMIT 1`;
-    return cleanData(rows[0]?.data || {});
+    await ensureStateTable(sqlClient, cleanData({}));
+    return readVersionedState(sqlClient, cleanData);
   }
   try {
     if (!fs.existsSync(config.dataFile)) return cleanData({});
@@ -47,7 +47,7 @@ async function writeState(config,data) {
       const {neon} = require('@neondatabase/serverless');
       sqlClient = neon(config.databaseUrl);
     }
-    await sqlClient`UPDATE goy_state SET data=${JSON.stringify(normalized)}::jsonb, updated_at=NOW() WHERE id=1`;
+    await writeVersionedState(sqlClient, data, cleanData);
     return;
   }
   const dir = path.dirname(config.dataFile);
@@ -105,7 +105,12 @@ function syncMirror(data,user){
   }
 }
 
-function session(user,config){const expiresIn=30*24*60*60;return {token:signToken({role:user.role,userId:user.id,exp:Date.now()+expiresIn*1000},config.tokenSecret),expiresIn,user:publicUser(user),pendingApproval:!user.approved};}
+function session(user,config){const expiresIn=30*24*60*60;return {token:signToken({role:user.role,userId:user.id,exp:Date.now()+expiresIn*1000},config.tokenSecret),expiresIn,user:publicUser(user),permissions:permissionsFor(user),pendingApproval:!user.approved};}
+
+function adminPayload(req,config){const payload=verifyToken(bearer(req),config.tokenSecret);return payload&&payload.role==='admin'?payload:null;}
+function internalUsername(value){return /^[a-z0-9][a-z0-9._-]{2,29}$/.test(normalizeUsername(value));}
+function audit(data,actor,action,target,details={}){data.adminAuditLog.unshift({id:crypto.randomUUID(),actorId:actor.userId||'',action,targetId:target,details,createdAt:new Date().toISOString()});data.adminAuditLog=data.adminAuditLog.slice(0,500);}
+
 
 async function handler(req,res){
   const config=cfg(); const p=pathname(req);
@@ -120,12 +125,40 @@ async function handler(req,res){
     }
     if(req.method==='POST'&&p==='/auth/login'){
       if(!config.tokenSecret)return json(res,503,{error:'Autenticación del servidor sin configurar.'},config.allowedOrigin);
-      const body=await readBody(req),role=body.role==='courier'?'courier':'client',data=await readState(config);
+      const body=await readBody(req),role=['sales','accounting','courier'].includes(body.role)?body.role:'client',data=await readState(config);
       const identifier=String(body.username||body.email||body.identifier||'').trim().toLowerCase();
       const user=data.users.find(u=>u.role===role&&(normalizeEmail(u.email)===identifier||normalizeUsername(u.username)===identifier));
       if(!user||user.active===false||!verifyPassword(body.password,user))return json(res,401,{error:'Usuario/correo o contraseña incorrectos.'},config.allowedOrigin);
       if(!user.approved)return json(res,403,{error:'Tu cuenta está pendiente de aprobación por el administrador.',pendingApproval:true,user:publicUser(user)},config.allowedOrigin);
       return json(res,200,session(user,config),config.allowedOrigin);
+    }
+    if(req.method==='GET'&&p==='/admin/internal-users'){
+      const actor=adminPayload(req,config);if(!actor)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
+      const data=await readState(config),users=data.users.filter(u=>['sales','accounting'].includes(u.role)).map(publicUser);
+      return json(res,200,{users,auditLog:data.adminAuditLog.slice(0,100)},config.allowedOrigin);
+    }
+    if(req.method==='POST'&&p==='/admin/internal-users'){
+      const actor=adminPayload(req,config);if(!actor)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
+      const body=await readBody(req),role=String(body.role||''),name=String(body.name||'').trim(),username=normalizeUsername(body.username),email=normalizeEmail(body.email),phone=cleanPhone(body.phone||body.whatsapp),passwordError=validatePassword(body.password);
+      if(!['sales','accounting'].includes(role))return json(res,400,{error:'Rol interno no válido.'},config.allowedOrigin);
+      if(name.length<2||!internalUsername(username)||!validEmail(email)||phone.length<9||passwordError)return json(res,400,{error:passwordError||'Completa nombre, usuario (3-30 caracteres), correo y WhatsApp válidos.'},config.allowedOrigin);
+      const data=await readState(config);
+      if(data.users.some(u=>normalizeUsername(u.username)===username||normalizeEmail(u.email)===email))return json(res,409,{error:'El usuario o correo ya existe.'},config.allowedOrigin);
+      const pwd=hashPassword(body.password),now=new Date().toISOString(),user={id:crypto.randomUUID(),role,name,username,email,phone,approved:true,active:true,blocked:false,...(Array.isArray(body.permissions)?{permissions:normalizePermissions(body.permissions)}:{}),passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now};
+      data.users.unshift(user);audit(data,actor,'internal_user.created',user.id,{role,username});await writeState(config,data);
+      return json(res,201,{user:publicUser(user),permissions:permissionsFor(user)},config.allowedOrigin);
+    }
+    const internalUserMatch=p.match(/^\/admin\/internal-users\/([^/]+)$/);
+    if(req.method==='PATCH'&&internalUserMatch){
+      const actor=adminPayload(req,config);if(!actor)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
+      const id=decodeURIComponent(internalUserMatch[1]),body=await readBody(req),data=await readState(config),user=data.users.find(u=>u.id===id&&['sales','accounting'].includes(u.role));
+      if(!user)return json(res,404,{error:'Trabajador no encontrado.'},config.allowedOrigin);
+      if(Object.prototype.hasOwnProperty.call(body,'active')){user.active=Boolean(body.active);user.blocked=!user.active;}
+      if(Object.prototype.hasOwnProperty.call(body,'permissions'))user.permissions=normalizePermissions(body.permissions);
+      if(Object.prototype.hasOwnProperty.call(body,'name')){const name=String(body.name||'').trim();if(name.length<2)return json(res,400,{error:'Nombre no válido.'},config.allowedOrigin);user.name=name;}
+      if(Object.prototype.hasOwnProperty.call(body,'password')){const passwordError=validatePassword(body.password);if(passwordError)return json(res,400,{error:passwordError},config.allowedOrigin);const pwd=hashPassword(body.password);user.passwordSalt=pwd.salt;user.passwordHash=pwd.hash;}
+      user.updatedAt=new Date().toISOString();audit(data,actor,'internal_user.updated',id,{active:user.active,permissionsChanged:Object.prototype.hasOwnProperty.call(body,'permissions'),passwordChanged:Object.prototype.hasOwnProperty.call(body,'password')});await writeState(config,data);
+      return json(res,200,{user:publicUser(user),permissions:permissionsFor(user)},config.allowedOrigin);
     }
     const approve=p.match(/^\/admin\/(clients|couriers)\/([^/]+)\/approve$/);
     if(req.method==='POST'&&approve){

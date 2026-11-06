@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - 'admin-web/**'
+      - 'public-web/staff/**'
       - 'api/**'
       - 'server/**'
       - 'vercel.json'
@@ -18,6 +19,7 @@ on:
       - main
     paths:
       - 'admin-web/**'
+      - 'public-web/staff/**'
       - 'api/**'
       - 'server/**'
       - 'vercel.json'
@@ -55,6 +57,7 @@ jobs:
           node --check admin-web/app.js
           node --check admin-web/quote-whatsapp.js
           node --check public-web/admin/app.js
+          node --check public-web/staff/app.js
           node --check public-web/admin/quote-whatsapp.js
           node --check cloudflare-entry.js
           node --check admin-web/client-accounts.js

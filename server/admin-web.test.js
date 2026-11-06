@@ -671,3 +671,40 @@ test('Agenda administrativa guarda seguimientos de trámites y pagos programados
   assert.match(edge,/agendaItems/);assert.match(edge,/procedure_followup/);assert.match(edge,/scheduled_payment/);assert.match(edge,/pendingDocuments/);
   new vm.Script(admin,{filename:'public-web/admin/app.js'});
 });
+
+
+test('panel central permite administrar trabajadores y permisos por usuario',()=>{
+  const js=read('public-web/admin/admin-management.js');
+  const config=read('public-web/admin/config.js');
+  const html=read('public-web/admin/index.html');
+  for(const text of ['internal-users','Equipo y permisos','goyStaffForm','goyStaffRole','goyStaffPermissions','goyStaffAudit','data-edit-staff','data-toggle-staff','data-reset-staff-password'])assert.ok(js.includes(text),`Falta interfaz: ${text}`);
+  assert.match(js,/sales\.prospects\.read/);assert.match(js,/accounting\.entries\.create/);
+  assert.match(js,/\/admin\/internal-users/);assert.match(js,/method:id\?'PATCH':'POST'/);
+  assert.match(config,/admin-management\.js/);
+  new vm.Script(js,{filename:'public-web/admin/admin-management.js'});
+});
+
+test('Cloudflare dirige las cuentas internas al backend de autenticación v6',()=>{
+  const worker=read('cloudflare-worker-v2.js');
+  assert.match(worker,/path === '\/api\/admin\/internal-users'/);
+  assert.match(worker,/internal-users/);assert.match(worker,/invokeNode\(serverV6, request\)/);
+});
+
+test('portal interno autentica Ventas y presenta el módulo contable sin datos simulados',()=>{
+ const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),worker=read('cloudflare-worker-v2.js');
+ assert.match(html,/id="loginForm"/);assert.match(html,/value="sales"/);assert.match(html,/value="accounting"/);
+ assert.match(html,/id="salesView"/);assert.match(html,/id="accountingView"/);
+ assert.match(js,/\/auth\/login/);assert.match(js,/\/admin\/prospects/);assert.match(html,/Control de ingresos y egresos/);
+ assert.match(worker,/path === '\/equipo' \|\| path === '\/equipo\/'/);
+ new vm.Script(js,{filename:'public-web/staff/app.js'});
+});
+
+test('portal de Contabilidad usa endpoints protegidos y no simula datos bancarios',()=>{
+ const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),api=read('server/admin-management.js');
+ for(const id of ['accountingForm','accIncome','accExpense','accBalance','accPending','accountingBody','accReconcile','accFrom','accTo','accFilterType','accApplyFilters','accClearFilters','accExport'])assert.ok(html.includes('id="'+id+'"'),`Falta control contable ${id}`);
+ for(const route of ['/admin/accounting/entries','/admin/accounting/summary','/admin/accounting/reconcile'])assert.ok(js.includes(route),`Falta conexión ${route}`);
+ for(const fragment of ['function exportAccounting()','goy-xpress-libro-contable.csv',"params.set('from'","params.set('to'","params.set('type'"])assert.ok(js.includes(fragment),`Falta función contable ${fragment}`);
+ for(const permission of ['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports'])assert.ok(api.includes(permission),`Falta permiso ${permission}`);
+ assert.match(html,/No está conectado automáticamente a bancos/);
+ new vm.Script(js,{filename:'public-web/staff/app.js'});
+});

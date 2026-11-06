@@ -45,6 +45,7 @@ test('los escritores conocidos de goy_state usan la capa versionada', () => {
   const root = path.join(__dirname, '..');
   const files = [
     'server/server-v5.js',
+    'server/server-v6.js',
     'server/admin-clients.js',
     'server/admin-management.js',
     'server/courier-profile.js',
