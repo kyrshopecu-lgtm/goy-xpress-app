@@ -1,4 +1,4 @@
-name: Generar APK Cliente y Mensajero
+name: Generar APK GOY XPRESS Mensajero
 
 on:
   workflow_dispatch:
@@ -13,9 +13,7 @@ on:
       - 'register.html'
       - 'package.json'
       - 'metro.config.js'
-      - 'app.client.json'
       - 'app.courier.json'
-      - 'index.client.js'
       - 'index.courier.js'
       - 'scripts/smoke-android.sh'
       - 'scripts/install-android-ndk.sh'
@@ -32,25 +30,10 @@ env:
   EXPO_PUBLIC_GOY_API_URL: https://goy-xpress-app.kyrshopecu.workers.dev/api
 
 jobs:
-  build-role-apk:
-    name: build-${{ matrix.variant }}
+  build-mensajero:
+    name: build-mensajero
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - variant: cliente
-            config: app.client.json
-            entry: index.client.js
-            apk: GOY-XPRESS-CLIENTE-PARCHE-v1.4.3.apk
-            apk_arm64: GOY-XPRESS-CLIENTE-v1.4.3-ARM64.apk
-          - variant: mensajero
-            config: app.courier.json
-            entry: index.courier.js
-            apk: GOY-XPRESS-MENSAJERO-PARCHE-v1.5.7.apk
-            apk_arm64: GOY-XPRESS-MENSAJERO-v1.5.7-ARM64.apk
-
     steps:
       - name: Descargar proyecto
         uses: actions/checkout@v4
@@ -69,11 +52,11 @@ jobs:
       - name: Configurar caché Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Activar variante ${{ matrix.variant }}
+      - name: Activar únicamente la app de mensajero
         run: |
-          cp '${{ matrix.config }}' app.json
-          cp '${{ matrix.entry }}' index.js
-          node -e "const c=require('./app.json').expo; console.log(c.name,c.android.package,c.version,c.android.versionCode)"
+          cp app.courier.json app.json
+          cp index.courier.js index.js
+          node -e "const c=require('./app.json').expo; if(!c.name.includes('Mensajero')) process.exit(1); console.log(c.name,c.android.package,c.version,c.android.versionCode)"
           echo "API móvil: $EXPO_PUBLIC_GOY_API_URL"
 
       - name: Instalar dependencias
@@ -82,7 +65,7 @@ jobs:
       - name: Ejecutar pruebas de negocio, cuentas, mapas y seguridad
         run: npm test
 
-      - name: Validar bundle JavaScript ${{ matrix.variant }}
+      - name: Validar bundle JavaScript de mensajero
         run: npm run export:android
 
       - name: Crear proyecto Android limpio
@@ -97,14 +80,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Preparar APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk '${{ matrix.apk }}'
+      - name: Preparar APK Mensajero
+        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-MENSAJERO.apk
 
       - name: Verificar firma y alineación
         run: |
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 '${{ matrix.apk }}'
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs '${{ matrix.apk }}'
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-MENSAJERO.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-MENSAJERO.apk
 
       - name: Instalar y abrir en Android 10
         uses: reactivecircus/android-emulator-runner@v2
@@ -115,7 +98,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: timeout 420s bash scripts/smoke-android.sh '${{ matrix.apk }}' 'smoke-${{ matrix.variant }}'
+          script: timeout 420s bash scripts/smoke-android.sh GOY-XPRESS-MENSAJERO.apk smoke-mensajero
 
       - name: Compilar APK ARM64 liviana
         working-directory: android
@@ -123,35 +106,35 @@ jobs:
           ./gradlew clean assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
 
       - name: Preparar APK ARM64
-        run: cp android/app/build/outputs/apk/release/app-release.apk '${{ matrix.apk_arm64 }}'
+        run: cp android/app/build/outputs/apk/release/app-release.apk GOY-XPRESS-MENSAJERO-ARM64.apk
 
       - name: Verificar APK ARM64
         run: |
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 '${{ matrix.apk_arm64 }}'
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs '${{ matrix.apk_arm64 }}'
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 GOY-XPRESS-MENSAJERO-ARM64.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs GOY-XPRESS-MENSAJERO-ARM64.apk
 
       - name: Guardar pruebas
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-${{ matrix.variant }}-PRUEBAS
-          path: smoke-${{ matrix.variant }}/
+          name: GOY-XPRESS-MENSAJERO-PRUEBAS
+          path: smoke-mensajero/
           if-no-files-found: warn
           retention-days: 14
 
       - name: Guardar APK verificada
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-${{ matrix.variant }}-APK
-          path: '${{ matrix.apk }}'
+          name: GOY-XPRESS-MENSAJERO-APK
+          path: GOY-XPRESS-MENSAJERO.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Guardar APK ARM64 liviana
         uses: actions/upload-artifact@v4
         with:
-          name: GOY-XPRESS-${{ matrix.variant }}-APK-ARM64
-          path: '${{ matrix.apk_arm64 }}'
+          name: GOY-XPRESS-MENSAJERO-APK-ARM64
+          path: GOY-XPRESS-MENSAJERO-ARM64.apk
           if-no-files-found: error
           retention-days: 30
