@@ -104,7 +104,7 @@
       section.querySelector('#goyStaffRefresh').addEventListener('click',loadInternalUsers);
     }
   }
-  function renderPermissionChoices(role='sales',selected=permissionCatalog[role].map(item=>item[0])){
+  function renderPermissionChoices(role='sales',selected=permissionCatalog[role].filter(item=>role!=='sales'||item[0]!=='sales.whatsapp.send').map(item=>item[0])){
     const box=document.getElementById('goyStaffPermissions');if(!box)return;
     box.innerHTML=permissionCatalog[role].map(([key,label])=>`<label class="goy-permission"><input type="checkbox" value="${esc(key)}" ${selected.includes(key)?'checked':''}><span>${esc(label)}</span></label>`).join('');
   }
