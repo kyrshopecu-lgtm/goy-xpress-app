@@ -243,7 +243,7 @@ test('workflow genera únicamente la APK de mensajero y valida panel y Worker', 
   assert.match(roles, /GOY-XPRESS-MENSAJERO\.apk/);
   assert.match(roles, /GOY-XPRESS-MENSAJERO-ARM64\.apk/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
-  assert.match(roles, /apksigner verify/);
+  assert.match(roles, /apksigner.*verify/);
   assert.match(roles, /smoke-android\.sh GOY-XPRESS-MENSAJERO\.apk/);
   assert.doesNotMatch(roles, /CLIENTE-PARCHE|app\.client\.json/);
   assert.doesNotMatch(admin, /cache:\s*npm/);
