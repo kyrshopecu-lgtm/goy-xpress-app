@@ -53,6 +53,18 @@
       "destination": "/08_servicios_adicionales.png"
     },
     {
+      "source": "/ventas",
+      "destination": "/admin-web/staff.html?role=sales"
+    },
+    {
+      "source": "/contabilidad",
+      "destination": "/admin-web/staff.html?role=accounting"
+    },
+    {
+      "source": "/equipo",
+      "destination": "/admin-web/staff.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin-web/index.html"
     },
