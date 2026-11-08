@@ -548,14 +548,14 @@ export default {
     if (path === '/admin' || path === '/admin/') {
       return serveAsset(request, env, '/admin/');
     }
-    if (path === '/tracking' || path === '/tracking/' || /^\\/registro\\/[^/]+\\/?$/.test(path)) {
+    if (path === '/tracking' || path === '/tracking/' || path.startsWith('/registro/')) {
       return Response.redirect(new URL('/inicio', request.url), 302);
     }
     if (path === '/servicio') {
       return serveAsset(request, env, '/service');
     }
-    if (/^\/registro\/[^/]+\/?$/.test(path)) {
-      return serveAsset(request, env, '/register');
+
+
     }
 
     return worker.fetch(request, env, ctx);
