@@ -556,8 +556,6 @@ export default {
     }
 
 
-    }
-
     return worker.fetch(request, env, ctx);
   },
 };
