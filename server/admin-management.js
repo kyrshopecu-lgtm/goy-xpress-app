@@ -182,6 +182,7 @@ function wrap(next,overrides={}){
   const accountMatch=p.match(/^\/admin\/(clients|couriers)\/([^/]+)$/);
   const serviceMatch=p.match(/^\/admin\/services\/([^/]+)$/);
   const prospectMatch=p.match(/^\/admin\/prospects\/([^/]+)$/);
+  const prospectConvertMatch=p.match(/^\/admin\/prospects\/([^/]+)\/convert-to-client$/);
   const prospectImport=p==='/admin/prospects/import';
   const prospectDiscover=p==='/admin/prospects/discover';
   const prospectAnalyzeMatch=p.match(/^\/admin\/prospects\/([^/]+)\/analyze$/);
@@ -197,7 +198,7 @@ function wrap(next,overrides={}){
   const accountingEntriesRoute=p==='/admin/accounting/entries';
   const accountingSummaryRoute=p==='/admin/accounting/summary';
   const accountingReconcileRoute=p==='/admin/accounting/reconcile';
-  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectMetricsRoute&&req.method==='GET')||(prospectDailyRunLog&&req.method==='POST')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE')||(accountingEntriesRoute&&['GET','POST'].includes(req.method))||(accountingEntryMatch&&['PATCH'].includes(req.method))||(accountingSummaryRoute&&req.method==='GET')||(accountingReconcileRoute&&req.method==='POST');
+  const handles=(p==='/admin/services'&&['GET','POST'].includes(req.method))||(serviceMatch&&['PATCH','DELETE'].includes(req.method))||(p==='/admin/prospects'&&['GET','POST'].includes(req.method))||(prospectImport&&req.method==='POST')||(prospectDiscover&&req.method==='POST')||(prospectAnalyzeMatch&&req.method==='POST')||(prospectConvertMatch&&req.method==='POST')||(prospectSendMatch&&req.method==='POST')||(prospectFollowupMatch&&req.method==='POST')||(prospectFollowupSendMatch&&req.method==='POST')||(prospectWhatsAppStatus&&req.method==='GET')||(prospectServiceIntelligence&&req.method==='GET')||(prospectMetricsRoute&&req.method==='GET')||(prospectDailyRunLog&&req.method==='POST')||(prospectSendApprovedBatch&&req.method==='POST')||(prospectMatch&&['GET','PATCH','DELETE'].includes(req.method))||(accountMatch&&req.method==='DELETE')||(accountingEntriesRoute&&['GET','POST'].includes(req.method))||(accountingEntryMatch&&['PATCH'].includes(req.method))||(accountingSummaryRoute&&req.method==='GET')||(accountingReconcileRoute&&req.method==='POST');
   if(!handles)return next(req,res);
   const config={databaseUrl:String(overrides.databaseUrl??process.env.DATABASE_URL??''),tokenSecret:String(overrides.tokenSecret??process.env.TOKEN_SECRET??''),allowedOrigin:String(overrides.allowedOrigin??process.env.ALLOWED_ORIGIN??'*'),workersAiRun:typeof overrides.workersAiRun==='function'?overrides.workersAiRun:null,openaiApiKey:String(overrides.openaiApiKey??process.env.OPENAI_API_KEY??''),openaiFallbackEnabled:String(overrides.openaiFallbackEnabled??process.env.GOY_AI_OPENAI_FALLBACK??'').toLowerCase()==='true',googleMapsApiKey:String(overrides.googleMapsApiKey??process.env.GOOGLE_MAPS_API_KEY??''),prospectDiscoveryUrl:String(overrides.prospectDiscoveryUrl??process.env.PROSPECT_DISCOVERY_URL??''),prospectDiscoveryToken:String(overrides.prospectDiscoveryToken??process.env.PROSPECT_DISCOVERY_TOKEN??''),dataFile:overrides.dataFile||process.env.DATA_FILE||path.join(__dirname,'data-v5.json')};
   try{
@@ -206,7 +207,7 @@ function wrap(next,overrides={}){
    let requiredPermission='';
    if(p==='/admin/prospects'&&req.method==='GET')requiredPermission='sales.prospects.read';
    else if((p==='/admin/prospects'&&req.method==='POST')||prospectImport||prospectDiscover)requiredPermission='sales.prospects.create';
-   else if(prospectAnalyzeMatch||prospectFollowupMatch)requiredPermission='sales.prospects.update';
+   else if(prospectAnalyzeMatch||prospectFollowupMatch||prospectConvertMatch)requiredPermission='sales.prospects.update';
    else if(prospectSendMatch||prospectFollowupSendMatch||prospectSendApprovedBatch)requiredPermission='sales.whatsapp.send';
    else if(prospectWhatsAppStatus)requiredPermission='sales.whatsapp.send';
    else if(prospectServiceIntelligence||prospectMetricsRoute)requiredPermission='sales.prospects.read';
@@ -411,6 +412,25 @@ function wrap(next,overrides={}){
     if(Object.prototype.hasOwnProperty.call(analysis,'matchedService')){item.matchedService=String(analysis.matchedService||'').trim().slice(0,160);item.recommendedMediaUrl=serviceMediaForName(knowledge,item.matchedService);}
     if(Object.prototype.hasOwnProperty.call(analysis,'score'))item.score=Math.max(0,Math.min(100,Math.round(Number(analysis.score)||0)));
     item.analysisUpdatedAt=new Date().toISOString();item.updatedAt=item.analysisUpdatedAt;await writeState(config,data);return json(res,200,{prospect:item,analysis,provider});
+   }
+   if(prospectConvertMatch&&req.method==='POST'){
+    const id=decodeURIComponent(prospectConvertMatch[1]),prospect=data.prospects.find(x=>x.id===id);
+    if(!prospect)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
+    if(prospect.doNotContact||prospect.status==='Descartado')return json(res,409,{error:'Este contacto no puede convertirse porque pidió no recibir mensajes o fue descartado.'},config.allowedOrigin);
+    const phone=cleanPhone(prospect.contact);
+    if(phone.length<9)return json(res,409,{error:'Registra un número de WhatsApp válido antes de convertir el prospecto.'},config.allowedOrigin);
+    let client=data.clients.find(x=>cleanPhone(x.whatsapp||x.phone||x.contact)===phone);
+    const now=new Date().toISOString();
+    if(!client){
+      client={id:crypto.randomUUID(),userId:'',name:String(prospect.business||'').trim(),businessName:String(prospect.business||'').trim(),phone:prospect.contact,whatsapp:prospect.contact,email:String(prospect.email||'').trim(),city:String(prospect.city||'').trim(),category:String(prospect.category||'').trim(),status:'Activo',contactType:'client',source:'CRM GOY XPRESS',convertedFromProspectId:prospect.id,createdAt:now,updatedAt:now};
+      data.clients.unshift(client);
+    }else{
+      client.contactType='client';client.updatedAt=now;
+      if(!client.convertedFromProspectId)client.convertedFromProspectId=prospect.id;
+    }
+    prospect.status='Cliente';prospect.clientAt=prospect.clientAt||now;prospect.convertedToClientId=client.id;prospect.assignedTeam='customer_service';prospect.salesQueueStatus='converted';prospect.updatedAt=now;
+    await writeState(config,data);
+    return json(res,200,{ok:true,client,prospect},config.allowedOrigin);
    }
    if(prospectMatch){
     const id=decodeURIComponent(prospectMatch[1]),item=data.prospects.find(x=>x.id===id);if(!item)return json(res,404,{error:'Prospecto no encontrado.'},config.allowedOrigin);
