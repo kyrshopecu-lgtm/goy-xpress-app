@@ -116,7 +116,9 @@ async function handler(req,res){
   const config=cfg(); const p=pathname(req);
   if(req.method==='OPTIONS')return json(res,204,{},config.allowedOrigin);
   try{
-    if(req.method==='POST'&&(p==='/auth/client/register'||p==='/auth/courier/register')){
+    if(req.method==='POST'&&p==='/auth/client/register')return json(res,410,{error:'El registro y la aplicación de cliente fueron deshabilitados. Solicita y gestiona tus servicios directamente por WhatsApp con GOY XPRESS.'},config.allowedOrigin);
+    if(/^\/invite\/[^/]+$/.test(p)&&['GET','POST'].includes(req.method))return json(res,410,{error:'El registro de clientes por invitación está deshabilitado. GOY XPRESS gestiona las solicitudes desde administración.'},config.allowedOrigin);
+    if(req.method==='POST'&&p==='/auth/courier/register'){
       if(!config.tokenSecret)return json(res,503,{error:'Autenticación del servidor sin configurar.'},config.allowedOrigin);
       const role=p.includes('/courier/')?'courier':'client',body=await readBody(req),data=await readState(config),email=normalizeEmail(body.email);
       if(data.users.some(u=>normalizeEmail(u.email)===email))return json(res,409,{error:'Este correo ya está registrado. Inicia sesión.'},config.allowedOrigin);
@@ -125,7 +127,7 @@ async function handler(req,res){
     }
     if(req.method==='POST'&&p==='/auth/login'){
       if(!config.tokenSecret)return json(res,503,{error:'Autenticación del servidor sin configurar.'},config.allowedOrigin);
-      const body=await readBody(req),role=['sales','accounting','courier'].includes(body.role)?body.role:'client',data=await readState(config);
+      const body=await readBody(req),role=['sales','accounting','courier'].includes(body.role)?body.role:'client';if(role==='client')return json(res,403,{error:'El acceso de la aplicación de cliente fue deshabilitado. Contacta a GOY XPRESS para gestionar tu solicitud.'},config.allowedOrigin);const data=await readState(config);
       const identifier=String(body.username||body.email||body.identifier||'').trim().toLowerCase();
       const user=data.users.find(u=>u.role===role&&(normalizeEmail(u.email)===identifier||normalizeUsername(u.username)===identifier));
       if(!user||user.active===false||!verifyPassword(body.password,user))return json(res,401,{error:'Usuario/correo o contraseña incorrectos.'},config.allowedOrigin);
