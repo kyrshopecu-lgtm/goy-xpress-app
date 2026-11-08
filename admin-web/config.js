@@ -36,4 +36,5 @@ window.addEventListener('load',()=>{
   load('data-report-filters','/admin/report-filters.js');
   load('data-client-banking','/admin/client-banking.js');
   load('data-accounting','/admin/accounting.js');
+  load('data-crm','/admin/crm.js');
 });
