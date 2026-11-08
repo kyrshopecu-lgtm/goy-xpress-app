@@ -12,7 +12,9 @@ Los accesos de Ventas y Contabilidad utilizan `POST /api/auth/login` con rol y u
 Gestiona solicitudes, clientes, mensajeros, prospectos, servicios, cuentas internas, permisos y auditoría.
 
 ## Ventas
-Permite registrar prospectos, revisar el estado comercial, aprobar un mensaje y solicitar su envío por WhatsApp. El envío depende de que las credenciales y plantilla de WhatsApp estén configuradas en el servidor y de que la cuenta tenga el permiso correspondiente.
+Permite registrar prospectos, revisar el estado comercial, aprobar un mensaje y solicitar su envío por WhatsApp. El envío usa un canal independiente de Ventas y requiere configurar en el servidor `GOY_WA_SALES_ACCESS_TOKEN`, `GOY_WA_SALES_PHONE_NUMBER_ID` y `GOY_WA_SALES_PROSPECT_TEMPLATE` (opcionalmente `GOY_WA_SALES_MEDIA_HEADER=true` y `GOY_WA_SALES_TEMPLATE_LANG=es`). No reutiliza el número de atención al cliente. La cuenta también necesita el permiso `sales.whatsapp.send`.
+
+El webhook firmado de Meta está disponible en `/api/webhooks/whatsapp/prospects`. Los mensajes de números conocidos se guardan en el historial del cliente; los números desconocidos se incorporan a la cola de prospectos de Ventas. Los mensajes de exclusión (`STOP`, `SALIR`, etc.) bloquean futuros contactos.
 
 ## Contabilidad
 Permite registrar ingresos y egresos, consultar totales, editar movimientos pendientes y conciliar movimientos. Los registros conciliados quedan bloqueados para edición.
