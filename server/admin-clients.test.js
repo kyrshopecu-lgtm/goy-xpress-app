@@ -25,7 +25,7 @@ test('clientes históricos conservan sus datos pero no acceden a la app cliente'
 
 test('evita usuarios duplicados y contraseñas débiles',async()=>{const h=makeHarness();try{const base={name:'Cliente Prueba',phone:'0991234567',username:'cliente1',email:'',password:'Clave1234'};let res=await call(h.handler,request(base,h.adminToken));assert.equal(res.statusCode,201);res=await call(h.handler,request(base,h.adminToken));assert.equal(res.statusCode,409);res=await call(h.handler,request({...base,username:'cliente2',password:'123'},h.adminToken));assert.equal(res.statusCode,400);assert.match(res.body.error,/8 caracteres/);}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
 
-test('admin puede crear ficha de cliente sin contraseña ni acceso a app',async()=>{
+test('admin puede crear ficha de cliente sin contraseña ni acceso a app',async()=>{const h=makeHarness();try{const payload={name:'Cliente sin app',businessName:'Comercio',username:'cli09912345',phone:'0991234567',documentId:'',address:'Quito'};const created=await call(h.handler,request(payload,h.adminToken));assert.equal(created.statusCode,201);assert.equal(created.body.user.role,'client');assert.equal(created.body.user.passwordHash,undefined);assert.equal(created.body.client.name,'Cliente sin app');const saved=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.ok(saved.users[0].passwordHash);assert.ok(saved.users[0].passwordSalt);}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
  const h=harness();try{
   const payload={name:'Cliente sin app',businessName:'Comercio',username:'cli09912345',phone:'0991234567',documentId:'',address:'Quito'};
   const created=await call(h,request('POST','/api/admin/clients',payload,h.token));
