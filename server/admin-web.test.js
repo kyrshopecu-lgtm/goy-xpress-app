@@ -312,7 +312,8 @@ test('GOY SALES AI exige aprobación y confirmación para primer WhatsApp', () =
 test('GOY SALES AI informa si WhatsApp comercial está listo sin exponer secretos', () => {
   const management=read('server/admin-management.js'),js=read('public-web/admin/prospects.js');
   assert.match(management, /\/admin\/prospects\/whatsapp-status/);
-  assert.match(management, /GOY_WA_PROSPECT_TEMPLATE/);
+  assert.match(management, /GOY_WA_SALES_PROSPECT_TEMPLATE/);
+  assert.match(management, /GOY_WA_SALES_PHONE_NUMBER_ID/);
   assert.match(management, /configured:missing\.length===0/);
   assert.match(js, /loadWhatsAppStatus/);
   assert.match(js, /WhatsApp pendiente/);
