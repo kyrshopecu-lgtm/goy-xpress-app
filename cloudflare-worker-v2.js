@@ -263,7 +263,9 @@ async function handleStatic(request, env) {
   if (path === '/tracking' || path === '/tracking/' || path.startsWith('/registro/')) return Response.redirect(new URL('/inicio', request.url), 302);
 
   if (path === '/inicio') path = '/';
-  else if (path === '/equipo' || path === '/equipo/') path = '/staff/index.html';
+  else if (path === '/equipo' || path === '/equipo/') path = '/admin/staff.html';
+  else if (path === '/ventas' || path === '/ventas/') { path = '/admin/staff.html'; url.searchParams.set('role','sales'); }
+  else if (path === '/contabilidad' || path === '/contabilidad/') { path = '/admin/staff.html'; url.searchParams.set('role','accounting'); }
   else if (path === '/servicio') path = '/service.html';
   else if (path === '/admin' || path === '/admin/') path = '/admin/index.html';
 
