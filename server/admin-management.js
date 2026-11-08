@@ -271,8 +271,8 @@ function wrap(next,overrides={}){
     await writeState(config,data);return json(res,200,{ok:true,reconciled:selected.length},config.allowedOrigin);
    }
    if(prospectWhatsAppStatus){
-    const accessToken=String(process.env.WHATSAPP_ACCESS_TOKEN||''),phoneNumberId=String(process.env.WHATSAPP_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_PROSPECT_TEMPLATE||''),mediaHeader=String(process.env.GOY_WA_PROSPECT_MEDIA_HEADER||'').toLowerCase()==='true';
-    const missing=[];if(!accessToken)missing.push('WHATSAPP_ACCESS_TOKEN');if(!phoneNumberId)missing.push('WHATSAPP_PHONE_NUMBER_ID');if(!template)missing.push('GOY_WA_PROSPECT_TEMPLATE');
+    const accessToken=String(process.env.GOY_WA_SALES_ACCESS_TOKEN||''),phoneNumberId=String(process.env.GOY_WA_SALES_PHONE_NUMBER_ID||''),template=String(process.env.GOY_WA_SALES_PROSPECT_TEMPLATE||''),mediaHeader=String(process.env.GOY_WA_SALES_MEDIA_HEADER||'').toLowerCase()==='true';
+    const missing=[];if(!accessToken)missing.push('GOY_WA_SALES_ACCESS_TOKEN');if(!phoneNumberId)missing.push('GOY_WA_SALES_PHONE_NUMBER_ID');if(!template)missing.push('GOY_WA_SALES_PROSPECT_TEMPLATE');
     return json(res,200,{configured:missing.length===0,missing,templateConfigured:Boolean(template),mediaHeaderConfigured:mediaHeader,mediaFallbackToText:true},config.allowedOrigin);
    }
    if(prospectServiceIntelligence){
