@@ -146,3 +146,22 @@ test('WhatsApp de prospectos exige el canal separado de Ventas',async()=>{
   fs.rmSync(h.dir,{recursive:true,force:true});
  }
 });
+
+test('ventas convierte prospectos calificados en fichas de cliente sin crear acceso de app',async()=>{
+ const user={id:'sales-convert',role:'sales',active:true,permissions:['sales.prospects.update']};
+ const prospect={id:'lead-1',business:'Tienda Norte',contact:'0991234567',city:'Quito',category:'Tecnología',status:'Interesado',doNotContact:false};
+ const h=harness({users:[user],prospects:[prospect],clients:[]});
+ try{
+  const token=sign({role:'sales',userId:user.id,exp:Date.now()+60000},'test-secret');
+  const res=await call(h,request('POST','/api/admin/prospects/lead-1/convert-to-client',{},token));
+  assert.equal(res.statusCode,200);assert.equal(res.body.prospect.status,'Cliente');assert.equal(res.body.client.contactType,'client');assert.equal(res.body.client.whatsapp,'0991234567');
+  const saved=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.equal(saved.clients.length,1);assert.equal(saved.clients[0].convertedFromProspectId,'lead-1');assert.equal(saved.users.length,1);
+  const again=await call(h,request('POST','/api/admin/prospects/lead-1/convert-to-client',{},token));assert.equal(again.statusCode,200);
+  const after=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.equal(after.clients.length,1);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
+
+test('prospecto que pidió no ser contactado no puede convertirse por el flujo comercial',async()=>{
+ const h=harness({prospects:[{id:'lead-stop',business:'No contactar',contact:'0991234567',status:'Descartado',doNotContact:true}]});
+ try{const res=await call(h,request('POST','/api/admin/prospects/lead-stop/convert-to-client',{},h.token));assert.equal(res.statusCode,409);const saved=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.equal(saved.clients.length,0);}finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
