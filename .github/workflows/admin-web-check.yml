@@ -69,6 +69,7 @@ jobs:
           node --check public-web/admin/quote-whatsapp.js
           node --check cloudflare-entry.js
           node --check admin-web/client-accounts.js
+          node --check public-web/admin/client-accounts.js
           node --check admin-web/client-create-fix.js
           node --check public-web/admin/config.js
           node --check public-web/admin/staff.js
