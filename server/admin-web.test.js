@@ -720,7 +720,7 @@ test('paneles de Ventas y Contabilidad usan sesión interna y API con permisos',
  assert.match(html,/id="role"/);assert.match(html,/id="username"/);
  assert.match(js,/\/auth\/login/);assert.match(js,/sales\.prospects\.update/);assert.match(js,/accounting\/entries/);assert.match(js,/accounting\.entries\.create/);
  assert.match(js,/\/admin\/accounting\/reconcile/);assert.match(js,/\/admin\/prospects\/whatsapp-status/);
- assert.match(config,/accounting\.js/);assert.match(read('public-web/admin/config.js'),/accounting\.js/);assert.equal(js,read('public-web/admin/staff.js'));assert.equal(accounting,read('public-web/admin/accounting.js'));assert.match(read('cloudflare-worker-v2.js'),/path === '\/ventas'/);assert.match(read('cloudflare-worker-v2.js'),/path === '\/contabilidad'/);assert.match(management,/ensureInternalUsersView/);assert.match(management,/sales\.whatsapp\.send/);
+ assert.match(config,/accounting\.js/);assert.match(read('public-web/admin/config.js'),/accounting\.js/);assert.equal(js,read('public-web/admin/staff.js'));assert.equal(accounting,read('public-web/admin/accounting.js'));assert.equal(read('admin-web/crm.js'),read('public-web/admin/crm.js'));assert.match(read('admin-web/crm.js'),/convert-to-client/);assert.match(read('admin-web/config.js'),/crm\.js/);assert.match(read('public-web/admin/config.js'),/crm\.js/);assert.match(read('cloudflare-worker-v2.js'),/path === '\/ventas'/);assert.match(read('cloudflare-worker-v2.js'),/path === '\/contabilidad'/);assert.match(management,/ensureInternalUsersView/);assert.match(management,/sales\.whatsapp\.send/);
  new vm.Script(js,{filename:'staff.js'});new vm.Script(accounting,{filename:'accounting.js'});new vm.Script(management,{filename:'admin-management.js'});
 });
 
@@ -739,4 +739,11 @@ test('no se publica portal de cliente ni tracking público; los pedidos se consu
  assert.match(registration,/aplicación y el registro de clientes ya no están disponibles/i);
  assert.ok(vercel.redirects.some(x=>x.source==='/tracking'));
  assert.ok(vercel.redirects.some(x=>x.source==='/registro/:token'));
+});
+
+test('CRM central une clientes y prospectos con historial de WhatsApp y conversión',()=>{
+ const crm=read('admin-web/crm.js'),staff=read('admin-web/staff.js'),management=read('server/admin-management.js');
+ assert.match(crm,/whatsappConversation/);assert.match(crm,/salesQueueStatus/);assert.match(crm,/\/admin\/data/);assert.match(crm,/convert-to-client/);
+ assert.match(staff,/data-convert/);assert.match(management,/prospectConvertMatch/);assert.match(management,/convertedFromProspectId/);
+ new vm.Script(crm,{filename:'crm.js'});
 });
