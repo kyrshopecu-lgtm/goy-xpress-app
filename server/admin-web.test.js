@@ -754,3 +754,9 @@ test('el alta administrativa crea ficha de cliente sin pedir credenciales',()=>{
  assert.doesNotMatch(form,/newClientPassword|passwordHash|Credenciales listas/);
  assert.doesNotMatch(modal,/newClientPassword|Contraseña temporal|Credenciales listas/);
 });
+
+test('los requisitos y pasos de servicios personalizados llegan a la app de mensajero',()=>{
+ const admin=read('admin-web/custom-service-orders.js'),cloudflare=read('public-web/admin/custom-service-orders.js'),courier=read('src/CourierOnlyApp.js');
+ assert.equal(admin,cloudflare);assert.match(admin,/procedureRequirements:item\.requirements/);assert.match(admin,/procedureSteps:item\.steps/);assert.match(admin,/item\.expectedTime/);
+ assert.match(courier,/request\.procedureRequirements/);assert.match(courier,/request\.procedureSteps/);assert.match(courier,/request\.expectedTime/);
+});
