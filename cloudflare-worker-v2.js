@@ -260,13 +260,13 @@ async function asset(request, env, url, pathname) {
 async function handleStatic(request, env) {
   const url = new URL(request.url);
   let path = url.pathname;
-  if (path === '/tracking' || path === '/tracking/' || /^\\/registro\\/[^/]+\\/?$/.test(path)) return Response.redirect(new URL('/inicio', request.url), 302);
+  if (path === '/tracking' || path === '/tracking/' || path.startsWith('/registro/')) return Response.redirect(new URL('/inicio', request.url), 302);
 
   if (path === '/inicio') path = '/';
   else if (path === '/equipo' || path === '/equipo/') path = '/staff/index.html';
   else if (path === '/servicio') path = '/service.html';
   else if (path === '/admin' || path === '/admin/') path = '/admin/index.html';
-  else if (/^\/registro\/[^/]+\/?$/.test(path)) path = '/register.html';
+
   else if (path.startsWith('/web/')) path = path.slice(4) || '/';
 
   return asset(request, env, url, path);
