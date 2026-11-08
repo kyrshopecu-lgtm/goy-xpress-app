@@ -1,38 +1,28 @@
-# GOY XPRESS Admin Web
+# GOY XPRESS — Paneles de operación
 
-Panel web privado para administrar la operación de GOY XPRESS.
+## Accesos
+- Administración: `/admin`
+- Ventas: `/ventas`
+- Contabilidad: `/contabilidad`
+- Portal de equipo genérico: `/equipo`
 
-## Incluye
+Los accesos de Ventas y Contabilidad utilizan `POST /api/auth/login` con rol y usuario interno. Las cuentas se crean y sus permisos se administran desde **Equipo y permisos** en el panel administrativo. El servidor valida permisos en cada ruta; ocultar botones no sustituye la autorización del servidor.
 
-- Inicio de sesión de administrador.
-- Dashboard operativo.
-- Clientes y búsqueda.
-- Solicitudes de entrega y trámites.
-- Mensajeros.
-- Cobros.
-- Creación de enlaces de invitación.
-- Reporte CSV.
-- Diseño adaptable a computadora, tablet y celular.
+## Administración
+Gestiona solicitudes, clientes, mensajeros, prospectos, servicios, cuentas internas, permisos y auditoría.
 
-## Estado actual
+## Ventas
+Permite registrar prospectos, revisar el estado comercial, aprobar un mensaje y solicitar su envío por WhatsApp. El envío depende de que las credenciales y plantilla de WhatsApp estén configuradas en el servidor y de que la cuenta tenga el permiso correspondiente.
 
-La carpeta funciona como prototipo navegable en modo `demo`. La APK actual no tiene un backend compartido visible en el repositorio, por lo que los datos mostrados son de demostración.
+## Contabilidad
+Permite registrar ingresos y egresos, consultar totales, editar movimientos pendientes y conciliar movimientos. Los registros conciliados quedan bloqueados para edición.
 
-**No publicar el modo demo como panel de producción.** Las credenciales que aparecen en `config.js` son únicamente para validar la interfaz y no representan una cuenta administrativa real.
+## Seguridad y datos
+- Contraseñas procesadas en servidor con PBKDF2.
+- Tokens de sesión Bearer; nunca se exponen hashes o salts al navegador.
+- Permisos explícitos por usuario y rol; un administrador puede limitar el acceso.
+- Los datos se mantienen en el almacenamiento central configurado por el servidor (Neon cuando existe `DATABASE_URL`, o el almacén local configurado).
+- No se eliminan datos históricos al habilitar los nuevos paneles.
 
-## Conexión segura recomendada
-
-1. Crear un backend/API común para la APK y el panel web.
-2. Guardar usuarios, clientes, pedidos, trámites, mensajeros y cobros en una base de datos central.
-3. Implementar autenticación real y rol `admin` en el servidor.
-4. Cambiar `config.js` a `mode: 'api'` y definir `apiBaseUrl`.
-5. El endpoint `POST /admin/login` debe devolver un token de sesión y el servidor debe validar el rol del usuario en cada acción administrativa.
-6. Nunca guardar contraseñas reales, claves SMTP, secretos o tokens privados en este repositorio ni en JavaScript del navegador.
-
-## Vista local
-
-Abrir `admin-web/index.html` en un navegador. Para desarrollo es preferible servir la carpeta con un servidor HTTP local.
-
-## Próxima integración
-
-Cuando se defina el backend compartido, reemplazar los datos demo de `app.js` por llamadas a API para que cualquier solicitud creada desde la APK aparezca automáticamente en este panel.
+## Desarrollo y validación
+Ejecutar `npm test`. El workflow `Validar panel administrativo` verifica pruebas y sintaxis de los módulos web y API.
