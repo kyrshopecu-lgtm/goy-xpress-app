@@ -9,7 +9,7 @@
 Los accesos de Ventas y Contabilidad utilizan `POST /api/auth/login` con rol y usuario interno. Las cuentas se crean y sus permisos se administran desde **Equipo y permisos** en el panel administrativo. El servidor valida permisos en cada ruta; ocultar botones no sustituye la autorización del servidor.
 
 ## Administración
-Gestiona solicitudes, clientes, mensajeros, prospectos, servicios, cuentas internas, permisos y auditoría. Las cuentas y datos históricos de clientes se conservan, pero el registro y el inicio de sesión de la app de cliente están deshabilitados; las solicitudes se coordinan por WhatsApp y se registran en Administración.
+Gestiona solicitudes, clientes, mensajeros, prospectos, servicios, cuentas internas, permisos y auditoría. El módulo **CRM central** unifica clientes y prospectos, conserva los mensajes entrantes de WhatsApp y permite convertir prospectos calificados en fichas de cliente sin habilitarles una app. Las cuentas y datos históricos de clientes se conservan, pero el registro y el inicio de sesión de la app de cliente están deshabilitados; las solicitudes se coordinan por WhatsApp y se registran en Administración.
 
 ## Ventas
 Permite registrar prospectos, revisar el estado comercial, aprobar un mensaje y solicitar su envío por WhatsApp. El envío usa un canal independiente de Ventas y requiere configurar en el servidor `GOY_WA_SALES_ACCESS_TOKEN`, `GOY_WA_SALES_PHONE_NUMBER_ID` y `GOY_WA_SALES_PROSPECT_TEMPLATE` (opcionalmente `GOY_WA_SALES_MEDIA_HEADER=true` y `GOY_WA_SALES_TEMPLATE_LANG=es`). No reutiliza el número de atención al cliente. La cuenta también necesita el permiso `sales.whatsapp.send`.
