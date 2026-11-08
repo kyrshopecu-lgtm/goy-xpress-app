@@ -47,3 +47,21 @@ test('cuentas internas rechazan roles, usuarios duplicados y contraseñas débil
  const invalidRole=await call(base,'/api/admin/internal-users',{method:'POST',token:admin,body:{...baseBody,role:'admin',username:'root01',email:'root@goy.test'}});
  assert.equal(invalidRole.status,400);
 });
+
+test('la app de cliente y el registro por invitación quedan deshabilitados sin borrar datos históricos',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'goy-v6-client-disabled-')),file=path.join(dir,'state.json');
+ const old={DATA_FILE:process.env.DATA_FILE,TOKEN_SECRET:process.env.TOKEN_SECRET};
+ process.env.DATA_FILE=file;process.env.TOKEN_SECRET='client-disabled-test-secret';
+ const historic={users:[{id:'client-old',role:'client',name:'Cliente histórico',active:true}],clients:[{id:'client-old',userId:'client-old',name:'Cliente histórico'}],requests:[{id:'old-order',clientId:'client-old',status:'Entrega finalizada'}]};
+ fs.writeFileSync(file,JSON.stringify(historic));
+ t.after(()=>{if(old.DATA_FILE===undefined)delete process.env.DATA_FILE;else process.env.DATA_FILE=old.DATA_FILE;if(old.TOKEN_SECRET===undefined)delete process.env.TOKEN_SECRET;else process.env.TOKEN_SECRET=old.TOKEN_SECRET;fs.rmSync(dir,{recursive:true,force:true});});
+ const {server,base}=await start(serverV6);t.after(()=>server.close());
+ const registration=await call(base,'/api/auth/client/register',{method:'POST',body:{name:'Nuevo cliente',email:'new@goy.test',password:'Cliente123',phone:'0991112233'}});
+ assert.equal(registration.status,410);
+ const login=await call(base,'/api/auth/login',{method:'POST',body:{role:'client',email:'historic@goy.test',password:'Anything123'}});
+ assert.equal(login.status,403);
+ const invite=await call(base,'/api/invite/legacy-token',{method:'GET'});
+ assert.equal(invite.status,410);
+ const saved=JSON.parse(fs.readFileSync(file,'utf8'));
+ assert.equal(saved.users.length,1);assert.equal(saved.clients.length,1);assert.equal(saved.requests[0].id,'old-order');
+});
