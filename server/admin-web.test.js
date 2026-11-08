@@ -80,26 +80,15 @@ test('administración carga y valida el visor de evidencias fotográficas', () =
   new vm.Script(evidence, {filename:'order-evidence.js'});
 });
 
-test('panel publicado conserva creación segura de clientes', () => {
-  const sourceConfig = read('admin-web/config.js');
-  const publicConfig = read('public-web/admin/config.js');
-  const secureCreate = read('public-web/admin/client-create-fix.js');
-  const clientAccounts = read('public-web/admin/client-accounts.js');
-
-  for (const config of [sourceConfig, publicConfig]) {
-    assert.match(config, /client-accounts\.js/);
-    assert.match(config, /client-create-fix\.js/);
-  }
-  assert.match(clientAccounts, /id=['"]createClientForm['"]/);
-  assert.match(secureCreate, /PBKDF2/);
-  assert.match(secureCreate, /passwordHash/);
-  assert.match(secureCreate, /passwordSalt/);
-  assert.match(secureCreate, /passwordIterations/);
-  assert.match(secureCreate, /\/admin\/clients/);
-  new vm.Script(secureCreate, {filename:'public-web/admin/client-create-fix.js'});
+test('panel publicado crea fichas de cliente sin credenciales de aplicación',()=>{
+ const sourceConfig=read('admin-web/config.js'),publicConfig=read('public-web/admin/config.js');
+ const form=read('public-web/admin/client-create-fix.js'),modal=read('public-web/admin/client-accounts.js'),server=read('server/admin-clients.js');
+ for(const config of [sourceConfig,publicConfig]){assert.match(config,/client-accounts\\.js/);assert.match(config,/client-create-fix\\.js/);}
+ assert.match(modal,/id=['"]createClientForm['"]/);assert.doesNotMatch(modal,/newClientPassword|Contraseña temporal/);
+ assert.match(form,/randomHex/);assert.match(form,/Ficha de cliente creada/);assert.doesNotMatch(form,/PBKDF2|passwordHash|passwordSalt|passwordIterations|newClientPassword/);
+ assert.match(server,/crypto\.randomBytes\(32\)/);assert.match(form,/\/admin\/clients/);
+ new vm.Script(form,{filename:'client-create-fix.js'});
 });
-
-
 test('panel publicado permite servicio personalizado vinculado al cliente sin actualizar APK', () => {
   const modern = read('public-web/admin/modern-admin.js');
   assert.match(modern, /<option value="custom">Servicio personalizado<\/option>/);
