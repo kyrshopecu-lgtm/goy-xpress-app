@@ -130,3 +130,19 @@ test('ventas y contabilidad no pueden cruzar módulos aunque llamen directamente
   assert.equal(data.prospects.length,0,'Contabilidad no debe crear ni modificar prospectos');
  }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
 });
+
+test('WhatsApp de prospectos exige el canal separado de Ventas',async()=>{
+ const h=harness({users:[{id:'sales-wa',role:'sales',active:true,permissions:['sales.whatsapp.send']}]});
+ const keys=['GOY_WA_SALES_ACCESS_TOKEN','GOY_WA_SALES_PHONE_NUMBER_ID','GOY_WA_SALES_PROSPECT_TEMPLATE'];
+ const old=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+ keys.forEach(k=>delete process.env[k]);
+ try{
+  const token=sign({role:'sales',userId:'sales-wa',exp:Date.now()+60000},'test-secret');
+  const res=await call(h,request('GET','/api/admin/prospects/whatsapp-status',{},token));
+  assert.equal(res.statusCode,200);assert.equal(res.body.configured,false);
+  assert.deepEqual(res.body.missing,keys);
+ }finally{
+  keys.forEach(k=>{if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];});
+  fs.rmSync(h.dir,{recursive:true,force:true});
+ }
+});
