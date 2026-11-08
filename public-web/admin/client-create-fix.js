@@ -49,7 +49,7 @@
         bankAccounts:(bank.bank||bank.accountNumber||bank.holderName)?[bank]:[],
       };
 
-      message.textContent='Creando cliente…';
+      message.textContent='Creando ficha de cliente…';
       const response=await fetch(`${apiBase}/admin/clients`,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${token()}`},
@@ -64,13 +64,9 @@
         throw new Error(body.error||`No se pudo crear el cliente (HTTP ${response.status}).`);
       }
 
-      message.textContent='Cliente creado y activo.';
-      success.innerHTML=`<strong>Credenciales listas para enviar</strong><code>Usuario: ${esc(username)}</code>${payload.email?`<code>Correo opcional: ${esc(payload.email)}</code>`:''}<code>Contraseña: ${esc(password)}</code>${payload.bankAccounts.length?`<code>Cuenta bancaria: ${esc(bank.bank)} · ${esc(bank.accountNumber)}</code>`:''}<button id="copyClientCredentialsSecure" class="ghost goy-client-copy" type="button">Copiar credenciales</button><button id="refreshClientsSecure" class="primary goy-client-copy" type="button">Cerrar y actualizar lista</button>`;
+      message.textContent='Ficha de cliente creada. Las órdenes se gestionan desde administración.';
+      success.innerHTML=`<strong>Ficha de cliente creada</strong><code>Código interno: ${esc(username)}</code>${payload.bankAccounts.length?`<code>Cuenta bancaria: ${esc(bank.bank)} · ${esc(bank.accountNumber)}</code>`:''}<button id="refreshClientsSecure" class="primary goy-client-copy" type="button">Cerrar y actualizar lista</button>`;
       success.classList.remove('hidden');
-      $('copyClientCredentialsSecure')?.addEventListener('click',async()=>{
-        const text=`GOY XPRESS\nUsuario: ${username}${payload.email?`\nCorreo: ${payload.email}`:''}\nContraseña: ${password}`;
-        try{await navigator.clipboard.writeText(text);$('copyClientCredentialsSecure').textContent='Copiado';}catch{alert(text);}
-      });
       $('refreshClientsSecure')?.addEventListener('click',()=>location.reload());
       event.target.reset();
       $('newClientPreview')?.removeAttribute('src');
