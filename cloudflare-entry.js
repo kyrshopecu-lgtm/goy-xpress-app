@@ -548,8 +548,8 @@ export default {
     if (path === '/admin' || path === '/admin/') {
       return serveAsset(request, env, '/admin/');
     }
-    if (path === '/tracking' || path === '/tracking/') {
-      return serveAsset(request, env, '/tracking/');
+    if (path === '/tracking' || path === '/tracking/' || /^\\/registro\\/[^/]+\\/?$/.test(path)) {
+      return Response.redirect(new URL('/inicio', request.url), 302);
     }
     if (path === '/servicio') {
       return serveAsset(request, env, '/service');
