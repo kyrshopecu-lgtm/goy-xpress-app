@@ -729,7 +729,7 @@ test('no se publica portal de cliente ni tracking público; los pedidos se consu
  assert.match(v6,/p==='\/auth\/client\/register'\)return json\(res,410/);
  assert.match(v6,/if\(role==='client'\)return json\(res,403/);
  assert.match(api,/res\.statusCode=410/);
- assert.match(worker,/path\.startsWith\('\/registro\/'\)/);
+ assert.match(worker,/path\.startsWith\('\/registro\/'\)/);assert.match(worker,/path === '\/api\/auth\/client\/register'/);assert.match(worker,/path\.startsWith\('\/api\/invite\/'\)/);
  assert.match(worker,/path === '\/tracking'[^\n]*Response\.redirect/);
  assert.match(entry,/path.startsWith\('\/registro\/'\)/);
  assert.match(home,/Consultar pedido/);
