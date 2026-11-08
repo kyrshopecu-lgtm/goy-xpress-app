@@ -54,6 +54,8 @@ jobs:
           node --check api/[...path].js
           node --check api/admin-create-request.js
           node --check admin-web/config.js
+          node --check admin-web/staff.js
+          node --check admin-web/accounting.js
           node --check admin-web/app.js
           node --check admin-web/quote-whatsapp.js
           node --check public-web/admin/app.js
