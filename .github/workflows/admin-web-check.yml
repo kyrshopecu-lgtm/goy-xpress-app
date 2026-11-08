@@ -56,6 +56,7 @@ jobs:
           node --check admin-web/config.js
           node --check admin-web/staff.js
           node --check admin-web/accounting.js
+          node --check admin-web/crm.js
           node --check admin-web/app.js
           node --check admin-web/quote-whatsapp.js
           node --check public-web/admin/app.js
@@ -67,6 +68,7 @@ jobs:
           node --check public-web/admin/config.js
           node --check public-web/admin/staff.js
           node --check public-web/admin/accounting.js
+          node --check public-web/admin/crm.js
           node --check public-web/admin/client-create-fix.js
           node --check admin-web/modern-admin.js
           node --check admin-web/admin-management.js
