@@ -329,6 +329,10 @@ test('Cloudflare conecta webhook firmado de respuestas WhatsApp para prospectos'
   assert.match(hook, /X-Hub-Signature-256/);
   assert.match(hook, /WHATSAPP_WEBHOOK_VERIFY_TOKEN/);
   assert.match(hook, /META_APP_SECRET/);
+  assert.match(hook, /state\.clients\.find/);
+  assert.match(hook, /state\.prospects\.unshift/);
+  assert.match(hook, /assignedTeam:'sales'/);
+  assert.match(hook, /salesQueueStatus='pending'/);
   assert.match(hook, /providerMessageId/);
   assert.match(hook, /p\.status='Respondió'/);
   assert.match(hook, /p\.doNotContact=true/);
