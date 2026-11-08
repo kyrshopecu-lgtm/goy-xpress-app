@@ -65,6 +65,8 @@ jobs:
           node --check admin-web/client-accounts.js
           node --check admin-web/client-create-fix.js
           node --check public-web/admin/config.js
+          node --check public-web/admin/staff.js
+          node --check public-web/admin/accounting.js
           node --check public-web/admin/client-create-fix.js
           node --check admin-web/modern-admin.js
           node --check admin-web/admin-management.js
