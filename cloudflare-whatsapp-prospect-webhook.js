@@ -4,7 +4,7 @@ import {ensureStateTable,readVersionedState,writeVersionedState} from './cloudfl
 const enc=new TextEncoder();
 function digits(v){let d=String(v||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('593'))return d;if(d.startsWith('0'))return '593'+d.slice(1);if(d.startsWith('9')&&d.length===9)return '593'+d;return d;}
 function optOut(t){return /(?:^|\b)(stop|salir|baja|no\s+me\s+escrib|no\s+contact|no\s+mensajes|dejen\s+de\s+escribir)(?:\b|$)/i.test(String(t||''));}
-function normalize(s){const x=s&&typeof s==='object'?s:{};if(!Array.isArray(x.prospects))x.prospects=[];if(!Array.isArray(x.clients))x.clients=[];return x;}
+function normalize(s){const x=s&&typeof s==='object'?s:{};if(!Array.isArray(x.prospects))x.prospects=[];if(!Array.isArray(x.clients))x.clients=[];if(!Array.isArray(x.users))x.users=[];return x;}
 function hex(bytes){return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');}
 async function validSignature(raw,header,secret){
  if(!secret||!header?.startsWith('sha256='))return false;
@@ -30,12 +30,13 @@ async function mutate(env,incoming){
   for(const m of incoming){
    const at=m.timestamp?new Date(Number(m.timestamp)*1000).toISOString():new Date().toISOString();
    const now=new Date().toISOString();
-   const client=state.clients.find(x=>digits(x.whatsapp||x.phone||x.contact)===m.from);
+   let client=state.clients.find(x=>digits(x.whatsapp||x.phone||x.contact)===m.from);
+   if(!client){const legacyUser=state.users.find(x=>x.role==='client'&&digits(x.phone)===m.from);if(legacyUser){client={id:legacyUser.id,userId:legacyUser.id,name:legacyUser.name||'',businessName:legacyUser.businessName||legacyUser.name||'',whatsapp:legacyUser.phone||'',phone:legacyUser.phone||'',email:legacyUser.email||'',status:legacyUser.active===false?'Inactivo':'Activo',contactType:'client',registeredAt:legacyUser.createdAt||now};state.clients.unshift(client);}}
    if(client){
     client.whatsappConversation=Array.isArray(client.whatsappConversation)?client.whatsappConversation:[];
     if(client.whatsappConversation.some(x=>String(x.providerMessageId||'')===m.id))continue;
     client.whatsappConversation.push({direction:'inbound',channel:'WhatsApp',message:m.text,providerMessageId:m.id,sentAt:at});
-    client.contactType='client';client.lastWhatsAppMessageAt=at;client.lastWhatsAppMessage=m.text.slice(0,500);client.updatedAt=now;
+    client.contactType='client';client.lastWhatsAppMessageAt=at;client.lastWhatsAppMessage=m.text.slice(0,500);if(optOut(m.text)){client.doNotContactMarketing=true;client.marketingOptOutAt=at;}client.updatedAt=now;
     changed++;continue;
    }
    let prospect=state.prospects.find(x=>digits(x.contact)===m.from);
