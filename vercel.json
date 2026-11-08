@@ -5,6 +5,16 @@
       "source": "/",
       "destination": "/inicio",
       "permanent": false
+    },
+    {
+      "source": "/registro/:token",
+      "destination": "/inicio",
+      "permanent": false
+    },
+    {
+      "source": "/register.html",
+      "destination": "/inicio",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -75,10 +85,6 @@
     {
       "source": "/tracking",
       "destination": "/tracking-web/index.html"
-    },
-    {
-      "source": "/registro/:token",
-      "destination": "/register.html"
     },
     {
       "source": "/api/goy-notification-sound",
