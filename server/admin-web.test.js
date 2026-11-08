@@ -717,7 +717,7 @@ test('paneles de Ventas y Contabilidad usan sesión interna y API con permisos',
  const html=read('admin-web/staff.html'),js=read('admin-web/staff.js'),config=read('admin-web/config.js'),vercel=read('vercel.json'),accounting=read('admin-web/accounting.js'),management=read('admin-web/admin-management.js');
  assert.match(vercel,/\/ventas/);assert.match(vercel,/\/contabilidad/);
  assert.match(html,/id="role"/);assert.match(html,/id="username"/);
- assert.match(js,/\/auth\/login/);assert.match(js,/sales\.prospects\.update/);assert.match(js,/accounting\.entries\.create/);
+ assert.match(js,/\/auth\/login/);assert.match(js,/sales\.prospects\.update/);assert.match(js,/accounting\/entries/);assert.match(js,/accounting\.entries\.create/);
  assert.match(js,/\/admin\/accounting\/reconcile/);assert.match(js,/\/admin\/prospects\/whatsapp-status/);
  assert.match(config,/accounting\.js/);assert.match(management,/ensureInternalUsersView/);assert.match(management,/sales\.whatsapp\.send/);
  new vm.Script(js,{filename:'staff.js'});new vm.Script(accounting,{filename:'accounting.js'});new vm.Script(management,{filename:'admin-management.js'});
