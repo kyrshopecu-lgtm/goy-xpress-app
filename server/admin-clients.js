@@ -66,7 +66,7 @@ function wrap(next, overrides={}){
         const pwd=hashPassword(password),now=new Date().toISOString(),location=parseMapLocation(mapUrl);
         const user={id:crypto.randomUUID(),role:'client',name,businessName,username,email,phone,documentId,address,mapUrl,location,logo,bankAccounts,approved:true,active:true,passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now,createdBy:'admin'};
         data.users.unshift(user);syncClient(data,user);await writeState(config,data);
-        return json(res,201,{user:publicUser(user),message:'Cliente creado y habilitado para iniciar sesión.'},config.allowedOrigin);
+        return json(res,201,{user:publicUser(user),message:'Ficha de cliente creada. Las órdenes se gestionan desde administración.'},config.allowedOrigin);
       }
 
       const id=decodeURIComponent(match[1]||'');
