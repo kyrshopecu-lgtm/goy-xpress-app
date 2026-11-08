@@ -25,6 +25,17 @@ function config() {
   };
 }
 
+function salesConfig() {
+  return {
+    ...config(),
+    accessToken: String(process.env.GOY_WA_SALES_ACCESS_TOKEN || ''),
+    phoneNumberId: String(process.env.GOY_WA_SALES_PHONE_NUMBER_ID || ''),
+    prospectTemplate: String(process.env.GOY_WA_SALES_PROSPECT_TEMPLATE || ''),
+    prospectMediaHeader: String(process.env.GOY_WA_SALES_MEDIA_HEADER || '').toLowerCase() === 'true',
+    language: String(process.env.GOY_WA_SALES_TEMPLATE_LANG || 'es'),
+  };
+}
+
 function isConfigured(cfg = config()) {
   return Boolean(cfg.accessToken && cfg.phoneNumberId);
 }
@@ -132,7 +143,7 @@ async function notifyClientDelivered({request, client}) {
 }
 
 async function sendProspectFirstContact({phone,business,message,imageUrl=''}) {
-  const cfg=config();
+  const cfg=salesConfig();
   if(!cfg.prospectTemplate)return {ok:false,skipped:true,reason:'PROSPECT_TEMPLATE_MISSING'};
   const media=String(imageUrl||'').trim();
   if(media&&!cfg.prospectMediaHeader){
@@ -144,7 +155,7 @@ async function sendProspectFirstContact({phone,business,message,imageUrl=''}) {
 }
 
 async function sendProspectReply({phone,message,imageUrl=''}) {
-  const cfg=config(),to=cleanPhone(phone),body=String(message||'').trim(),media=String(imageUrl||'').trim();
+  const cfg=salesConfig(),to=cleanPhone(phone),body=String(message||'').trim(),media=String(imageUrl||'').trim();
   if(!isConfigured(cfg))return {ok:false,skipped:true,reason:'WHATSAPP_NOT_CONFIGURED'};
   if(!to||!body)return {ok:false,skipped:true,reason:'RECIPIENT_OR_MESSAGE_MISSING'};
   const url=`https://graph.facebook.com/${cfg.graphVersion}/${cfg.phoneNumberId}/messages`;
