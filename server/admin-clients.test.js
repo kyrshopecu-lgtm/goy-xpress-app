@@ -24,3 +24,14 @@ test('el registro de cliente creado por admin queda como ficha y no abre la app 
 test('clientes históricos conservan sus datos pero no acceden a la app cliente',async()=>{const h=makeHarness();const old={DATA_FILE:process.env.DATA_FILE,TOKEN_SECRET:process.env.TOKEN_SECRET,DATABASE_URL:process.env.DATABASE_URL};try{const payload={name:'Cliente Correo',username:'cliente.correo',phone:'0997654321',email:'correo@example.com',password:'Acceso2026'};let res=await call(h.handler,request(payload,h.adminToken));assert.equal(res.statusCode,201);process.env.DATA_FILE=h.dataFile;process.env.TOKEN_SECRET=h.secret;process.env.DATABASE_URL='';res=await call(authHandler,apiRequest('/api/auth/login',{role:'client',email:payload.email,password:payload.password}));assert.equal(res.statusCode,403);assert.match(res.body.error,/aplicación de cliente fue deshabilitado/);}finally{for(const [key,value] of Object.entries(old)){if(value===undefined)delete process.env[key];else process.env[key]=value;}fs.rmSync(h.dir,{recursive:true,force:true});}});
 
 test('evita usuarios duplicados y contraseñas débiles',async()=>{const h=makeHarness();try{const base={name:'Cliente Prueba',phone:'0991234567',username:'cliente1',email:'',password:'Clave1234'};let res=await call(h.handler,request(base,h.adminToken));assert.equal(res.statusCode,201);res=await call(h.handler,request(base,h.adminToken));assert.equal(res.statusCode,409);res=await call(h.handler,request({...base,username:'cliente2',password:'123'},h.adminToken));assert.equal(res.statusCode,400);assert.match(res.body.error,/8 caracteres/);}finally{fs.rmSync(h.dir,{recursive:true,force:true});}});
+
+test('admin puede crear ficha de cliente sin contraseña ni acceso a app',async()=>{
+ const h=harness();try{
+  const payload={name:'Cliente sin app',businessName:'Comercio',username:'cli09912345',phone:'0991234567',documentId:'',address:'Quito'};
+  const created=await call(h,request('POST','/api/admin/clients',payload,h.token));
+  assert.equal(created.statusCode,201);assert.equal(created.body.user.role,'client');assert.equal(created.body.user.passwordHash,undefined);assert.equal(created.body.client.name,'Cliente sin app');
+  const saved=JSON.parse(fs.readFileSync(h.dataFile,'utf8'));assert.ok(saved.users[0].passwordHash);assert.ok(saved.users[0].passwordSalt);
+  const login=await call(h,request('POST','/api/auth/login',{role:'client',username:'cli09912345',password:'NotKnown123'}));
+  assert.equal(login.statusCode,403);
+ }finally{fs.rmSync(h.dir,{recursive:true,force:true});}
+});
