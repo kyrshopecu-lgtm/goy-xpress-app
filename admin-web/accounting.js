@@ -42,7 +42,7 @@
     document.getElementById('goyAccReload').addEventListener('click',load);
     document.getElementById('goyAccFilter').addEventListener('change',render);
     document.getElementById('goyAccReconcile').addEventListener('click',reconcile);
-    document.getElementById('nav').addEventListener('click',e=>{const item=e.target.closest('[data-view="accounting"]');if(item){setTimeout(load,0);}});
+    document.getElementById('nav').addEventListener('click',e=>{const item=e.target.closest('[data-view="accounting"]');if(item){const title=document.getElementById('pageTitle');if(title)title.textContent='Contabilidad';setTimeout(load,0);}});
     document.addEventListener('click',e=>{const edit=e.target.closest('[data-goy-acc-edit]');if(edit)editEntry(edit.dataset.goyAccEdit);});
   }
   async function load(){if(!token())return;const box=document.getElementById('goyAccRows');if(box)box.innerHTML='<tr><td colspan="8">Cargando…</td></tr>';try{const [summary,list]=await Promise.all([api('/admin/accounting/summary'),api('/admin/accounting/entries')]);document.getElementById('goyAccIncome').textContent=money(summary.totals?.income);document.getElementById('goyAccExpense').textContent=money(summary.totals?.expense);document.getElementById('goyAccBalance').textContent=money(summary.totals?.balance);document.getElementById('goyAccPending').textContent=String(summary.pendingReconciliation||0);entries=list.entries||[];render();}catch(e){if(box)box.innerHTML='<tr><td colspan="8">'+esc(e.message)+'</td></tr>';}}
