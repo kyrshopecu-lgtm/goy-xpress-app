@@ -15,6 +15,11 @@
       "source": "/register.html",
       "destination": "/inicio",
       "permanent": false
+    },
+    {
+      "source": "/tracking",
+      "destination": "/inicio",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -81,10 +86,6 @@
     {
       "source": "/admin/:path*",
       "destination": "/admin-web/:path*"
-    },
-    {
-      "source": "/tracking",
-      "destination": "/tracking-web/index.html"
     },
     {
       "source": "/api/goy-notification-sound",
