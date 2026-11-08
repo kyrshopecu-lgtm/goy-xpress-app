@@ -334,15 +334,15 @@ test('Cloudflare conecta webhook firmado de respuestas WhatsApp para prospectos'
   assert.match(hook, /assignedTeam:'sales'/);
   assert.match(hook, /salesQueueStatus='pending'/);
   assert.match(hook, /providerMessageId/);
-  assert.match(hook, /p\.status='Respondió'/);
-  assert.match(hook, /p\.doNotContact=true/);
+  assert.match(hook, /prospect\.status!=='Cliente'&&prospect\.status!=='Descartado'/);
+  assert.match(hook, /prospect\.doNotContact=true/);
   assert.match(hook, /STATE_CONFLICT/);
 });
 
 
 test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () => {
   const worker=read('cloudflare-worker-v2.js');
-  for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
+  for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_SALES_ACCESS_TOKEN','GOY_WA_SALES_PHONE_NUMBER_ID','GOY_WA_SALES_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
 });
 
 
@@ -500,7 +500,7 @@ test('Estado comercial sugerido por IA requiere validación humana', () => {
   assert.match(management,/if\(nextStatus==='Respondió'/);
   assert.match(management,/interestedAt/);
   assert.match(management,/clientAt/);
-  assert.match(hook,/p\.responseAt=p\.responseAt\|\|at/);
+  assert.match(hook,/prospect\.responseAt=prospect\.responseAt\|\|at/);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
 
