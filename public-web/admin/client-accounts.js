@@ -18,10 +18,10 @@
 
   const modal=document.createElement('div');modal.id='createClientModal';modal.className='goy-client-modal hidden';modal.innerHTML=`
     <section class="goy-client-card" role="dialog" aria-modal="true" aria-labelledby="createClientTitle">
-      <div class="goy-client-head"><div><span class="eyebrow">Acceso directo</span><h3 id="createClientTitle">Crear cliente</h3><p class="muted">Crea una cuenta con nombre de usuario y contraseña. El correo, la imagen y los datos bancarios son opcionales.</p></div><button id="closeClientModal" type="button" aria-label="Cerrar">×</button></div>
+      <div class="goy-client-head"><div><span class="eyebrow">Acceso directo</span><h3 id="createClientTitle">Crear cliente</h3><p class="muted">Crea una ficha de cliente para gestionar sus órdenes desde administración. No se habilita acceso a la aplicación de cliente.</p></div><button id="closeClientModal" type="button" aria-label="Cerrar">×</button></div>
       <form id="createClientForm"><div class="goy-client-grid">
         <label>Nombre completo<input id="newClientName" required autocomplete="off" /></label><label>Negocio / empresa<input id="newClientBusiness" autocomplete="off" /></label>
-        <label>Nombre de usuario<input id="newClientUsername" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="off" placeholder="ej. tiendaquito" /></label><label>WhatsApp<input id="newClientPhone" required inputmode="tel" placeholder="0999999999" /></label>
+        <label>Código interno (opcional)<input id="newClientUsername" minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="off" placeholder="ej. tiendaquito" /></label><label>WhatsApp<input id="newClientPhone" required inputmode="tel" placeholder="0999999999" /></label>
         <label>Cédula / RUC<input id="newClientDocument" autocomplete="off" /></label><label>Correo (opcional)<input id="newClientEmail" type="email" autocomplete="off" placeholder="cliente@correo.com" /></label>
         <label class="wide">Dirección escrita<input id="newClientAddress" autocomplete="street-address" placeholder="Ej. Mariana de Jesús y Jorge Juan, Quito" /></label>
         <label class="wide">Ubicación de Google Maps (opcional)<input id="newClientMapUrl" type="url" inputmode="url" autocomplete="off" placeholder="Pega aquí el enlace compartido de Google Maps" /><span class="goy-map-help">En Google Maps toca Compartir → Copiar enlace y pégalo aquí.</span></label>
@@ -30,8 +30,7 @@
         <label>Banco<input id="newClientBank" autocomplete="off" placeholder="Ej. Banco Pichincha" /></label><label>Tipo de cuenta<select id="newClientAccountType"><option value="">Seleccionar</option><option>Ahorros</option><option>Corriente</option></select></label>
         <label>Número de cuenta<input id="newClientAccountNumber" inputmode="numeric" autocomplete="off" /></label><label>Titular de la cuenta<input id="newClientHolderName" autocomplete="off" /></label>
         <label class="wide">Cédula / RUC del titular<input id="newClientHolderDocument" autocomplete="off" /></label>
-        <label class="wide">Contraseña temporal<input id="newClientPassword" type="text" required minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres, letras y números" /></label>
-      </div><p id="createClientMessage" class="goy-client-message"></p><div id="createClientSuccess" class="goy-client-success hidden"></div><div class="goy-client-actions"><button id="cancelClientCreate" type="button" class="ghost">Cancelar</button><button id="submitClientCreate" type="submit" class="primary">Crear y activar cliente</button></div></form>
+      </div><p id="createClientMessage" class="goy-client-message"></p><div id="createClientSuccess" class="goy-client-success hidden"></div><div class="goy-client-actions"><button id="cancelClientCreate" type="button" class="ghost">Cancelar</button><button id="submitClientCreate" type="submit" class="primary">Crear ficha de cliente</button></div></form>
     </section>`;
   document.body.appendChild(modal);
 
