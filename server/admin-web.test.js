@@ -747,3 +747,10 @@ test('CRM central une clientes y prospectos con historial de WhatsApp y conversi
  assert.match(staff,/data-convert/);assert.match(management,/prospectConvertMatch/);assert.match(management,/convertedFromProspectId/);
  new vm.Script(crm,{filename:'crm.js'});
 });
+
+test('el alta administrativa crea ficha de cliente sin pedir credenciales',()=>{
+ const form=read('admin-web/client-create-fix.js'),modal=read('admin-web/client-accounts.js');
+ assert.match(form,/Ficha de cliente creada/);assert.match(form,/randomHex/);
+ assert.doesNotMatch(form,/newClientPassword|passwordHash|Credenciales listas/);
+ assert.doesNotMatch(modal,/newClientPassword|Contraseña temporal|Credenciales listas/);
+});
