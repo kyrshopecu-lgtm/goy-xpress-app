@@ -723,3 +723,20 @@ test('paneles de Ventas y Contabilidad usan sesión interna y API con permisos',
  assert.match(config,/accounting\.js/);assert.match(management,/ensureInternalUsersView/);assert.match(management,/sales\.whatsapp\.send/);
  new vm.Script(js,{filename:'staff.js'});new vm.Script(accounting,{filename:'accounting.js'});new vm.Script(management,{filename:'admin-management.js'});
 });
+
+test('no se publica portal de cliente ni tracking público; los pedidos se consultan por WhatsApp',()=>{
+ const api=read('api/public-tracking.js'),v6=read('server/server-v6.js'),worker=read('cloudflare-worker-v2.js'),entry=read('cloudflare-entry.js'),home=read('public-web/index.html'),tracking=read('tracking-web/index.html'),registration=read('register.html'),vercel=JSON.parse(read('vercel.json'));
+ assert.match(v6,/p==='\/auth\/client\/register'\)return json\(res,410/);
+ assert.match(v6,/if\(role==='client'\)return json\(res,403/);
+ assert.match(api,/res\.statusCode=410/);
+ assert.match(worker,/path\.startsWith\('\/registro\/'\)/);
+ assert.match(worker,/path === '\/tracking'[^\n]*Response\.redirect/);
+ assert.match(entry,/path.startsWith\('\/registro\/'\)/);
+ assert.match(home,/Consultar pedido/);
+ assert.doesNotMatch(home,/href="\/tracking"/);
+ assert.doesNotMatch(home,/Soy cliente/);
+ assert.match(tracking,/seguimiento público y la aplicación de cliente ya no están disponibles/i);
+ assert.match(registration,/aplicación y el registro de clientes ya no están disponibles/i);
+ assert.ok(vercel.redirects.some(x=>x.source==='/tracking'));
+ assert.ok(vercel.redirects.some(x=>x.source==='/registro/:token'));
+});
