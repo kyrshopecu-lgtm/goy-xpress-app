@@ -83,7 +83,7 @@ test('administración carga y valida el visor de evidencias fotográficas', () =
 test('panel publicado crea fichas de cliente sin credenciales de aplicación',()=>{
  const sourceConfig=read('admin-web/config.js'),publicConfig=read('public-web/admin/config.js');
  const form=read('public-web/admin/client-create-fix.js'),modal=read('public-web/admin/client-accounts.js'),server=read('server/admin-clients.js');
- for(const config of [sourceConfig,publicConfig]){assert.match(config,/client-accounts\\.js/);assert.match(config,/client-create-fix\\.js/);}
+ for(const config of [sourceConfig,publicConfig]){assert.match(config,/client-accounts\.js/);assert.match(config,/client-create-fix\.js/);}
  assert.match(modal,/id=['"]createClientForm['"]/);assert.doesNotMatch(modal,/newClientPassword|Contraseña temporal/);
  assert.match(form,/randomHex/);assert.match(form,/Ficha de cliente creada/);assert.doesNotMatch(form,/PBKDF2|passwordHash|passwordSalt|passwordIterations|newClientPassword/);
  assert.match(server,/crypto\.randomBytes\(32\)/);assert.match(form,/\/admin\/clients/);
