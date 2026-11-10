@@ -41,11 +41,14 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Falta el secreto CLOUDFLARE_API_TOKEN en GitHub Actions."; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Falta el secreto CLOUDFLARE_ACCOUNT_ID en GitHub Actions."; exit 1; }
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Run application tests
         run: npm test
+
+      - name: Validate Wrangler deployment without publishing
+        run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run --config wrangler.jsonc
 
       - name: Deploy existing GOY XPRESS Worker
         env:
