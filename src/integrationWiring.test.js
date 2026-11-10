@@ -306,6 +306,8 @@ test('login por desafío valida mensajero, ventas y contabilidad con el mismo fl
   assert.match(login, /\['courier','sales','accounting'\]\.includes\(payload\.role\)/);
   assert.match(login, /verifyChallengePayload\(challenge,env\.TOKEN_SECRET\)/);
   assert.match(login, /hmacSha256Hex\(storedKey,challenge\)/);
+  assert.match(login, /keyBytes instanceof Uint8Array \? keyBytes/);
+  assert.doesNotMatch(login, /new TextEncoder\(\)\.encode\(String\(secret\)\)[\s\S]{0,80}hmacSha256Hex/);
   assert.match(login, /user\.blocked===true/);
   assert.match(entry, /authChallengeV2, authLoginProofV2, authPasswordLoginV2/);
   assert.match(entry, /return authLoginProofV2\(request, env\)/);
