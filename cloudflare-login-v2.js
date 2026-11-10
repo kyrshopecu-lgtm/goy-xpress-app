@@ -48,10 +48,10 @@ async function signPayload(payload,secret){
   return `${body}.${bytesToBase64url(new Uint8Array(signature))}`;
 }
 
-async function hmacSha256Hex(secret,message){
+async function hmacSha256Hex(keyBytes,message){
   const key=await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(String(secret)),
+    keyBytes instanceof Uint8Array ? keyBytes : new TextEncoder().encode(String(keyBytes)),
     {name:'HMAC',hash:'SHA-256'},
     false,
     ['sign'],
