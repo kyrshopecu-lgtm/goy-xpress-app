@@ -274,3 +274,12 @@ test('Mensajero registra novedades y Cliente las visualiza sin identidad persona
   assert.match(client,/NOVEDADES DE LA ORDEN/);assert.match(client,/item\.message/);
   assert.match(api,/registerCourierNovelty/);assert.match(backend,/authorLabel:'Mensajero GOY XPRESS'/);assert.match(backend,/courier_novelty/);
 });
+
+test('inicio de sesión admite mensajero, ventas y contabilidad, y retira el acceso de clientes', () => {
+  const login = read('cloudflare-login-v2.js');
+  const staff = read('public-web/admin/staff.js');
+  assert.match(login, /\['courier','sales','accounting'\]/);
+  assert.match(login, /permissions:Array\.isArray\(user\.permissions\)\?user\.permissions:\[\]/);
+  assert.match(login, /El acceso de la app de clientes está deshabilitado/);
+  assert.match(staff, /permissions=data\.permissions\|\|\[\]/);
+});
