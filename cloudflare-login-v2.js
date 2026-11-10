@@ -13,6 +13,11 @@ const JSON_HEADERS = {
 
 const LEGACY_PASSWORD_ITERATIONS = 180000;
 const WORKER_PASSWORD_ITERATIONS = 100000;
+const DEFAULT_ROLE_PERMISSIONS = {
+  sales:['crm.contacts.read','crm.contacts.update','crm.contacts.assign','sales.prospects.read','sales.prospects.create','sales.prospects.update','procedures.read'],
+  accounting:['crm.contacts.read_billing','operations.requests.read_billing','operations.evidence.read','accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports','procedures.read'],
+  courier:['courier.jobs.read_assigned','courier.jobs.update_assigned','courier.evidence.upload','procedures.read'],
+};
 const LEGACY_AUTH_URL = 'https://br-proud-mouse-aw0hj9yz-legacyauth.compute.c-12.us-east-1.aws.neon.tech/';
 
 function json(body,status=200){
@@ -101,7 +106,7 @@ async function sessionFor(user,env){
     {role:user.role,userId:user.id,exp:Date.now()+expiresIn*1000},
     env.TOKEN_SECRET,
   );
-  return {token,expiresIn,user:publicUser(user),permissions:Array.isArray(user.permissions)?user.permissions:[]};
+  return {token,expiresIn,user:publicUser(user),permissions:Array.isArray(user.permissions)?user.permissions:(DEFAULT_ROLE_PERMISSIONS[user.role]||[])};
 }
 
 function requestedStaffOrCourierRole(value){
