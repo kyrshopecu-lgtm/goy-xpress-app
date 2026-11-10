@@ -279,7 +279,7 @@ test('inicio de sesión admite mensajero, ventas y contabilidad, y retira el acc
   const login = read('cloudflare-login-v2.js');
   const staff = read('public-web/admin/staff.js');
   assert.match(login, /\['courier','sales','accounting'\]/);
-  assert.match(login, /permissions:Array\.isArray\(user\.permissions\)\?user\.permissions:\[\]/);
+  assert.match(login, /permissions:Array\.isArray\(user\.permissions\)\?user\.permissions:\(DEFAULT_ROLE_PERMISSIONS\[user\.role\]\|\|\[\]\)/);
   assert.match(login, /El acceso de la app de clientes está deshabilitado/);
   assert.match(staff, /permissions=data\.permissions\|\|\[\]/);
 });
@@ -302,7 +302,7 @@ test('login por desafío valida mensajero, ventas y contabilidad con el mismo fl
   assert.match(login, /export async function authLoginProofV2/);
   assert.match(login, /DEFAULT_ROLE_PERMISSIONS/);
   assert.match(login, /sales:\\['crm\\.contacts\\.read'/);
-  assert.match(login, /accounting:\\['crm\\.contacts\\.read_billing'/);
+  assert.match(login, /accounting:\['crm\.contacts\.read_billing'/);
   assert.match(login, /\['courier','sales','accounting'\]\.includes\(payload\.role\)/);
   assert.match(login, /verifyChallengePayload\(challenge,env\.TOKEN_SECRET\)/);
   assert.match(login, /hmacSha256Hex\(storedKey,challenge\)/);
