@@ -101,7 +101,12 @@ async function sessionFor(user,env){
     {role:user.role,userId:user.id,exp:Date.now()+expiresIn*1000},
     env.TOKEN_SECRET,
   );
-  return {token,expiresIn,user:publicUser(user)};
+  return {token,expiresIn,user:publicUser(user),permissions:Array.isArray(user.permissions)?user.permissions:[]};
+}
+
+function requestedStaffOrCourierRole(value){
+  const role=String(value||'').trim().toLowerCase();
+  return ['courier','sales','accounting'].includes(role)?role:'';
 }
 
 function findUser(state,role,identifier){
@@ -162,7 +167,8 @@ export async function authPasswordLoginV2(request,env){
   try{
     if(!env.TOKEN_SECRET) return json({error:'Autenticación del servidor sin configurar.'},503);
     const body=await request.json().catch(()=>({}));
-    const role=body.role==='courier'?'courier':'client';
+    const role=requestedStaffOrCourierRole(body.role);
+    if(!role) return json({error:body.role==='client'?'El acceso de la app de clientes está deshabilitado. Gestiona tus órdenes por GOY XPRESS.':'Tipo de usuario no válido.'},body.role==='client'?410:400);
     const identifier=String(body.identifier||body.username||body.email||'').trim().toLowerCase();
     const password=String(body.password||'');
     if(!identifier||!password) return json({error:'Ingresa tu usuario/correo y contraseña.'},400);
@@ -208,7 +214,8 @@ export async function authChallengeV2(request,env){
   try{
     if(!env.TOKEN_SECRET) return json({error:'Autenticación del servidor sin configurar.'},503);
     const body=await request.json().catch(()=>({}));
-    const role=body.role==='courier'?'courier':'client';
+    const role=requestedStaffOrCourierRole(body.role);
+    if(!role) return json({error:body.role==='client'?'El acceso de la app de clientes está deshabilitado. Gestiona tus órdenes por GOY XPRESS.':'Tipo de usuario no válido.'},body.role==='client'?410:400);
     const identifier=String(body.identifier||body.username||body.email||'').trim().toLowerCase();
     if(!identifier) return json({error:'Ingresa tu usuario o correo.'},400);
 
