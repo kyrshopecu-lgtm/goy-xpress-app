@@ -294,3 +294,17 @@ test('health de GOY SALES valida las credenciales del número exclusivo de Venta
   assert.match(edge, /GOY_WA_SALES_PROSPECT_TEMPLATE/);
   assert.doesNotMatch(edge, /const whatsappReady=Boolean\(String\(env\.WHATSAPP_ACCESS_TOKEN/);
 });
+
+
+test('login por desafío valida mensajero, ventas y contabilidad con el mismo flujo seguro', () => {
+  const login = read('cloudflare-login-v2.js');
+  const entry = read('cloudflare-entry-auth.js');
+  assert.match(login, /export async function authLoginProofV2/);
+  assert.match(login, /\['courier','sales','accounting'\]\.includes\(payload\.role\)/);
+  assert.match(login, /verifyChallengePayload\(challenge,env\.TOKEN_SECRET\)/);
+  assert.match(login, /hmacSha256Hex\(storedKey,challenge\)/);
+  assert.match(login, /user\.blocked===true/);
+  assert.match(entry, /authChallengeV2, authLoginProofV2, authPasswordLoginV2/);
+  assert.match(entry, /return authLoginProofV2\(request, env\)/);
+  assert.doesNotMatch(entry, /return authLoginProof\(request, env\)/);
+});
