@@ -290,5 +290,7 @@ test('health de GOY SALES valida las credenciales del número exclusivo de Venta
   assert.match(edge, /env\.GOY_WA_SALES_PHONE_NUMBER_ID/);
   assert.match(edge, /env\.GOY_WA_SALES_PROSPECT_TEMPLATE/);
   assert.match(edge, /env\.GOY_WA_SALES_MEDIA_HEADER/);
+  assert.match(edge, /GOY_WA_SALES_ACCESS_TOKEN_and_GOY_WA_SALES_PHONE_NUMBER_ID/);
+  assert.match(edge, /GOY_WA_SALES_PROSPECT_TEMPLATE/);
   assert.doesNotMatch(edge, /const whatsappReady=Boolean\(String\(env\.WHATSAPP_ACCESS_TOKEN/);
 });
