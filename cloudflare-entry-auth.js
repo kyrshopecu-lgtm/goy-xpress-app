@@ -158,9 +158,9 @@ function runtimeHealth(env) {
   const tokenReady=Boolean(String(env.TOKEN_SECRET||'').trim());
   const discoveryReady=Boolean(String(env.GOOGLE_MAPS_API_KEY||'').trim()||String(env.PROSPECT_DISCOVERY_URL||'').trim());
   const analysisReady=Boolean((env.AI&&typeof env.AI.run==='function')||(String(env.GOY_AI_OPENAI_FALLBACK||'').toLowerCase()==='true'&&String(env.OPENAI_API_KEY||'').trim()));
-  const whatsappReady=Boolean(String(env.WHATSAPP_ACCESS_TOKEN||'').trim()&&String(env.WHATSAPP_PHONE_NUMBER_ID||'').trim());
-  const prospectTemplateReady=Boolean(String(env.GOY_WA_PROSPECT_TEMPLATE||'').trim());
-  const mediaHeaderReady=String(env.GOY_WA_PROSPECT_MEDIA_HEADER||'').toLowerCase()==='true';
+  const whatsappReady=Boolean(String(env.GOY_WA_SALES_ACCESS_TOKEN||'').trim()&&String(env.GOY_WA_SALES_PHONE_NUMBER_ID||'').trim());
+  const prospectTemplateReady=Boolean(String(env.GOY_WA_SALES_PROSPECT_TEMPLATE||'').trim());
+  const mediaHeaderReady=String(env.GOY_WA_SALES_MEDIA_HEADER||'').toLowerCase()==='true';
   const contactReady=whatsappReady&&prospectTemplateReady;
   const dailySalesReady=storageReady&&tokenReady&&discoveryReady&&analysisReady&&contactReady;
   const missing=[];
