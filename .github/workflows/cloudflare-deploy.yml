@@ -1,0 +1,54 @@
+name: Deploy GOY XPRESS to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cloudflare-entry-auth.js'
+      - 'cloudflare-entry.js'
+      - 'cloudflare-worker-v2.js'
+      - 'cloudflare-*.js'
+      - 'public-web/**'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/cloudflare-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: goy-xpress-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy existing Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Falta el secreto CLOUDFLARE_API_TOKEN en GitHub Actions."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Falta el secreto CLOUDFLARE_ACCOUNT_ID en GitHub Actions."; exit 1; }
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run application tests
+        run: npm test
+
+      - name: Deploy existing GOY XPRESS Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config wrangler.jsonc
