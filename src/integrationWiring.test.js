@@ -283,3 +283,12 @@ test('inicio de sesión admite mensajero, ventas y contabilidad, y retira el acc
   assert.match(login, /El acceso de la app de clientes está deshabilitado/);
   assert.match(staff, /permissions=data\.permissions\|\|\[\]/);
 });
+
+test('health de GOY SALES valida las credenciales del número exclusivo de Ventas', () => {
+  const edge = read('cloudflare-entry-auth.js');
+  assert.match(edge, /env\.GOY_WA_SALES_ACCESS_TOKEN/);
+  assert.match(edge, /env\.GOY_WA_SALES_PHONE_NUMBER_ID/);
+  assert.match(edge, /env\.GOY_WA_SALES_PROSPECT_TEMPLATE/);
+  assert.match(edge, /env\.GOY_WA_SALES_MEDIA_HEADER/);
+  assert.doesNotMatch(edge, /const whatsappReady=Boolean\(String\(env\.WHATSAPP_ACCESS_TOKEN/);
+});
