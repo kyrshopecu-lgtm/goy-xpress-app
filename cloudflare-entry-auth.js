@@ -1,10 +1,9 @@
 import base from './cloudflare-entry.js';
 import {whatsappProspectWebhook} from './cloudflare-whatsapp-prospect-webhook.js';
-import { authChallengeV2, authPasswordLoginV2 } from './cloudflare-login-v2.js';
+import { authChallengeV2, authLoginProofV2, authPasswordLoginV2 } from './cloudflare-login-v2.js';
 import { createAdminClient } from './cloudflare-admin-client-create.js';
 import {
   adminClientAccounts,
-  authLoginProof,
   authPasswordRegister,
   authRegisterParams,
   authRegisterProof,
@@ -218,7 +217,7 @@ async function dispatch(request, env, ctx) {
     return authChallengeV2(request, env);
   }
   if (path === '/api/auth/login-proof' && (request.method === 'POST' || request.method === 'OPTIONS')) {
-    return authLoginProof(request, env);
+    return authLoginProofV2(request, env);
   }
   if (path === '/api/auth/register-params' && (request.method === 'POST' || request.method === 'OPTIONS')) {
     return authRegisterParams(request, env);
