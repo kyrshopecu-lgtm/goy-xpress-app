@@ -74,6 +74,8 @@ window.addEventListener('load',()=>{
   load('data-order-evidence','/admin/order-evidence.js');
   load('data-report-filters','/admin/report-filters.js');
   load('data-client-banking','/admin/client-banking.js');
+  load('data-accounting','/admin/accounting.js');
+  load('data-crm','/admin/crm.js');
   load('data-assignment-fix','/admin/assignment-fix.js');
 
   const body=document.getElementById('clientsBody');

@@ -316,3 +316,16 @@ test('no permite crear solicitudes sin registro ni reutilizar correos', async t 
   });
   assert.equal(duplicate.status, 409);
 });
+
+test('conserva requisitos, pasos y tiempo estimado en la orden hasta la actualización administrativa',async t=>{
+ const store=serverV5.createMemoryStore();
+ const handler=serverV5.createHandler({store,mapsFetch:async()=>({ok:true,async json(){return {routes:[{distanceMeters:1000,duration:'300s',polyline:{encodedPolyline:'abc'}}]};}}),config:{tokenSecret:'test-secret-123',adminEmail:'admin@goy.test',adminPassword:'Admin1234',allowedOrigin:'*',googleMapsApiKey:'maps-test-key',databaseUrl:''}});
+ const {server,base}=await startServer(handler);t.after(()=>server.close());
+ const client=await call(base,'/api/auth/client/register',{method:'POST',body:{name:'Cliente de trámite',email:'tramite@goy.test',phone:'0991112233',password:'Cliente123'}});
+ assert.equal(client.status,201);
+ const created=await call(base,'/api/client/requests',{method:'POST',token:client.body.token,body:{kind:'diverse',serviceLabel:'Apostilla',diverseDetail:'Apostillar partida de nacimiento',expectedTime:'3 a 5 días hábiles',procedureRequirements:['Partida original','Cédula'],procedureSteps:['Revisar documentos','Presentar solicitud','Retirar documento']}});
+ assert.equal(created.status,201);assert.equal(created.body.request.expectedTime,'3 a 5 días hábiles');assert.deepEqual(created.body.request.procedureRequirements,['Partida original','Cédula']);assert.deepEqual(created.body.request.procedureSteps,['Revisar documentos','Presentar solicitud','Retirar documento']);
+ const admin=await call(base,'/api/admin/login',{method:'POST',body:{email:'admin@goy.test',password:'Admin1234'}});
+ const updated=await call(base,'/api/admin/requests/'+encodeURIComponent(created.body.request.code),{method:'PATCH',token:admin.body.token,body:{expectedTime:'2 días hábiles',procedureRequirements:['Documento actualizado'],procedureSteps:['Validar','Entregar']}});
+ assert.equal(updated.status,200);assert.equal(updated.body.request.expectedTime,'2 días hábiles');assert.deepEqual(updated.body.request.procedureRequirements,['Documento actualizado']);assert.deepEqual(updated.body.request.procedureSteps,['Validar','Entregar']);
+});

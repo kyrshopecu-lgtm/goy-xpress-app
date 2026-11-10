@@ -1,0 +1,54 @@
+(()=>{
+ const $=id=>document.getElementById(id),apiBase='/api';let session=null,items=[],editing='',accountingEntries=[];
+ const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+ async function api(path,options={}){const headers={'Content-Type':'application/json',...(session?.token?{Authorization:`Bearer ${session.token}`}:{})};const res=await fetch(apiBase+path,{...options,headers});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'No se pudo completar la operación.');return data;}
+ function showError(message){$('errorText').textContent=message;$('errorView').classList.remove('hidden');}
+ const money=value=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(Number(value)||0);
+ function has(permission){return Boolean(session?.permissions?.includes(permission));}
+ async function loadAccounting(){
+  const body=$('accountingBody');body.innerHTML='<tr><td colspan="7">Cargando movimientos…</td></tr>';
+  try{
+   const params=new URLSearchParams();
+   if($('accFrom').value)params.set('from',$('accFrom').value);
+   if($('accTo').value)params.set('to',$('accTo').value);
+   if($('accFilterType').value)params.set('type',$('accFilterType').value);
+   const [entriesData,summaryData]=await Promise.all([api('/admin/accounting/entries'+(params.size?'?'+params.toString():'')),has('accounting.reports')?api('/admin/accounting/summary'):Promise.resolve(null)]);
+   accountingEntries=entriesData.entries||[];
+   const filteredTotals=accountingEntries.reduce((acc,item)=>{acc[item.type]=(acc[item.type]||0)+(Number(item.amount)||0);return acc;},{income:0,expense:0});
+   const totals=params.size?filteredTotals:(summaryData?.totals||filteredTotals);
+   $('accIncome').textContent=money(totals.income);$('accExpense').textContent=money(totals.expense);$('accBalance').textContent=money(totals.balance??(totals.income-totals.expense));$('accPending').textContent=String(params.size?accountingEntries.filter(item=>!item.reconciled).length:(summaryData?.pendingReconciliation??accountingEntries.filter(item=>!item.reconciled).length));
+   body.innerHTML=accountingEntries.map(item=>`<tr><td>${item.reconciled?'✓':`<input type="checkbox" aria-label="Seleccionar movimiento" data-acc-select="${esc(item.id)}">`}</td><td>${esc(item.date)}</td><td><span class="pill">${item.type==='income'?'Ingreso':'Egreso'}</span></td><td><strong>${esc(item.category)}</strong><br><small>${esc(item.description)}</small></td><td>${money(item.amount)}</td><td>${esc(item.reference||item.paymentMethod||'—')}</td><td>${item.reconciled?'Conciliado':'Pendiente'}</td></tr>`).join('')||'<tr><td colspan="7">No hay movimientos para los filtros seleccionados.</td></tr>';
+   $('accFilterMessage').textContent=`${entriesData.total??accountingEntries.length} movimiento(s) en el resultado.`;
+   $('accountingForm').classList.toggle('hidden',!has('accounting.entries.create'));$('accReconcile').classList.toggle('hidden',!has('accounting.reconcile'));$('accExport').classList.toggle('hidden',!has('accounting.reports'));
+  }catch(error){body.innerHTML=`<tr><td colspan="7">${esc(error.message)}</td></tr>`;}
+ }
+ function exportAccounting(){
+  if(!has('accounting.reports'))return alert('No tienes permiso para exportar reportes.');
+  const columns=['Fecha','Tipo','Categoría','Descripción','Valor USD','Método de pago','Referencia','Notas','Estado'];
+  const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  const rows=accountingEntries.map(item=>[item.date,item.type==='income'?'Ingreso':'Egreso',item.category,item.description,Number(item.amount||0).toFixed(2),item.paymentMethod,item.reference,item.notes,item.reconciled?'Conciliado':'Pendiente']);
+  const csv='\\uFEFF'+[columns,...rows].map(row=>row.map(quote).join(';')).join('\\r\\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='goy-xpress-libro-contable.csv';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+ }
+ async function saveAccounting(event){
+  event.preventDefault();$('accMessage').textContent='Guardando…';
+  const body={type:$('accType').value,amount:$('accAmount').value,category:$('accCategory').value.trim(),date:$('accDate').value,paymentMethod:$('accMethod').value.trim(),reference:$('accReference').value.trim(),description:$('accDescription').value.trim(),notes:$('accNotes').value.trim()};
+  try{await api('/admin/accounting/entries',{method:'POST',body:JSON.stringify(body)});$('accountingForm').reset();$('accDate').value=new Date().toISOString().slice(0,10);$('accMessage').textContent='Movimiento guardado correctamente.';await loadAccounting();}
+  catch(error){$('accMessage').textContent=error.message;}
+ }
+ async function reconcileAccounting(){
+  const ids=[...document.querySelectorAll('[data-acc-select]:checked')].map(input=>input.dataset.accSelect);
+  if(!ids.length)return alert('Selecciona al menos un movimiento pendiente.');
+  if(!confirm(`¿Confirmas la conciliación de ${ids.length} movimiento(s)? Verifica previamente los comprobantes.`))return;
+  try{await api('/admin/accounting/reconcile',{method:'POST',body:JSON.stringify({ids})});await loadAccounting();alert('Registros conciliados.');}catch(error){alert(error.message);}
+ }
+ async function login(event){event.preventDefault();$('loginMessage').textContent='Verificando acceso…';try{const data=await api('/auth/login',{method:'POST',body:JSON.stringify({role:$('role').value,username:$('username').value.trim(),password:$('password').value})});session=data;if(!['sales','accounting'].includes(data.user?.role))throw new Error('Esta cuenta no corresponde al portal interno.');$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('welcome').textContent=`${data.user.name} · ${data.user.role==='sales'?'Ventas':'Contabilidad'}`;if(data.user.role==='sales'){$('salesView').classList.remove('hidden');$('prospectForm').classList.toggle('hidden',!has('sales.prospects.create'));await loadProspects();}else{$('accountingView').classList.remove('hidden');$('accDate').value=new Date().toISOString().slice(0,10);await loadAccounting();}}catch(error){$('loginMessage').textContent=error.message;}}
+ async function loadProspects(){const body=$('prospectsBody');body.innerHTML='<tr><td colspan="5">Cargando…</td></tr>';try{const data=await api('/admin/prospects');items=data.prospects||[];renderProspects();}catch(error){body.innerHTML=`<tr><td colspan="5">${esc(error.message)}</td></tr>`;}}
+ function renderProspects(){const q=$('search').value.trim().toLowerCase(),canUpdate=has('sales.prospects.update'),rows=items.filter(p=>[p.business,p.city,p.status,p.category].some(v=>String(v||'').toLowerCase().includes(q)));$('prospectsBody').innerHTML=rows.map(p=>`<tr><td><strong>${esc(p.business)}</strong><br><small>${esc(p.category||'')}</small></td><td>${esc(p.city||'—')}</td><td>${esc(p.contact||'—')}</td><td><span class="pill">${esc(p.status)}</span></td><td><div class="actions">${canUpdate?`<button class="secondary" data-edit="${esc(p.id)}">Editar</button><button class="secondary" data-next="${esc(p.id)}">Seguimiento</button>`:'—'}</div></td></tr>`).join('')||'<tr><td colspan="5">No hay prospectos para mostrar.</td></tr>';}
+ function resetForm(){$('prospectForm').reset();editing='';$('formTitle').textContent='Registrar prospecto';$('cancelEdit').classList.add('hidden');$('prospectForm').classList.toggle('hidden',!has('sales.prospects.create'));}
+ async function saveProspect(event){event.preventDefault();if(editing?!has('sales.prospects.update'):!has('sales.prospects.create')){ $('prospectMessage').textContent='No tienes permiso para esta acción.';return;}const body={business:$('business').value.trim(),city:$('city').value.trim(),category:$('category').value.trim(),contact:$('contact').value.trim(),channel:$('channel').value.trim(),sourceUrl:$('sourceUrl').value.trim(),fitReason:$('fitReason').value.trim()};$('prospectMessage').textContent='Guardando…';try{await api(editing?`/admin/prospects/${encodeURIComponent(editing)}`:'/admin/prospects',{method:editing?'PATCH':'POST',body:JSON.stringify(body)});$('prospectMessage').textContent='Prospecto guardado.';resetForm();await loadProspects();}catch(error){$('prospectMessage').textContent=error.message;}}
+ function edit(id){const p=items.find(x=>x.id===id);if(!p||!has('sales.prospects.update'))return;editing=id;$('prospectForm').classList.remove('hidden');$('business').value=p.business||'';$('city').value=p.city||'';$('category').value=p.category||'';$('contact').value=p.contact||'';$('channel').value=p.channel||'';$('sourceUrl').value=p.sourceUrl||'';$('fitReason').value=p.fitReason||'';$('formTitle').textContent='Editar prospecto';$('cancelEdit').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}
+ async function next(id){const p=items.find(x=>x.id===id);if(!p)return;const choices=['Pendiente de revisión','Aprobado para contacto','Respondió','Interesado','Solicita llamada','Cliente','Descartado'];const nextStatus=prompt('Nuevo estado:\n'+choices.map((v,i)=>`${i+1}. ${v}`).join('\n'),p.status||choices[0]);if(nextStatus===null)return;const chosen=choices.find((v,i)=>nextStatus===v||String(i+1)===nextStatus.trim());if(!chosen)return alert('Estado no válido.');try{await api(`/admin/prospects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({status:chosen})});await loadProspects();}catch(error){alert(error.message);}}
+ $('loginForm').addEventListener('submit',login);$('accountingForm').addEventListener('submit',saveAccounting);$('accountingReload').addEventListener('click',loadAccounting);$('accApplyFilters').addEventListener('click',loadAccounting);$('accClearFilters').addEventListener('click',()=>{$('accFrom').value='';$('accTo').value='';$('accFilterType').value='';loadAccounting();});$('accExport').addEventListener('click',exportAccounting);$('accReconcile').addEventListener('click',reconcileAccounting);$('prospectForm').addEventListener('submit',saveProspect);$('reload').addEventListener('click',loadProspects);$('search').addEventListener('input',renderProspects);$('cancelEdit').addEventListener('click',resetForm);$('prospectsBody').addEventListener('click',event=>{const editButton=event.target.closest('[data-edit]');if(editButton)edit(editButton.dataset.edit);const nextButton=event.target.closest('[data-next]');if(nextButton)next(nextButton.dataset.next);});$('logout').addEventListener('click',()=>{session=null;items=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('loginForm').reset();$('prospectMessage').textContent='';});
+})();

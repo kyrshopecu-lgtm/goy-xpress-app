@@ -32,6 +32,7 @@ function syncProcessEnv(env) {
     'WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_OTP_TEMPLATE',
     'WHATSAPP_OTP_TEMPLATE_LANG','WHATSAPP_GRAPH_VERSION','GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE',
     'GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_ORDER_TEMPLATE','GOY_WA_RECIPIENT_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_ORDER_LOGO_URL','GOY_WA_PROSPECT_TEMPLATE','GOY_WA_PROSPECT_MEDIA_HEADER',
+    'GOY_WA_SALES_ACCESS_TOKEN','GOY_WA_SALES_PHONE_NUMBER_ID','GOY_WA_SALES_PROSPECT_TEMPLATE','GOY_WA_SALES_MEDIA_HEADER','GOY_WA_SALES_TEMPLATE_LANG',
     'OPENAI_API_KEY','GOY_AI_OPENAI_FALLBACK','PROSPECT_DISCOVERY_URL','PROSPECT_DISCOVERY_TOKEN'
   ];
   for (const key of keys) {
@@ -235,6 +236,11 @@ async function handleApi(request, env) {
 
   if (
     path === '/api/auth/login' ||
+    path === '/api/auth/client/register' ||
+    path === '/api/auth/courier/register' ||
+    path.startsWith('/api/invite/') ||
+    path === '/api/admin/internal-users' ||
+    /^\/api\/admin\/internal-users\/[^/]+$/.test(path) ||
     /^\/api\/admin\/(clients|couriers)\/[^/]+\/approve$/.test(path)
   ) {
     return invokeNode(serverV6, request);
@@ -257,12 +263,15 @@ async function asset(request, env, url, pathname) {
 async function handleStatic(request, env) {
   const url = new URL(request.url);
   let path = url.pathname;
+  if (path === '/tracking' || path === '/tracking/' || path.startsWith('/registro/')) return Response.redirect(new URL('/inicio', request.url), 302);
 
   if (path === '/inicio') path = '/';
+  else if (path === '/equipo' || path === '/equipo/') path = '/admin/staff.html';
+  else if (path === '/ventas' || path === '/ventas/') { path = '/admin/staff.html'; url.searchParams.set('role','sales'); }
+  else if (path === '/contabilidad' || path === '/contabilidad/') { path = '/admin/staff.html'; url.searchParams.set('role','accounting'); }
   else if (path === '/servicio') path = '/service.html';
   else if (path === '/admin' || path === '/admin/') path = '/admin/index.html';
-  else if (path === '/tracking' || path === '/tracking/') path = '/tracking/index.html';
-  else if (/^\/registro\/[^/]+\/?$/.test(path)) path = '/register.html';
+
   else if (path.startsWith('/web/')) path = path.slice(4) || '/';
 
   return asset(request, env, url, path);

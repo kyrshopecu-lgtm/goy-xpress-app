@@ -231,19 +231,22 @@ test('panel conserva WhatsApp de invitación y muestra aprobación real del clie
   assert.match(cloudflare, /Pendiente de aprobación/);
 });
 
-test('workflows generan las versiones corregidas sin caché npm inválida', () => {
-  const generic = read('.github/workflows/build-apk.yml');
+test('workflow genera únicamente la APK de mensajero y valida panel y Worker', () => {
   const admin = read('.github/workflows/admin-web-check.yml');
   const roles = read('.github/workflows/build-role-apks.yml');
   const cloudflare = read('.github/workflows/cloudflare-check.yml');
   const ndkInstaller = read('scripts/install-android-ndk.sh');
-  assert.doesNotMatch(generic, /cache:\s*npm/);
-  assert.doesNotMatch(admin, /cache:\s*npm/);
-  assert.match(roles, /CLIENTE-PARCHE-v1\.4\.3\.apk/);
-  assert.match(roles, /MENSAJERO-PARCHE-v1\.5\.7\.apk/);
-  assert.match(roles, /MENSAJERO-v1\.5\.7-ARM64\.apk/);
-  assert.match(generic, /install-android-ndk\.sh 27\.1\.12297006/);
+
+  assert.match(roles, /name: Generar APK GOY XPRESS Mensajero/);
+  assert.match(roles, /cp app\.courier\.json app\.json/);
+  assert.match(roles, /cp index\.courier\.js index\.js/);
+  assert.match(roles, /GOY-XPRESS-MENSAJERO\.apk/);
+  assert.match(roles, /GOY-XPRESS-MENSAJERO-ARM64\.apk/);
   assert.match(roles, /install-android-ndk\.sh 27\.1\.12297006/);
+  assert.match(roles, /apksigner.*verify/);
+  assert.match(roles, /smoke-android\.sh GOY-XPRESS-MENSAJERO\.apk/);
+  assert.doesNotMatch(roles, /CLIENTE-PARCHE|app\.client\.json/);
+  assert.doesNotMatch(admin, /cache:\s*npm/);
   assert.match(ndkInstaller, /for attempt in 1 2 3 4/);
   assert.match(ndkInstaller, /source\.properties/);
   assert.match(cloudflare, /cloudflare-login-v2\.js/);

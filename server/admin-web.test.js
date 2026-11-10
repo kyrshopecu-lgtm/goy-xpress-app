@@ -80,26 +80,15 @@ test('administración carga y valida el visor de evidencias fotográficas', () =
   new vm.Script(evidence, {filename:'order-evidence.js'});
 });
 
-test('panel publicado conserva creación segura de clientes', () => {
-  const sourceConfig = read('admin-web/config.js');
-  const publicConfig = read('public-web/admin/config.js');
-  const secureCreate = read('public-web/admin/client-create-fix.js');
-  const clientAccounts = read('public-web/admin/client-accounts.js');
-
-  for (const config of [sourceConfig, publicConfig]) {
-    assert.match(config, /client-accounts\.js/);
-    assert.match(config, /client-create-fix\.js/);
-  }
-  assert.match(clientAccounts, /id=['"]createClientForm['"]/);
-  assert.match(secureCreate, /PBKDF2/);
-  assert.match(secureCreate, /passwordHash/);
-  assert.match(secureCreate, /passwordSalt/);
-  assert.match(secureCreate, /passwordIterations/);
-  assert.match(secureCreate, /\/admin\/clients/);
-  new vm.Script(secureCreate, {filename:'public-web/admin/client-create-fix.js'});
+test('panel publicado crea fichas de cliente sin credenciales de aplicación',()=>{
+ const sourceConfig=read('admin-web/config.js'),publicConfig=read('public-web/admin/config.js');
+ const form=read('public-web/admin/client-create-fix.js'),modal=read('public-web/admin/client-accounts.js'),server=read('server/admin-clients.js');
+ for(const config of [sourceConfig,publicConfig]){assert.match(config,/client-accounts\.js/);assert.match(config,/client-create-fix\.js/);}
+ assert.match(modal,/id=['"]createClientForm['"]/);assert.doesNotMatch(modal,/newClientPassword|Contraseña temporal/);
+ assert.match(form,/randomHex/);assert.match(form,/Ficha de cliente creada/);assert.doesNotMatch(form,/PBKDF2|passwordHash|passwordSalt|passwordIterations|newClientPassword/);
+ assert.match(server,/crypto\.randomBytes\(32\)/);assert.match(form,/\/admin\/clients/);
+ new vm.Script(form,{filename:'client-create-fix.js'});
 });
-
-
 test('panel publicado permite servicio personalizado vinculado al cliente sin actualizar APK', () => {
   const modern = read('public-web/admin/modern-admin.js');
   assert.match(modern, /<option value="custom">Servicio personalizado<\/option>/);
@@ -312,7 +301,8 @@ test('GOY SALES AI exige aprobación y confirmación para primer WhatsApp', () =
 test('GOY SALES AI informa si WhatsApp comercial está listo sin exponer secretos', () => {
   const management=read('server/admin-management.js'),js=read('public-web/admin/prospects.js');
   assert.match(management, /\/admin\/prospects\/whatsapp-status/);
-  assert.match(management, /GOY_WA_PROSPECT_TEMPLATE/);
+  assert.match(management, /GOY_WA_SALES_PROSPECT_TEMPLATE/);
+  assert.match(management, /GOY_WA_SALES_PHONE_NUMBER_ID/);
   assert.match(management, /configured:missing\.length===0/);
   assert.match(js, /loadWhatsAppStatus/);
   assert.match(js, /WhatsApp pendiente/);
@@ -329,16 +319,20 @@ test('Cloudflare conecta webhook firmado de respuestas WhatsApp para prospectos'
   assert.match(hook, /X-Hub-Signature-256/);
   assert.match(hook, /WHATSAPP_WEBHOOK_VERIFY_TOKEN/);
   assert.match(hook, /META_APP_SECRET/);
+  assert.match(hook, /state\.clients\.find/);assert.match(hook,/state\.users\.find/);assert.match(hook,/doNotContactMarketing/);
+  assert.match(hook, /state\.prospects\.unshift/);
+  assert.match(hook, /assignedTeam:'sales'/);
+  assert.match(hook, /salesQueueStatus='pending'/);
   assert.match(hook, /providerMessageId/);
-  assert.match(hook, /p\.status='Respondió'/);
-  assert.match(hook, /p\.doNotContact=true/);
+  assert.match(hook, /prospect\.status!=='Cliente'&&prospect\.status!=='Descartado'/);
+  assert.match(hook, /prospect\.doNotContact=true/);
   assert.match(hook, /STATE_CONFLICT/);
 });
 
 
 test('Cloudflare sincroniza variables WhatsApp comerciales de GOY SALES AI', () => {
   const worker=read('cloudflare-worker-v2.js');
-  for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
+  for(const key of ['GOY_WA_TEMPLATE_LANG','GOY_WA_ADMIN_PHONE','GOY_WA_ADMIN_ORDER_TEMPLATE','GOY_WA_COURIER_ORDER_TEMPLATE','GOY_WA_CLIENT_DELIVERED_TEMPLATE','GOY_WA_SALES_ACCESS_TOKEN','GOY_WA_SALES_PHONE_NUMBER_ID','GOY_WA_SALES_PROSPECT_TEMPLATE']) assert.match(worker,new RegExp(key));
 });
 
 
@@ -496,7 +490,7 @@ test('Estado comercial sugerido por IA requiere validación humana', () => {
   assert.match(management,/if\(nextStatus==='Respondió'/);
   assert.match(management,/interestedAt/);
   assert.match(management,/clientAt/);
-  assert.match(hook,/p\.responseAt=p\.responseAt\|\|at/);
+  assert.match(hook,/prospect\.responseAt=prospect\.responseAt\|\|at/);
   new vm.Script(js,{filename:'public-web/admin/prospects.js'});
 });
 
@@ -670,4 +664,88 @@ test('Agenda administrativa guarda seguimientos de trámites y pagos programados
   assert.match(admin,/\/admin\/agenda/);assert.match(admin,/data-agenda-status/);assert.match(admin,/Completado/);assert.match(admin,/VENCIDO/);
   assert.match(edge,/agendaItems/);assert.match(edge,/procedure_followup/);assert.match(edge,/scheduled_payment/);assert.match(edge,/pendingDocuments/);
   new vm.Script(admin,{filename:'public-web/admin/app.js'});
+});
+
+
+test('panel central permite administrar trabajadores y permisos por usuario',()=>{
+  const js=read('public-web/admin/admin-management.js');
+  const config=read('public-web/admin/config.js');
+  const html=read('public-web/admin/index.html');
+  for(const text of ['internal-users','Equipo y permisos','goyStaffForm','goyStaffRole','goyStaffPermissions','goyStaffAudit','data-edit-staff','data-toggle-staff','data-reset-staff-password'])assert.ok(js.includes(text),`Falta interfaz: ${text}`);
+  assert.match(js,/sales\.prospects\.read/);assert.match(js,/accounting\.entries\.create/);
+  assert.match(js,/\/admin\/internal-users/);assert.match(js,/method:id\?'PATCH':'POST'/);
+  assert.match(config,/admin-management\.js/);
+  new vm.Script(js,{filename:'public-web/admin/admin-management.js'});
+});
+
+test('Cloudflare dirige las cuentas internas al backend de autenticación v6',()=>{
+  const worker=read('cloudflare-worker-v2.js');
+  assert.match(worker,/path === '\/api\/admin\/internal-users'/);
+  assert.match(worker,/internal-users/);assert.match(worker,/invokeNode\(serverV6, request\)/);
+});
+
+test('portal interno autentica Ventas y presenta el módulo contable sin datos simulados',()=>{
+ const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),worker=read('cloudflare-worker-v2.js');
+ assert.match(html,/id="loginForm"/);assert.match(html,/value="sales"/);assert.match(html,/value="accounting"/);
+ assert.match(html,/id="salesView"/);assert.match(html,/id="accountingView"/);
+ assert.match(js,/\/auth\/login/);assert.match(js,/\/admin\/prospects/);assert.match(html,/Control de ingresos y egresos/);
+ assert.match(worker,/path === '\/equipo' \|\| path === '\/equipo\/'/);
+ new vm.Script(js,{filename:'public-web/staff/app.js'});
+});
+
+test('portal de Contabilidad usa endpoints protegidos y no simula datos bancarios',()=>{
+ const html=read('public-web/staff/index.html'),js=read('public-web/staff/app.js'),api=read('server/admin-management.js');
+ for(const id of ['accountingForm','accIncome','accExpense','accBalance','accPending','accountingBody','accReconcile','accFrom','accTo','accFilterType','accApplyFilters','accClearFilters','accExport'])assert.ok(html.includes('id="'+id+'"'),`Falta control contable ${id}`);
+ for(const route of ['/admin/accounting/entries','/admin/accounting/summary','/admin/accounting/reconcile'])assert.ok(js.includes(route),`Falta conexión ${route}`);
+ for(const fragment of ['function exportAccounting()','goy-xpress-libro-contable.csv',"params.set('from'","params.set('to'","params.set('type'"])assert.ok(js.includes(fragment),`Falta función contable ${fragment}`);
+ for(const permission of ['accounting.read','accounting.entries.create','accounting.entries.update','accounting.reconcile','accounting.reports'])assert.ok(api.includes(permission),`Falta permiso ${permission}`);
+ assert.match(html,/No está conectado automáticamente a bancos/);
+ new vm.Script(js,{filename:'public-web/staff/app.js'});
+});
+
+test('paneles de Ventas y Contabilidad usan sesión interna y API con permisos',()=>{
+ const html=read('admin-web/staff.html'),js=read('admin-web/staff.js'),config=read('admin-web/config.js'),vercel=read('vercel.json'),accounting=read('admin-web/accounting.js'),management=read('admin-web/admin-management.js');
+ assert.match(vercel,/\/ventas/);assert.match(vercel,/\/contabilidad/);
+ assert.match(html,/id="role"/);assert.match(html,/id="username"/);
+ assert.match(js,/\/auth\/login/);assert.match(js,/sales\.prospects\.update/);assert.match(js,/accounting\/entries/);assert.match(js,/accounting\.entries\.create/);
+ assert.match(js,/\/admin\/accounting\/reconcile/);assert.match(js,/\/admin\/prospects\/whatsapp-status/);assert.match(js,/send-followup-whatsapp/);
+ assert.match(config,/accounting\.js/);assert.match(read('public-web/admin/config.js'),/accounting\.js/);assert.equal(js,read('public-web/admin/staff.js'));assert.equal(accounting,read('public-web/admin/accounting.js'));assert.equal(read('admin-web/crm.js'),read('public-web/admin/crm.js'));assert.match(read('admin-web/crm.js'),/convert-to-client/);assert.match(read('admin-web/config.js'),/crm\.js/);assert.match(read('public-web/admin/config.js'),/crm\.js/);assert.match(read('cloudflare-worker-v2.js'),/path === '\/ventas'/);assert.match(read('cloudflare-worker-v2.js'),/path === '\/contabilidad'/);assert.match(management,/ensureInternalUsersView/);assert.match(management,/goyServiceExpectedTime/);assert.match(management,/goyServiceRequirements/);assert.match(management,/goyServiceSteps/);assert.match(management,/sales\.whatsapp\.send/);
+ new vm.Script(js,{filename:'staff.js'});new vm.Script(accounting,{filename:'accounting.js'});new vm.Script(management,{filename:'admin-management.js'});
+});
+
+test('no se publica portal de cliente ni tracking público; los pedidos se consultan por WhatsApp',()=>{
+ const api=read('api/public-tracking.js'),v6=read('server/server-v6.js'),worker=read('cloudflare-worker-v2.js'),entry=read('cloudflare-entry.js'),home=read('public-web/index.html'),tracking=read('tracking-web/index.html'),registration=read('register.html'),vercel=JSON.parse(read('vercel.json'));
+ assert.match(v6,/p==='\/auth\/client\/register'\)return json\(res,410/);
+ assert.match(v6,/if\(role==='client'\)return json\(res,403/);
+ assert.match(api,/res\.statusCode=410/);
+ assert.match(worker,/path\.startsWith\('\/registro\/'\)/);assert.match(worker,/path === '\/api\/auth\/client\/register'/);assert.match(worker,/path\.startsWith\('\/api\/invite\/'\)/);
+ assert.match(worker,/path === '\/tracking'[^\n]*Response\.redirect/);
+ assert.match(entry,/path.startsWith\('\/registro\/'\)/);
+ assert.match(home,/Consultar pedido/);
+ assert.doesNotMatch(home,/href="\/tracking"/);
+ assert.doesNotMatch(home,/Soy cliente/);
+ assert.match(tracking,/seguimiento público y la aplicación de cliente ya no están disponibles/i);
+ assert.match(registration,/aplicación y el registro de clientes ya no están disponibles/i);
+ assert.ok(vercel.redirects.some(x=>x.source==='/tracking'));
+ assert.ok(vercel.redirects.some(x=>x.source==='/registro/:token'));
+});
+
+test('CRM central une clientes y prospectos con historial de WhatsApp y conversión',()=>{
+ const crm=read('admin-web/crm.js'),staff=read('admin-web/staff.js'),management=read('server/admin-management.js');
+ assert.match(crm,/whatsappConversation/);assert.match(crm,/salesQueueStatus/);assert.match(crm,/\/admin\/data/);assert.match(crm,/convert-to-client/);
+ assert.match(staff,/data-convert/);assert.match(management,/prospectConvertMatch/);assert.match(management,/convertedFromProspectId/);
+ new vm.Script(crm,{filename:'crm.js'});
+});
+
+test('el alta administrativa crea ficha de cliente sin pedir credenciales',()=>{
+ const form=read('admin-web/client-create-fix.js'),modal=read('admin-web/client-accounts.js');
+ assert.match(form,/Ficha de cliente creada/);assert.match(form,/randomHex/);
+ assert.doesNotMatch(form,/newClientPassword|passwordHash|Credenciales listas/);
+ assert.doesNotMatch(modal,/newClientPassword|Contraseña temporal|Credenciales listas/);
+});
+
+test('los requisitos y pasos de servicios personalizados llegan a la app de mensajero',()=>{
+ const admin=read('admin-web/custom-service-orders.js'),cloudflare=read('public-web/admin/custom-service-orders.js'),courier=read('src/CourierOnlyApp.js');
+ assert.equal(admin,cloudflare);assert.match(admin,/procedureRequirements:item\.requirements/);assert.match(admin,/procedureSteps:item\.steps/);assert.match(admin,/item\.expectedTime/);
+ assert.match(courier,/request\.procedureRequirements/);assert.match(courier,/request\.procedureSteps/);assert.match(courier,/request\.expectedTime/);
 });

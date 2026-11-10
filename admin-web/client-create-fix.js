@@ -7,14 +7,6 @@
   const bytesToHex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
   const randomHex=(size=16)=>{const bytes=new Uint8Array(size);crypto.getRandomValues(bytes);return bytesToHex(bytes);};
 
-  async function protectPassword(password,salt,iterations=100000){
-    if(!globalThis.crypto?.subtle)throw new Error('Este navegador no permite proteger la contraseña. Actualiza el navegador e intenta nuevamente.');
-    const encoder=new TextEncoder();
-    const key=await crypto.subtle.importKey('raw',encoder.encode(String(password||'')),'PBKDF2',false,['deriveBits']);
-    const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-512',salt:encoder.encode(String(salt||'')),iterations},key,512);
-    return bytesToHex(new Uint8Array(bits));
-  }
-
   document.addEventListener('submit',async event=>{
     if(event.target?.id!=='createClientForm')return;
     event.preventDefault();
@@ -22,16 +14,14 @@
 
     const submit=$('submitClientCreate'),message=$('createClientMessage'),success=$('createClientSuccess');
     if(!submit||!message||!success)return;
-    const password=$('newClientPassword')?.value||'';
-    if(password.length<8||!/[A-Za-z]/.test(password)||!/\d/.test(password)){
-      message.textContent='La contraseña debe tener al menos 8 caracteres e incluir letras y números.';
-      return;
-    }
-    const username=String($('newClientUsername')?.value||'').trim().toLowerCase();
+    const phone=String($('newClientPhone')?.value||'').trim();
+    const enteredCode=String($('newClientUsername')?.value||'').trim().toLowerCase();
+    const username=enteredCode||('cli'+phone.replace(/\D/g,'').slice(-7)+randomHex(2));
     if(!/^[a-z0-9._-]{3,30}$/.test(username)){
-      message.textContent='El usuario debe tener entre 3 y 30 caracteres y usar solo letras, números, punto, guion o guion bajo.';
+      message.textContent='El código interno debe tener entre 3 y 30 caracteres y usar solo letras, números, punto, guion o guion bajo.';
       return;
     }
+    if($('newClientUsername'))$('newClientUsername').value=username;
 
     const bank={
       bank:String($('newClientBank')?.value||'').trim(),
@@ -44,25 +34,22 @@
 
     submit.disabled=true;
     success.classList.add('hidden');
-    message.textContent='Protegiendo contraseña…';
+    message.textContent='Preparando ficha de cliente…';
     try{
-      const passwordSalt=randomHex(16),passwordIterations=100000;
-      const passwordHash=await protectPassword(password,passwordSalt,passwordIterations);
       const payload={
         name:String($('newClientName')?.value||'').trim(),
         businessName:String($('newClientBusiness')?.value||'').trim(),
         username,
-        phone:String($('newClientPhone')?.value||'').trim(),
+        phone,
         documentId:String($('newClientDocument')?.value||'').trim(),
         address:String($('newClientAddress')?.value||'').trim(),
         mapUrl:String($('newClientMapUrl')?.value||'').trim(),
         email:String($('newClientEmail')?.value||'').trim(),
         logo:image,
-        passwordSalt,passwordHash,passwordIterations,
         bankAccounts:(bank.bank||bank.accountNumber||bank.holderName)?[bank]:[],
       };
 
-      message.textContent='Creando cliente…';
+      message.textContent='Creando ficha de cliente…';
       const response=await fetch(`${apiBase}/admin/clients`,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${token()}`},
@@ -77,13 +64,9 @@
         throw new Error(body.error||`No se pudo crear el cliente (HTTP ${response.status}).`);
       }
 
-      message.textContent='Cliente creado y activo.';
-      success.innerHTML=`<strong>Credenciales listas para enviar</strong><code>Usuario: ${esc(username)}</code>${payload.email?`<code>Correo opcional: ${esc(payload.email)}</code>`:''}<code>Contraseña: ${esc(password)}</code>${payload.bankAccounts.length?`<code>Cuenta bancaria: ${esc(bank.bank)} · ${esc(bank.accountNumber)}</code>`:''}<button id="copyClientCredentialsSecure" class="ghost goy-client-copy" type="button">Copiar credenciales</button><button id="refreshClientsSecure" class="primary goy-client-copy" type="button">Cerrar y actualizar lista</button>`;
+      message.textContent='Ficha de cliente creada. Las órdenes se gestionan desde administración.';
+      success.innerHTML=`<strong>Ficha de cliente creada</strong><code>Código interno: ${esc(username)}</code>${payload.bankAccounts.length?`<code>Cuenta bancaria: ${esc(bank.bank)} · ${esc(bank.accountNumber)}</code>`:''}<button id="refreshClientsSecure" class="primary goy-client-copy" type="button">Cerrar y actualizar lista</button>`;
       success.classList.remove('hidden');
-      $('copyClientCredentialsSecure')?.addEventListener('click',async()=>{
-        const text=`GOY XPRESS\nUsuario: ${username}${payload.email?`\nCorreo: ${payload.email}`:''}\nContraseña: ${password}`;
-        try{await navigator.clipboard.writeText(text);$('copyClientCredentialsSecure').textContent='Copiado';}catch{alert(text);}
-      });
       $('refreshClientsSecure')?.addEventListener('click',()=>location.reload());
       event.target.reset();
       $('newClientPreview')?.removeAttribute('src');

@@ -60,13 +60,13 @@ function wrap(next, overrides={}){
         if(phone.length<9)return json(res,400,{error:'Ingresa un número de WhatsApp válido.'},config.allowedOrigin);
         if(!validMapsUrl(mapUrl))return json(res,400,{error:'Pega un enlace válido de Google Maps.'},config.allowedOrigin);
         if(!validImage(logo))return json(res,400,{error:'La imagen no es válida o es demasiado grande.'},config.allowedOrigin);
-        const passwordError=validatePassword(body.password);if(passwordError)return json(res,400,{error:passwordError},config.allowedOrigin);
+        const password=String(body.password||crypto.randomBytes(32).toString('base64url'));const passwordError=body.password?validatePassword(body.password):'';if(passwordError)return json(res,400,{error:passwordError},config.allowedOrigin);
         if(data.users.some(u=>normalizeUsername(u.username)===username))return json(res,409,{error:'Ya existe una cuenta con este nombre de usuario.'},config.allowedOrigin);
         if(email&&data.users.some(u=>normalizeEmail(u.email)===email))return json(res,409,{error:'Ya existe una cuenta con este correo.'},config.allowedOrigin);
-        const pwd=hashPassword(body.password),now=new Date().toISOString(),location=parseMapLocation(mapUrl);
+        const pwd=hashPassword(password),now=new Date().toISOString(),location=parseMapLocation(mapUrl);
         const user={id:crypto.randomUUID(),role:'client',name,businessName,username,email,phone,documentId,address,mapUrl,location,logo,bankAccounts,approved:true,active:true,passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now,createdBy:'admin'};
         data.users.unshift(user);syncClient(data,user);await writeState(config,data);
-        return json(res,201,{user:publicUser(user),message:'Cliente creado y habilitado para iniciar sesión.'},config.allowedOrigin);
+        return json(res,201,{user:publicUser(user),message:'Ficha de cliente creada. Las órdenes se gestionan desde administración.'},config.allowedOrigin);
       }
 
       const id=decodeURIComponent(match[1]||'');

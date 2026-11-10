@@ -5,6 +5,21 @@
       "source": "/",
       "destination": "/inicio",
       "permanent": false
+    },
+    {
+      "source": "/registro/:token",
+      "destination": "/inicio",
+      "permanent": false
+    },
+    {
+      "source": "/register.html",
+      "destination": "/inicio",
+      "permanent": false
+    },
+    {
+      "source": "/tracking",
+      "destination": "/inicio",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -53,20 +68,24 @@
       "destination": "/08_servicios_adicionales.png"
     },
     {
+      "source": "/ventas",
+      "destination": "/admin-web/staff.html?role=sales"
+    },
+    {
+      "source": "/contabilidad",
+      "destination": "/admin-web/staff.html?role=accounting"
+    },
+    {
+      "source": "/equipo",
+      "destination": "/admin-web/staff.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin-web/index.html"
     },
     {
       "source": "/admin/:path*",
       "destination": "/admin-web/:path*"
-    },
-    {
-      "source": "/tracking",
-      "destination": "/tracking-web/index.html"
-    },
-    {
-      "source": "/registro/:token",
-      "destination": "/register.html"
     },
     {
       "source": "/api/goy-notification-sound",

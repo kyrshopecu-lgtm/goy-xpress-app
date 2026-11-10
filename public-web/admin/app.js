@@ -153,7 +153,10 @@
     const cost=prompt('Nueva tarifa del servicio:',String(o.value)); if(cost===null)return;
     const number=Number(String(cost).replace(',','.')); if(!Number.isFinite(number)||number<0){alert('Tarifa inválida');return;}
     const reason=prompt('Motivo del cambio o reajuste:','Ajuste administrativo')||'Ajuste administrativo';
-    await updateOrder(code,{serviceLabel,serviceCost:number,reason});
+    const expectedTime=prompt('Tiempo estimado:',o.raw.expectedTime||'');if(expectedTime===null)return;
+    const requirements=prompt('Requisitos (uno por línea):',(o.raw.procedureRequirements||[]).join('\n'));if(requirements===null)return;
+    const steps=prompt('Pasos del proceso (uno por línea):',(o.raw.procedureSteps||[]).join('\n'));if(steps===null)return;
+    await updateOrder(code,{serviceLabel,serviceCost:number,reason,expectedTime,procedureRequirements:requirements.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),procedureSteps:steps.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)});
   }
   async function quoteOrder(code){
     const amount=prompt('Valor de la cotización para este servicio:'); if(amount===null)return;
