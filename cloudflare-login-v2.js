@@ -237,3 +237,58 @@ export async function authChallengeV2(request,env){
     return json({error:'No se pudo iniciar la verificación de acceso.'},503);
   }
 }
+
+
+function hexToBytes(value){
+  const hex=String(value||'').trim();
+  if(!hex||hex.length%2!==0||!/^[0-9a-f]+$/i.test(hex)) return new Uint8Array();
+  const out=new Uint8Array(hex.length/2);
+  for(let i=0;i<out.length;i++) out[i]=parseInt(hex.slice(i*2,i*2+2),16);
+  return out;
+}
+
+async function verifyChallengePayload(token,secret){
+  try{
+    if(!token||!secret) return null;
+    const [body,signature]=String(token).split('.');
+    if(!body||!signature) return null;
+    const normalized=signature.replace(/-/g,'+').replace(/_/g,'/');
+    const padded=normalized+'='.repeat((4-(normalized.length%4))%4);
+    const signatureBytes=Uint8Array.from(atob(padded),c=>c.charCodeAt(0));
+    const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),{name:'HMAC',hash:'SHA-256'},false,['verify']);
+    const valid=await crypto.subtle.verify('HMAC',key,signatureBytes,new TextEncoder().encode(body));
+    if(!valid) return null;
+    const normalizedBody=body.replace(/-/g,'+').replace(/_/g,'/');
+    const paddedBody=normalizedBody+'='.repeat((4-(normalizedBody.length%4))%4);
+    const payload=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(paddedBody),c=>c.charCodeAt(0))));
+    if(!payload.exp||Number(payload.exp)<=Date.now()) return null;
+    return payload;
+  }catch{return null;}
+}
+
+export async function authLoginProofV2(request,env){
+  if(request.method==='OPTIONS') return new Response(null,{status:204,headers:JSON_HEADERS});
+  try{
+    if(!env.TOKEN_SECRET) return json({error:'Autenticación del servidor sin configurar.'},503);
+    const body=await request.json().catch(()=>({}));
+    const challenge=String(body.challenge||''),proof=String(body.proof||'').toLowerCase();
+    const payload=await verifyChallengePayload(challenge,env.TOKEN_SECRET);
+    if(!payload||payload.kind!=='password-proof'||!payload.uid||!['courier','sales','accounting'].includes(payload.role)){
+      return json({error:'La verificación de acceso venció. Intenta nuevamente.'},401);
+    }
+    const state=await readState(env);
+    const user=state.users.find(item=>String(item.id)===String(payload.uid)&&item.role===payload.role);
+    if(!user||user.active===false||user.blocked===true||!user.passwordHash){
+      return json({error:'Usuario/correo o contraseña incorrectos.'},401);
+    }
+    const storedKey=hexToBytes(user.passwordHash);
+    if(storedKey.length!==64) return json({error:'Usuario/correo o contraseña incorrectos.'},401);
+    const expected=await hmacSha256Hex(storedKey,challenge);
+    if(!secureHexEqual(expected,proof)) return json({error:'Usuario/correo o contraseña incorrectos.'},401);
+    if(!user.approved) return json({error:'Tu cuenta está pendiente de aprobación por el administrador.',pendingApproval:true,user:publicUser(user)},403);
+    return json(await sessionFor(user,env),200);
+  }catch(error){
+    console.error('GOY XPRESS login proof v2',error);
+    return json({error:'No se pudo completar el ingreso. Intenta nuevamente.'},503);
+  }
+}
