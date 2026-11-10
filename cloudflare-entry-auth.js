@@ -168,8 +168,8 @@ function runtimeHealth(env) {
   if(!tokenReady)missing.push('TOKEN_SECRET');
   if(!discoveryReady)missing.push('GOOGLE_MAPS_API_KEY_or_PROSPECT_DISCOVERY_URL');
   if(!analysisReady)missing.push('AI_binding_or_OpenAI_fallback');
-  if(!whatsappReady)missing.push('WHATSAPP_ACCESS_TOKEN_and_PHONE_NUMBER_ID');
-  if(!prospectTemplateReady)missing.push('GOY_WA_PROSPECT_TEMPLATE');
+  if(!whatsappReady)missing.push('GOY_WA_SALES_ACCESS_TOKEN_and_GOY_WA_SALES_PHONE_NUMBER_ID');
+  if(!prospectTemplateReady)missing.push('GOY_WA_SALES_PROSPECT_TEMPLATE');
   return {
     ok:true,
     healthVersion:'sales-ai-production-smoke-v1',
