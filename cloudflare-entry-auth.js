@@ -195,6 +195,11 @@ function runtimeHealth(env) {
 async function dispatch(request, env, ctx) {
   const path = new URL(request.url).pathname;
 
+  // Customer self-registration is retired: customer profiles are created only by Administration.
+  if (path === '/api/auth/client/register' && ['POST','OPTIONS'].includes(request.method)) {
+    return json({error:'El registro de clientes está deshabilitado. GOY XPRESS gestiona los clientes y las órdenes desde Administración.'}, 410);
+  }
+
   if (path === '/api/health' && request.method === 'GET') {
     return json(runtimeHealth(env), 200);
   }
