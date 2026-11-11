@@ -567,8 +567,8 @@ test('Worker expone health check no sensible para GOY SALES AI', () => {
   assert.match(edge,/dailySalesReady/);
   assert.match(edge,/mediaMode/);
   assert.match(edge,/mediaFallbackEnabled:true/);
-  assert.match(edge,/GOY_WA_PROSPECT_TEMPLATE/);
-  assert.match(edge,/WHATSAPP_ACCESS_TOKEN_and_PHONE_NUMBER_ID/);
+  assert.match(edge,/GOY_WA_SALES_PROSPECT_TEMPLATE/);
+  assert.match(edge,/GOY_WA_SALES_ACCESS_TOKEN_and_GOY_WA_SALES_PHONE_NUMBER_ID/);
   assert.doesNotMatch(edge,/accessToken:/);
 });
 
