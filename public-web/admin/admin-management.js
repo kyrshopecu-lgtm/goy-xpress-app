@@ -74,7 +74,7 @@
       ['sales.prospects.read','Consultar prospectos'],['sales.prospects.create','Crear prospectos'],['sales.prospects.update','Editar prospectos'],['sales.whatsapp.send','Enviar WhatsApp'],
       ['crm.contacts.read','Consultar contactos'],['crm.contacts.update','Actualizar contactos'],['crm.contacts.assign','Asignar contactos'],['procedures.read','Consultar trámites']
     ],
-    accounting:[
+    courier:[\n      ['courier.jobs.read_assigned','Consultar órdenes asignadas'],['courier.jobs.update_assigned','Actualizar órdenes asignadas'],['courier.evidence.upload','Subir evidencias'],['procedures.read','Consultar trámites']\n    ],\n    accounting:[
       ['crm.contacts.read_billing','Consultar datos para facturación'],['operations.requests.read_billing','Consultar solicitudes y cobros'],['operations.evidence.read','Consultar comprobantes'],
       ['accounting.read','Consultar contabilidad'],['accounting.entries.create','Crear registros contables'],['accounting.entries.update','Editar registros contables'],['accounting.reconcile','Conciliar movimientos'],['accounting.reports','Ver reportes contables'],['procedures.read','Consultar trámites']
     ]
@@ -86,13 +86,13 @@
     if(main&&!document.getElementById('internal-users')){
       const section=document.createElement('section');section.id='internal-users';section.className='view';
       section.innerHTML=`<div class="goy-staff-grid">
-        <article class="panel form-panel"><span class="eyebrow">Acceso interno</span><h3 id="goyStaffFormTitle">Crear trabajador</h3><p class="muted">Crea cuentas independientes para Ventas y Contabilidad. La contraseña se guarda protegida y nunca se muestra nuevamente.</p>
+        <article class="panel form-panel"><span class="eyebrow">Acceso interno</span><h3 id="goyStaffFormTitle">Crear trabajador</h3><p class="muted">Crea cuentas independientes para Ventas, Contabilidad y Mensajeros. La contraseña se guarda protegida y nunca se muestra nuevamente.</p>
         <form id="goyStaffForm" class="goy-staff-form">
           <label>Nombre completo<input id="goyStaffName" required minlength="2" autocomplete="name"></label>
           <label>Usuario<input id="goyStaffUsername" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,29}" autocomplete="username"></label>
           <label>Correo<input id="goyStaffEmail" type="email" required autocomplete="email"></label>
           <label>WhatsApp<input id="goyStaffPhone" required inputmode="tel"></label>
-          <label>Área<select id="goyStaffRole"><option value="sales">Ventas</option><option value="accounting">Contabilidad</option></select></label>
+          <label>Área<select id="goyStaffRole"><option value="sales">Ventas</option><option value="accounting">Contabilidad</option><option value="courier">Mensajero</option></select></label>
           <label id="goyStaffPasswordLabel">Contraseña inicial<input id="goyStaffPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres, letras y números"></label>
           <div class="goy-permissions-wrap"><strong>Permisos individuales</strong><small>Los permisos del área aparecen seleccionados inicialmente. Desmarca los que no debe utilizar; si no queda ninguno, la cuenta no tendrá acceso a esas funciones.</small><div id="goyStaffPermissions" class="goy-permissions"></div></div>
           <div class="goy-staff-actions"><button class="primary" type="submit" id="goyStaffSubmit">Crear cuenta</button><button type="button" id="goyStaffCancel" class="ghost" hidden>Cancelar edición</button></div><p id="goyStaffMessage" class="form-message" role="status"></p>
@@ -128,7 +128,7 @@
   function renderInternalUsers(){
     const box=document.getElementById('goyStaffList');if(!box)return;
     box.innerHTML=internalUsers.length?internalUsers.map(user=>{
-      const role=user.role==='sales'?'Ventas':'Contabilidad',active=user.active!==false&&!user.blocked;
+      const role=user.role==='sales'?'Ventas':user.role==='accounting'?'Contabilidad':'Mensajero',active=user.active!==false&&!user.blocked;
       const granted=Array.isArray(user.permissions)?user.permissions.length+' permisos personalizados':'Permisos predeterminados del área';
       return `<article class="goy-staff-card"><div class="goy-staff-card-head"><div><strong>${esc(user.name)}</strong><small>@${esc(user.username||'')}</small><small>${esc(user.email)} · ${esc(user.phone)}</small></div><span class="goy-staff-status ${active?'is-active':'is-blocked'}">${active?'Activo':'Bloqueado'}</span></div><div class="goy-staff-meta"><span>${role}</span><span>${esc(granted)}</span></div><div class="goy-staff-actions"><button type="button" data-edit-staff="${esc(user.id)}">Editar y permisos</button><button type="button" class="${active?'goy-danger':''}" data-toggle-staff="${esc(user.id)}" data-active="${active?'true':'false'}">${active?'Bloquear':'Activar'}</button><button type="button" data-reset-staff-password="${esc(user.id)}">Cambiar contraseña</button></div></article>`;
     }).join(''):'<p class="goy-service-empty">Todavía no hay trabajadores internos. Crea la primera cuenta desde el formulario.</p>';
