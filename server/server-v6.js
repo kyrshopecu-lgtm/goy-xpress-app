@@ -136,24 +136,24 @@ async function handler(req,res){
     }
     if(req.method==='GET'&&p==='/admin/internal-users'){
       const actor=adminPayload(req,config);if(!actor)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
-      const data=await readState(config),users=data.users.filter(u=>['sales','accounting'].includes(u.role)).map(publicUser);
+      const data=await readState(config),users=data.users.filter(u=>['sales','accounting','courier'].includes(u.role)).map(publicUser);
       return json(res,200,{users,auditLog:data.adminAuditLog.slice(0,100)},config.allowedOrigin);
     }
     if(req.method==='POST'&&p==='/admin/internal-users'){
       const actor=adminPayload(req,config);if(!actor)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
       const body=await readBody(req),role=String(body.role||''),name=String(body.name||'').trim(),username=normalizeUsername(body.username),email=normalizeEmail(body.email),phone=cleanPhone(body.phone||body.whatsapp),passwordError=validatePassword(body.password);
-      if(!['sales','accounting'].includes(role))return json(res,400,{error:'Rol interno no válido.'},config.allowedOrigin);
+      if(!['sales','accounting','courier'].includes(role))return json(res,400,{error:'Rol interno no válido.'},config.allowedOrigin);
       if(name.length<2||!internalUsername(username)||!validEmail(email)||phone.length<9||passwordError)return json(res,400,{error:passwordError||'Completa nombre, usuario (3-30 caracteres), correo y WhatsApp válidos.'},config.allowedOrigin);
       const data=await readState(config);
       if(data.users.some(u=>normalizeUsername(u.username)===username||normalizeEmail(u.email)===email))return json(res,409,{error:'El usuario o correo ya existe.'},config.allowedOrigin);
       const pwd=hashPassword(body.password),now=new Date().toISOString(),user={id:crypto.randomUUID(),role,name,username,email,phone,approved:true,active:true,blocked:false,...(Array.isArray(body.permissions)?{permissions:normalizePermissions(body.permissions)}:{}),passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now};
-      data.users.unshift(user);audit(data,actor,'internal_user.created',user.id,{role,username});await writeState(config,data);
+      data.users.unshift(user);if(role==='courier')syncMirror(data,user);audit(data,actor,'internal_user.created',user.id,{role,username});await writeState(config,data);
       return json(res,201,{user:publicUser(user),permissions:permissionsFor(user)},config.allowedOrigin);
     }
     const internalUserMatch=p.match(/^\/admin\/internal-users\/([^/]+)$/);
     if(req.method==='PATCH'&&internalUserMatch){
       const actor=adminPayload(req,config);if(!actor)return json(res,401,{error:'No autorizado'},config.allowedOrigin);
-      const id=decodeURIComponent(internalUserMatch[1]),body=await readBody(req),data=await readState(config),user=data.users.find(u=>u.id===id&&['sales','accounting'].includes(u.role));
+      const id=decodeURIComponent(internalUserMatch[1]),body=await readBody(req),data=await readState(config),user=data.users.find(u=>u.id===id&&['sales','accounting','courier'].includes(u.role));
       if(!user)return json(res,404,{error:'Trabajador no encontrado.'},config.allowedOrigin);
       if(Object.prototype.hasOwnProperty.call(body,'active')){user.active=Boolean(body.active);user.blocked=!user.active;}
       if(Object.prototype.hasOwnProperty.call(body,'permissions'))user.permissions=normalizePermissions(body.permissions);
