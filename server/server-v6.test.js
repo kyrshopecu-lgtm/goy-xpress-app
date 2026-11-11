@@ -65,3 +65,24 @@ test('la app de cliente y el registro por invitación quedan deshabilitados sin 
  const saved=JSON.parse(fs.readFileSync(file,'utf8'));
  assert.equal(saved.users.length,1);assert.equal(saved.clients.length,1);assert.equal(saved.requests[0].id,'old-order');
 });
+
+
+test('administrador crea, lista, edita y bloquea cuentas de mensajero desde Equipo y permisos',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'goy-v6-courier-staff-')),file=path.join(dir,'state.json');
+ const old={DATA_FILE:process.env.DATA_FILE,TOKEN_SECRET:process.env.TOKEN_SECRET};
+ process.env.DATA_FILE=file;process.env.TOKEN_SECRET='internal-courier-test-secret';
+ t.after(()=>{if(old.DATA_FILE===undefined)delete process.env.DATA_FILE;else process.env.DATA_FILE=old.DATA_FILE;if(old.TOKEN_SECRET===undefined)delete process.env.TOKEN_SECRET;else process.env.TOKEN_SECRET=old.TOKEN_SECRET;fs.rmSync(dir,{recursive:true,force:true});});
+ const {server,base}=await start(serverV6);t.after(()=>server.close());const admin=signAdmin(process.env.TOKEN_SECRET);
+ const created=await call(base,'/api/admin/internal-users',{method:'POST',token:admin,body:{role:'courier',name:'Mensajero GOY',username:'mensajero01',email:'mensajero@goy.test',phone:'0992223344',password:'Mensajero123'}});
+ assert.equal(created.status,201);assert.equal(created.body.user.role,'courier');assert.ok(created.body.permissions.includes('courier.jobs.read_assigned'));
+ const listed=await call(base,'/api/admin/internal-users',{method:'GET',token:admin});
+ assert.equal(listed.status,200);assert.equal(listed.body.users.length,1);assert.equal(listed.body.users[0].role,'courier');
+ const login=await call(base,'/api/auth/login',{method:'POST',body:{role:'courier',username:'mensajero01',password:'Mensajero123'}});
+ assert.equal(login.status,200);assert.equal(login.body.user.role,'courier');assert.ok(login.body.token);
+ const updated=await call(base,`/api/admin/internal-users/${created.body.user.id}`,{method:'PATCH',token:admin,body:{permissions:['courier.jobs.read_assigned'],active:true}});
+ assert.equal(updated.status,200);assert.deepEqual(updated.body.permissions,['courier.jobs.read_assigned']);
+ const blocked=await call(base,`/api/admin/internal-users/${created.body.user.id}`,{method:'PATCH',token:admin,body:{active:false}});
+ assert.equal(blocked.status,200);assert.equal(blocked.body.permissions.length,0);
+ const blockedLogin=await call(base,'/api/auth/login',{method:'POST',body:{role:'courier',username:'mensajero01',password:'Mensajero123'}});
+ assert.equal(blockedLogin.status,401);
+});
