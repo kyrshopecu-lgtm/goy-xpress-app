@@ -74,7 +74,10 @@
       ['sales.prospects.read','Consultar prospectos'],['sales.prospects.create','Crear prospectos'],['sales.prospects.update','Editar prospectos'],['sales.whatsapp.send','Enviar WhatsApp'],
       ['crm.contacts.read','Consultar contactos'],['crm.contacts.update','Actualizar contactos'],['crm.contacts.assign','Asignar contactos'],['procedures.read','Consultar trámites']
     ],
-    courier:[\n      ['courier.jobs.read_assigned','Consultar órdenes asignadas'],['courier.jobs.update_assigned','Actualizar órdenes asignadas'],['courier.evidence.upload','Subir evidencias'],['procedures.read','Consultar trámites']\n    ],\n    accounting:[
+    courier:[
+      ['courier.jobs.read_assigned','Consultar órdenes asignadas'],['courier.jobs.update_assigned','Actualizar órdenes asignadas'],['courier.evidence.upload','Subir evidencias'],['procedures.read','Consultar trámites']
+    ],
+    accounting:[
       ['crm.contacts.read_billing','Consultar datos para facturación'],['operations.requests.read_billing','Consultar solicitudes y cobros'],['operations.evidence.read','Consultar comprobantes'],
       ['accounting.read','Consultar contabilidad'],['accounting.entries.create','Crear registros contables'],['accounting.entries.update','Editar registros contables'],['accounting.reconcile','Conciliar movimientos'],['accounting.reports','Ver reportes contables'],['procedures.read','Consultar trámites']
     ]
