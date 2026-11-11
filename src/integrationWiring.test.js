@@ -301,7 +301,7 @@ test('login por desafío valida mensajero, ventas y contabilidad con el mismo fl
   const entry = read('cloudflare-entry-auth.js');
   assert.match(login, /export async function authLoginProofV2/);
   assert.match(login, /DEFAULT_ROLE_PERMISSIONS/);
-  assert.match(login, /sales:\\['crm\\.contacts\\.read'/);
+  assert.match(login, /sales:\['crm\.contacts\.read'/);
   assert.match(login, /accounting:\['crm\.contacts\.read_billing'/);
   assert.match(login, /\['courier','sales','accounting'\]\.includes\(payload\.role\)/);
   assert.match(login, /verifyChallengePayload\(challenge,env\.TOKEN_SECRET\)/);
