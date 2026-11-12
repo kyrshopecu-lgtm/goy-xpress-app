@@ -74,7 +74,7 @@ test('administrador crea, lista, edita y bloquea cuentas de mensajero desde Equi
  t.after(()=>{if(old.DATA_FILE===undefined)delete process.env.DATA_FILE;else process.env.DATA_FILE=old.DATA_FILE;if(old.TOKEN_SECRET===undefined)delete process.env.TOKEN_SECRET;else process.env.TOKEN_SECRET=old.TOKEN_SECRET;fs.rmSync(dir,{recursive:true,force:true});});
  const {server,base}=await start(serverV6);t.after(()=>server.close());const admin=signAdmin(process.env.TOKEN_SECRET);
  const created=await call(base,'/api/admin/internal-users',{method:'POST',token:admin,body:{role:'courier',name:'Mensajero GOY',username:'mensajero01',email:'mensajero@goy.test',phone:'0992223344',password:'Mensajero123'}});
- assert.equal(created.status,201);assert.equal(created.body.user.role,'courier');assert.ok(created.body.permissions.includes('courier.jobs.read_assigned'));
+ assert.equal(created.status,201);assert.equal(created.body.user.role,'courier');assert.ok(created.body.permissions.includes('courier.jobs.read_assigned'));const stored=JSON.parse(fs.readFileSync(file,'utf8'));assert.equal(stored.users[0].passwordIterations,100000);
  const listed=await call(base,'/api/admin/internal-users',{method:'GET',token:admin});
  assert.equal(listed.status,200);assert.equal(listed.body.users.length,1);assert.equal(listed.body.users[0].role,'courier');
  const login=await call(base,'/api/auth/login',{method:'POST',body:{role:'courier',username:'mensajero01',password:'Mensajero123'}});
