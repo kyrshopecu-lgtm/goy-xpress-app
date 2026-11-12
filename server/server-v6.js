@@ -64,10 +64,11 @@ function normalizeUsername(v){return String(v||'').trim().toLowerCase();}
 function cleanPhone(v){return String(v||'').replace(/\D/g,'');}
 function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(v));}
 function validatePassword(v){const p=String(v||'');if(p.length<8)return 'La contraseña debe tener al menos 8 caracteres.';if(!/[A-Za-z]/.test(p)||!(/\d/.test(p)))return 'La contraseña debe incluir letras y números.';return '';}
-function hashPassword(password,salt=crypto.randomBytes(16).toString('hex')){return {salt,hash:crypto.pbkdf2Sync(String(password),salt,180000,64,'sha512').toString('hex')};}
-function verifyPassword(password,user){if(!user?.passwordSalt||!user?.passwordHash)return false;return safeEqual(hashPassword(password,user.passwordSalt).hash,user.passwordHash);}
+const PASSWORD_ITERATIONS=100000;
+function hashPassword(password,salt=crypto.randomBytes(16).toString('hex')){return {salt,iterations:PASSWORD_ITERATIONS,hash:crypto.pbkdf2Sync(String(password),salt,PASSWORD_ITERATIONS,64,'sha512').toString('hex')};}
+function verifyPassword(password,user){if(!user?.passwordSalt||!user?.passwordHash)return false;const iterations=Number(user.passwordIterations||180000);if(!Number.isInteger(iterations)||iterations<1||iterations>180000)return false;const hash=crypto.pbkdf2Sync(String(password),user.passwordSalt,iterations,64,'sha512').toString('hex');return safeEqual(hash,user.passwordHash);}
 function validImage(v){if(!v)return true;const t=String(v);return t.length<=1800000&&/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t);}
-function publicUser(user){if(!user)return null;const {passwordHash,passwordSalt,pushTokens,...safe}=user;return safe;}
+function publicUser(user){if(!user)return null;const {passwordHash,passwordSalt,passwordIterations,pushTokens,...safe}=user;return safe;}
 function signToken(payload,secret){const body=Buffer.from(JSON.stringify(payload)).toString('base64url');const sig=crypto.createHmac('sha256',secret).update(body).digest('base64url');return `${body}.${sig}`;}
 function verifyToken(token,secret){if(!token||!secret)return null;const [body,sig]=String(token).split('.');if(!body||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(body).digest('base64url');if(!safeEqual(sig,expected))return null;try{const p=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));if(!p.exp||Date.now()>p.exp)return null;return p;}catch{return null;}}
 function bearer(req){const a=String(req.headers.authorization||'');return a.startsWith('Bearer ')?a.slice(7):'';}
@@ -91,7 +92,7 @@ function createUser(role,body){
     documentId:role==='client'?String(body.documentId||'').trim():'',
     address:role==='client'?String(body.address||'').trim():'',
     logo:role==='client'?String(body.logo||''):'',photo:role==='courier'?String(body.photo||''):'',
-    approved:false,active:true,passwordSalt:pwd.salt,passwordHash:pwd.hash,createdAt:now,updatedAt:now,
+    approved:false,active:true,passwordSalt:pwd.salt,passwordHash:pwd.hash,passwordIterations:pwd.iterations,createdAt:now,updatedAt:now,
   };
 }
 
