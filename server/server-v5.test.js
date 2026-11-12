@@ -261,14 +261,41 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
   assert.equal(assign.status, 200);
   assert.equal(assign.body.request.courierId, courierReg.body.user.id);
 
+  let courierState = await store.read();
+  const courierAccount = courierState.users.find(user => user.id === courierReg.body.user.id);
+  courierAccount.permissions = [];
+  await store.write(courierState);
+  const deniedJobs = await call(base, '/api/courier/jobs', {token:courierReg.body.token});
+  assert.equal(deniedJobs.status, 403);
+
+  courierState = await store.read();
+  courierState.users.find(user => user.id === courierReg.body.user.id).permissions = ['courier.jobs.read_assigned'];
+  await store.write(courierState);
   const jobs = await call(base, '/api/courier/jobs', {token:courierReg.body.token});
   assert.equal(jobs.status, 200);
   assert.equal(jobs.body.jobs.length, 1);
+  const jobDetail = await call(base, '/api/courier/jobs/GOY-TEST-001', {token:courierReg.body.token});
+  assert.equal(jobDetail.status, 200);
+  const statusDetail = await call(base, '/api/request-status?code=GOY-TEST-001', {token:courierReg.body.token});
+  assert.equal(statusDetail.status, 200);
+  const deniedUpdate = await call(base, '/api/requests/GOY-TEST-001/pickup', {
+    method:'POST', token:courierReg.body.token, body:{photo:'data:image/jpeg;base64,QUJDRA=='},
+  });
+  assert.equal(deniedUpdate.status, 403);
 
+  courierState = await store.read();
+  courierState.users.find(user => user.id === courierReg.body.user.id).permissions = ['courier.jobs.read_assigned','courier.jobs.update_assigned'];
+  await store.write(courierState);
+  const deniedEvidence = await call(base, '/api/requests/GOY-TEST-001/pickup', {
+    method:'POST', token:courierReg.body.token, body:{photo:'data:image/jpeg;base64,QUJDRA=='},
+  });
+  assert.equal(deniedEvidence.status, 403);
+
+  courierState = await store.read();
+  courierState.users.find(user => user.id === courierReg.body.user.id).permissions.push('courier.evidence.upload');
+  await store.write(courierState);
   const pickup = await call(base, '/api/requests/GOY-TEST-001/pickup', {
-    method:'POST',
-    token:courierReg.body.token,
-    body:{photo:'data:image/jpeg;base64,QUJDRA=='},
+    method:'POST', token:courierReg.body.token, body:{photo:'data:image/jpeg;base64,QUJDRA=='},
   });
   assert.equal(pickup.status, 200);
   assert.equal(pickup.body.status, 'Recogido');
