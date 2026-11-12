@@ -274,6 +274,10 @@ test('cuentas Cliente/Mensajero, Google Maps y permisos por asignación', async 
   const jobs = await call(base, '/api/courier/jobs', {token:courierReg.body.token});
   assert.equal(jobs.status, 200);
   assert.equal(jobs.body.jobs.length, 1);
+  const jobDetail = await call(base, '/api/courier/jobs/GOY-TEST-001', {token:courierReg.body.token});
+  assert.equal(jobDetail.status, 200);
+  const statusDetail = await call(base, '/api/request-status?code=GOY-TEST-001', {token:courierReg.body.token});
+  assert.equal(statusDetail.status, 200);
   const deniedUpdate = await call(base, '/api/requests/GOY-TEST-001/pickup', {
     method:'POST', token:courierReg.body.token, body:{photo:'data:image/jpeg;base64,QUJDRA=='},
   });
