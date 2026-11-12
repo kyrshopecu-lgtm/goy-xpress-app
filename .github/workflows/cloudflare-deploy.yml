@@ -9,6 +9,7 @@ on:
       - 'cloudflare-entry.js'
       - 'cloudflare-worker-v2.js'
       - 'cloudflare-*.js'
+      - 'server/**'
       - 'public-web/**'
       - 'wrangler.jsonc'
       - 'package.json'
